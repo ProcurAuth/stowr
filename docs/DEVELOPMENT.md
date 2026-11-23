@@ -90,8 +90,7 @@ Parquet reader, DER reader, CSV reader, MIME reader, image and media header read
 - Each dependency has an exact version.
 
 The compiler and clippy also refuse `unwrap`, `expect`, `panic!`, `todo!`, `unimplemented!`, `dbg!` and the print macros in
-the code of the program. The tests can use them. A function that is not written yet returns `Error::not_served`: the answer
-`501 not_served`.
+the code of the program. The tests can use them.
 
 The program keeps no state on the local file system. It runs as a static binary in a scratch container with a read-only
 root file system. Only the HCL file, the credential files and the folders of the `volume` blocks are mounted.

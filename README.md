@@ -26,12 +26,13 @@ Core properties:
 
 ## Quick start
 
-Get the archive of your architecture from the page of the release, with `checksums.txt`. Then do these steps:
+1. Get the archive of your architecture and `checksums.txt` from the page of the release.
+2. Write `config.hcl`. Use `config.example.hcl` of the repository as a start.
+3. Run these commands. They check the archive, extract the binary, check the configuration and start the server.
 
 ```sh
 sha256sum --check --ignore-missing checksums.txt
 tar -xzf stowr_0.3.0_linux_amd64.tar.gz
-cp config.example.hcl config.hcl
 ./stowr print-config -c config.hcl
 ./stowr -c config.hcl
 ```
