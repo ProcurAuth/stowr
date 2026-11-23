@@ -9,7 +9,6 @@ use http::header::{ACCEPT_ENCODING, HeaderValue, IF_MATCH, RANGE};
 use http::{HeaderMap, Method};
 use serde::Serialize;
 
-use super::sniff::{detect_content_type, extension, type_by_extension};
 use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::PERMISSION_READ;
@@ -21,6 +20,7 @@ use crate::common::query::Query;
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
 use crate::instance::versions::provider_checksums;
+use crate::server::mediatype::{detect_content_type, type_by_extension};
 
 /// The size of each probe: 64 KiB.
 const PROBE_SIZE: i64 = 64 << 10;
@@ -103,6 +103,12 @@ pub struct InspectResponse {
     pub structure: BTreeMap<String, String>,
     /// The provider requests and bytes of the inspection.
     pub resources: InspectResources,
+}
+
+/// The extension of the last part of a key, with its dot, or an empty text.
+fn extension(key: &str) -> &str {
+    let name = key.rsplit('/').next().unwrap_or(key);
+    name.rfind('.').map_or("", |index| &name[index..])
 }
 
 fn header<'a>(headers: &'a HeaderMap, name: &str) -> &'a str {
@@ -474,6 +480,13 @@ mod tests {
         structure.clear();
         inspect_structure(&mut structure, b"plain", b"", 5);
         assert_eq!(structure["Object length"], "5");
+    }
+
+    #[test]
+    fn the_extension_is_the_end_of_the_last_part_of_the_key() {
+        assert_eq!(extension("a.b/c.PDF"), ".PDF");
+        assert_eq!(extension("a.b/c"), "");
+        assert_eq!(extension("name."), ".");
     }
 
     #[test]

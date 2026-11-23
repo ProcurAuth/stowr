@@ -17,7 +17,6 @@ mod manager;
 mod public;
 mod routes;
 mod seam;
-mod sniff;
 mod stats;
 mod versions;
 mod walk;
