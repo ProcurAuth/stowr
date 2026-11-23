@@ -9,7 +9,7 @@ use http::{HeaderMap, Method};
 
 use super::paths;
 use crate::common::app::App;
-use crate::common::http::{Req, Response, Route, RouteAccess, answer, empty, full, not_found};
+use crate::common::http::{Req, Response, Route, answer, api_error, empty, full, not_found};
 
 /// One pattern of the table: its literal segments, and true for a subtree (a pattern that ends with `/`).
 struct Pattern {
@@ -149,35 +149,15 @@ pub fn redirect(method: &Method, url: &str) -> Response {
     answer(301, headers, body)
 }
 
-/// The answer of a route that has no rule of access: 403 with the action `unknown`.
-fn denied(app: &App, req: &Req) -> Response {
-    let request_id = req
-        .ctx
-        .access
-        .as_ref()
-        .map(|access| access.request_id.clone())
-        .unwrap_or_else(|| super::middleware::request_id_from(&req.headers));
-    let logged = super::middleware::logged_request_path(app.config.runtime.log_mode, req.path.as_bytes());
-    crate::log!(
-        "access.no_rule request_id={} method={} path={}",
-        request_id,
-        req.method,
-        super::logfmt::quote(&logged)
-    );
-    let error = crate::common::error::ApiError {
-        status: 403,
-        code: "forbidden".to_owned(),
-        message: "The action unknown is not allowed.".to_owned(),
-        action: Some("unknown".to_owned()),
-        retry_after: 0,
-        ceiling: None,
-    };
-    crate::common::http::api_error(&crate::common::error::Error::Api(Box::new(error)))
-}
-
+/// Call the handler of a route after its access rule: a route without a rule answers `403 forbidden`, and a route
+/// of the kind `TokenOnly` asks the action `access` on the service node.
 async fn call(app: Arc<App>, req: Req, route: Route) -> Response {
-    if route.access == RouteAccess::Denied {
-        return denied(&app, &req);
+    if let Err(error) = app
+        .access
+        .guard_route(&req.ctx, route.access, &req.method, &req.path, &req.headers)
+        .await
+    {
+        return api_error(&error);
     }
     (route.handler)(app, req).await
 }

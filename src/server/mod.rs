@@ -21,6 +21,8 @@ pub mod seams;
 pub mod serve_content;
 
 #[cfg(test)]
+mod access_tests;
+#[cfg(test)]
 pub mod testing;
 #[cfg(test)]
 mod tests;
@@ -91,20 +93,14 @@ pub fn split(req: Req) -> (RequestHead, crate::common::http::Body) {
     )
 }
 
-/// Run the server until SIGINT or SIGTERM: log the effective configuration and the warnings, build the application,
-/// run the start probes, listen on `server.listen`, then serve.
+/// Run the server until SIGINT or SIGTERM: apply the copy values of the build and log them, build the application,
+/// run the start probes, listen on `server.listen`, then serve. The command line logs the effective configuration
+/// and the warnings before this call. A copy value of the build that is not valid stops the start.
 pub async fn serve(config: Config) -> Result<()> {
-    for setting in crate::config::effective(&config) {
-        crate::log!(
-            "config.effective {} = {}  # {}",
-            setting.name,
-            setting.value,
-            setting.source
-        );
+    for note in crate::provider::s3::copy::apply_multipart_copy_build_settings()? {
+        crate::log!("{note}");
     }
-    for warning in crate::config::warnings(&config) {
-        crate::log!("config.warning {warning}");
-    }
+    crate::instance::compiled_copy_threshold()?;
     let listen = config.listen.clone();
     let detailed = config.runtime.log_mode == LogMode::Detailed;
     let source = config.source_name.display().to_string();
@@ -209,7 +205,7 @@ pub async fn handle(app: Arc<App>, mut req: Req, target: Target) -> Response {
     req.ctx.cancel = cancel.clone();
     let mut guard = CancelGuard(Some(cancel.clone()));
     let mut identity = None;
-    let response = match middleware::authenticate(&app, &mut req, &logged_path) {
+    let response = match middleware::authenticate(&app, &mut req) {
         Err(response) => *response,
         Ok(found) => {
             identity = found;

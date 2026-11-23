@@ -835,7 +835,7 @@ async fn the_object_routes_of_this_folder_refuse_a_write_only_instance() {
 }
 
 #[tokio::test]
-#[ignore = "needs the routes of the work packages archive, pv_docs, pv_data, pv_structured, pv_media and jobs"]
+#[ignore = "needs the routes of the job manager and of the previews"]
 async fn each_object_read_route_refuses_a_write_only_instance() {
     let backend = FakeBackend::with_objects(&[("a.txt", "secret")]);
     let app = app_of(vec![
@@ -897,7 +897,6 @@ async fn the_denial_of_one_object_does_not_stop_other_requests() {
 }
 
 #[tokio::test]
-#[ignore = "needs the learned permissions of the work package instance"]
 async fn a_denial_of_one_object_is_a_short_hint_of_the_permissions() {
     let backend = FakeBackend::with_objects(&[("tenant/ok.txt", "ok")]);
     backend.state().forbidden = "tenant/secret.txt".to_owned();
@@ -1725,7 +1724,6 @@ async fn open_uses_the_real_name_and_a_careful_inline_disposition() {
 }
 
 #[tokio::test]
-#[ignore = "needs the route /api/archive of the work package archive"]
 async fn the_archive_download_uses_the_name_of_the_folder() {
     let test = test_app();
     let answer = get(&test.app, "/api/archive?instance=rw&prefix=folder%2F&name=folder.zip").await;
@@ -1972,7 +1970,6 @@ fn anonymous_s3_config(
 }
 
 #[tokio::test]
-#[ignore = "needs the shared clients of the work package provider and the permissions of the work package instance"]
 async fn the_buckets_of_one_auth_block_share_its_client() {
     let status = Arc::new(std::sync::atomic::AtomicU16::new(200));
     let endpoint = status_server(status).await;
@@ -1999,7 +1996,6 @@ async fn the_buckets_of_one_auth_block_share_its_client() {
 }
 
 #[tokio::test]
-#[ignore = "needs the probes of the work packages provider and instance"]
 async fn a_refresh_of_the_permissions_keeps_the_state_on_probe_errors() {
     let status = Arc::new(std::sync::atomic::AtomicU16::new(500));
     let endpoint = status_server(status.clone()).await;

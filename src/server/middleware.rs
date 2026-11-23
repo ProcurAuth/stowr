@@ -3,12 +3,12 @@
 //! mutations.
 
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::{Duration, Instant};
 
 use bytes::Bytes;
-use http::header::{CACHE_CONTROL, CONNECTION, HeaderName, HeaderValue};
+use http::header::{CACHE_CONTROL, HeaderName, HeaderValue};
 use http::{HeaderMap, Method};
 use http_body::{Frame, SizeHint};
 use serde::Serialize;
@@ -17,8 +17,7 @@ use super::logfmt::{duration_ms, quote};
 use crate::common::app::App;
 use crate::common::config::LogMode;
 use crate::common::error::{Error, Result};
-use crate::common::http::{Body, Req, Response, api_error, json};
-use crate::common::misc::random_hex16;
+use crate::common::http::{Body, Req, Response, json};
 use crate::instance::budget::Budget;
 
 /// The trailer of the number of provider calls of a request.
@@ -30,9 +29,6 @@ pub const ELAPSED_TRAILER: &str = "X-Stowr-Elapsed-Ms";
 
 /// The longest time that an upload body or a download may make no progress.
 pub const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
-
-/// The longest request id that the server keeps from the client.
-const MAX_REQUEST_ID_BYTES: usize = 128;
 
 const CONTENT_SECURITY_POLICY: &str = "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:";
 
@@ -261,21 +257,6 @@ pub fn parse_origin(origin: &str) -> Option<(String, String)> {
     Some((scheme, host))
 }
 
-/// The request id: the `X-Request-ID` of the client when it has 1 to 128 characters of `A-Z a-z 0-9 . _ : -`, else
-/// a random id.
-pub fn request_id_from(headers: &HeaderMap) -> String {
-    let value = header_first(headers, "x-request-id");
-    let valid = !value.is_empty()
-        && value.len() <= MAX_REQUEST_ID_BYTES
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b':' | b'-'));
-    if valid {
-        return value.to_owned();
-    }
-    random_hex16().unwrap_or_else(|_| "unknown".to_owned())
-}
-
 /// The path of the log: the object keys and the ids hidden in the mode `anonymous`.
 pub fn logged_request_path(mode: LogMode, path: &[u8]) -> Vec<u8> {
     if mode == LogMode::Detailed {
@@ -298,52 +279,17 @@ pub fn logged_request_path(mode: LogMode, path: &[u8]) -> Vec<u8> {
 /// The identity of a request: the subject and the request id, for the log.
 pub type LogIdentity = Option<(String, String)>;
 
-/// The check of the identity token in mode `authzen`: the identity of the request, or the answer 401. The paths
-/// `/healthz` and `/.well-known/procurauth/actions` need no token. The token comes only from the configured header.
-pub fn authenticate(app: &App, req: &mut Req, logged_path: &[u8]) -> std::result::Result<LogIdentity, Box<Response>> {
-    if !app.config.access.enforced() || req.path == "/healthz" || req.path == "/.well-known/procurauth/actions" {
+/// The check of the identity token in mode `authzen` (the access layer): the identity of the request, or the answer
+/// 401. The request keeps the identity and the ceilings of its true answers. The paths `/healthz` and
+/// `/.well-known/procurauth/actions` need no token.
+pub fn authenticate(app: &App, req: &mut Req) -> std::result::Result<LogIdentity, Box<Response>> {
+    let Some(request) = app.access.check_token(&req.method, &req.path, &req.headers)? else {
         return Ok(None);
-    }
-    let request_id = request_id_from(&req.headers);
-    match app.access.guard.authenticate(&req.headers) {
-        Ok(Some(identity)) => {
-            let ceilings = Arc::new(crate::instance::ceiling::Ceilings::default());
-            let request = crate::access::AccessRequest {
-                subject: identity.subject.clone(),
-                owner: identity.owner,
-                request_id: request_id.clone(),
-                ceilings: ceilings.clone(),
-                log: Mutex::new(Some((identity.subject.clone(), request_id.clone()))),
-            };
-            req.ctx.access = Some(Arc::new(request));
-            req.ctx.ceilings = Some(ceilings);
-            Ok(Some((identity.subject, request_id)))
-        }
-        other => {
-            let reason = match other {
-                Err(reason) => reason,
-                _ => "missing".to_owned(),
-            };
-            crate::log!(
-                "access.unauthenticated request_id={} method={} path={} reason={}",
-                request_id,
-                req.method,
-                quote(logged_path),
-                reason
-            );
-            let mut response = api_error(&Error::api(
-                401,
-                "unauthenticated",
-                "A valid identity token is required.",
-            ));
-            if !is_safe_method(&req.method) {
-                response
-                    .headers_mut()
-                    .insert(CONNECTION, HeaderValue::from_static("close"));
-            }
-            Err(Box::new(response))
-        }
-    }
+    };
+    let identity = (request.subject.clone(), request.request_id.clone());
+    req.ctx.ceilings = Some(request.ceilings.clone());
+    req.ctx.access = Some(request);
+    Ok(Some(identity))
 }
 
 /// True when the request gets a resource budget and its trailers: the API and the object gateway.
@@ -609,9 +555,9 @@ mod tests {
     fn request_ids_keep_a_valid_client_value() {
         let mut headers = HeaderMap::new();
         headers.insert("x-request-id", HeaderValue::from_static("abc-1.2:3_4"));
-        assert_eq!(request_id_from(&headers), "abc-1.2:3_4");
+        assert_eq!(crate::access::request_id_from(&headers), "abc-1.2:3_4");
         headers.insert("x-request-id", HeaderValue::from_static("bad id"));
-        assert_eq!(request_id_from(&headers).len(), 32);
+        assert_eq!(crate::access::request_id_from(&headers).len(), 32);
     }
 
     #[test]

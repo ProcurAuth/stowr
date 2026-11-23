@@ -536,6 +536,8 @@ async fn object_gateway(app: &Arc<App>, req: Req) -> Result<Response> {
         return Ok(answer(204, HeaderMap::new(), empty()));
     }
     if method == Method::OPTIONS {
+        // The answer holds no data of the bucket: the request asks the action `access` on the service node.
+        crate::access::authorize_service(app, &req.ctx).await?;
         let mut headers = HeaderMap::new();
         headers.insert(ALLOW, HeaderValue::from_static("GET, HEAD, PUT, DELETE, OPTIONS"));
         return Ok(answer(204, headers, empty()));

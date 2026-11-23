@@ -690,7 +690,6 @@ async fn a_refusal_of_the_edit_makes_the_edit_unavailable() {
 // The decision to copy in parts and the copy in parts are functions of the instance work package: these tests
 // need them.
 #[tokio::test]
-#[ignore = "needs Instance::copies_in_parts and Instance::copy_multipart of the instance work package"]
 async fn the_route_copies_a_large_object_in_parts_with_the_new_metadata() {
     let state = new_copy_state();
     with_copy(&state, |state| {
@@ -744,7 +743,6 @@ async fn the_route_copies_a_large_object_in_parts_with_the_new_metadata() {
 }
 
 #[tokio::test]
-#[ignore = "needs Instance::head_version of the instance work package"]
 async fn the_route_copies_an_older_version_onto_the_key() {
     let state = new_copy_state();
     with_copy(&state, |state| {
