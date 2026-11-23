@@ -232,6 +232,55 @@ impl StorageClient {
     }
 }
 
+/// The admin APIs of the usage readers use the client of their `auth` block: no redirect, no proxy, and the check of
+/// the certificate of the block.
+impl crate::bucket::AdminTransport for StorageClient {
+    fn get<'a>(
+        &'a self,
+        url: &'a str,
+        headers: HeaderMap,
+        limit: usize,
+    ) -> crate::common::BoxFuture<'a, std::result::Result<crate::bucket::AdminAnswer, crate::bucket::AdminFailure>>
+    {
+        Box::pin(async move {
+            let uri = Uri::try_from(url).map_err(|_| crate::bucket::AdminFailure::Connect)?;
+            let mut request = Request::new(empty());
+            *request.method_mut() = Method::GET;
+            *request.uri_mut() = uri;
+            *request.headers_mut() = headers;
+            // The caller applies the time limit of the read of the usage: a drop of this call stops the request.
+            let answer = self
+                .fetch(&OpCtx::default(), request, limit)
+                .await
+                .map_err(|error| admin_failure(&error))?;
+            Ok(crate::bucket::AdminAnswer {
+                status: answer.status,
+                body: answer.body,
+            })
+        })
+    }
+}
+
+/// The reason of a failed admin request: a certificate that is not valid, a time limit, or any other failure of the
+/// connection.
+fn admin_failure(error: &Error) -> crate::bucket::AdminFailure {
+    use crate::bucket::AdminFailure;
+    match error {
+        Error::Timeout => AdminFailure::Timeout,
+        Error::Connect(text) => {
+            let text = text.to_ascii_lowercase();
+            if text.contains("certificate") {
+                AdminFailure::Certificate
+            } else if text.contains("timeout") || text.contains("timed out") || text.contains("deadline") {
+                AdminFailure::Timeout
+            } else {
+                AdminFailure::Connect
+            }
+        }
+        _ => AdminFailure::Connect,
+    }
+}
+
 /// An answer with its body read to its end, or to the limit of the call.
 #[derive(Clone, Debug, Default)]
 pub struct Answer {

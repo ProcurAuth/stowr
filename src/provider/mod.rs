@@ -61,8 +61,7 @@ pub struct SharedAuth {
     pub cfg: AuthConfig,
     /// The HTTP client.
     pub client: StorageClient,
-    /// The usage reader, with a `usage` block. [`SharedAuth::new`] leaves it empty: the caller that builds the
-    /// application sets it before it shares the value.
+    /// The usage reader, with a `usage` block. It sends its admin requests with the client of the block.
     pub usage: Option<Arc<dyn crate::bucket::BucketUsageReader>>,
     endpoint: BaseUrl,
     gcs_token: Option<Arc<GcsTokenSource>>,
@@ -78,8 +77,8 @@ impl std::fmt::Debug for SharedAuth {
 }
 
 impl SharedAuth {
-    /// Build the shared state of an `auth` block: check the endpoint, make the client, check the S3 credentials, and
-    /// read the key of a GCS service account.
+    /// Build the shared state of an `auth` block: check the endpoint, make the client, check the S3 credentials,
+    /// read the key of a GCS service account, and make the usage reader of a `usage` block.
     pub fn new(cfg: &AuthConfig) -> Result<Self> {
         let endpoint = crate::config::url::parse_endpoint(cfg.provider.as_str(), &cfg.endpoint)?;
         Self::with_endpoint(
@@ -114,6 +113,12 @@ impl SharedAuth {
                 }
             }
         }
+        let credentials = crate::bucket::AdminCredentials {
+            access_key_id: cfg.access_key_id.clone(),
+            secret_access_key: cfg.secret_access_key.clone(),
+            session_token: cfg.session_token.clone(),
+        };
+        auth.usage = crate::bucket::new_usage_reader(cfg, Arc::new(auth.client.clone()), credentials)?;
         Ok(auth)
     }
 
