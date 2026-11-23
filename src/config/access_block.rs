@@ -25,7 +25,7 @@ pub const DEFAULT_IDENTITY_CLOCK_SKEW: &str = "60s";
 /// The default text of `access.pdp.timeout`.
 pub const DEFAULT_PDP_TIMEOUT: &str = "500ms";
 /// The default text of `access.pdp.usage_timeout`.
-pub const DEFAULT_PDP_USAGE_TIMEOUT: &str = "2s";
+pub const DEFAULT_PDP_USAGE_TIMEOUT: &str = "6s";
 /// The default text of `access.pdp.cache_ttl`.
 pub const DEFAULT_PDP_CACHE_TTL: &str = "30s";
 /// The default of `access.pdp.max_evaluations`.
