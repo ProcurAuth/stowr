@@ -30,6 +30,8 @@ RUN set -eu; \
 WORKDIR /src
 COPY Cargo.toml Cargo.lock build.rs ./
 COPY src/ src/
+# No debug information: the build files in the image stay small. `cargo test` in run.sh reads the same value.
+ENV CARGO_PROFILE_DEV_DEBUG=0
 # run.sh runs `cargo test --locked --offline volume::` in this folder: the crates and the test files are in the image.
 RUN set -eu; \
     cargo build --locked; \
