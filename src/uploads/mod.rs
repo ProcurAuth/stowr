@@ -30,7 +30,7 @@ mod multiparts_tests;
 #[cfg(test)]
 mod session_tests;
 #[cfg(test)]
-mod test_fakes;
+pub(crate) mod test_fakes;
 #[cfg(test)]
 mod token_tests;
 

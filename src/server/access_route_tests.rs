@@ -96,6 +96,26 @@ impl Env {
         Self::build(Some(Arc::new(tagging)), Vec::new())
     }
 
+    /// An environment whose instance `rw` lists two incomplete uploads of two days: `folder/a.bin` (`u1`) and
+    /// `other/b.bin` (`u2`).
+    fn with_multiparts() -> Self {
+        use crate::uploads::test_fakes::{FakeLister, FakeUpload, ListBackend, ListStyle};
+        let initiated = Some(crate::common::time::Timestamp::now().plus_secs(-48 * 3600));
+        let lister = FakeLister::with_uploads(
+            ListStyle::Aws,
+            vec![
+                FakeUpload::new("tenant/folder/a.bin", "u1", initiated),
+                FakeUpload::new("tenant/other/b.bin", "u2", initiated),
+            ],
+        );
+        Self::build(
+            Some(Arc::new(ListBackend {
+                lister: Some(Arc::new(lister)),
+            })),
+            Vec::new(),
+        )
+    }
+
     /// An environment with a back end of `rw` (by default the memory back end of [`Env::rw`]) and more instances.
     fn build(rw_backend: Option<Arc<dyn Backend>>, extra: Vec<(BucketConfig, Arc<MemoryBackend>)>) -> Self {
         let readonly = bucket("readonly", "Read only", Some(&["read"]));
@@ -701,8 +721,19 @@ struct ChangeRoute {
     strict: bool,
     others: Vec<(&'static str, String)>,
     use_ask: (&'static str, String),
-    /// True when the instance `rw` needs a back end with object tags.
-    tags: bool,
+    /// The back end of the instance `rw` that the route needs.
+    rw: RwKind,
+}
+
+/// The back end of the instance `rw` of a change route.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RwKind {
+    /// The memory back end.
+    Memory,
+    /// A back end with object tags.
+    Tags,
+    /// A back end with a list of incomplete uploads.
+    Multiparts,
 }
 
 fn change_routes() -> Vec<ChangeRoute> {
@@ -716,7 +747,7 @@ fn change_routes() -> Vec<ChangeRoute> {
         strict,
         others,
         use_ask,
-        tags: false,
+        rw: RwKind::Memory,
     };
     vec![
         route(
@@ -860,7 +891,7 @@ fn change_routes() -> Vec<ChangeRoute> {
             (ACTION_WRITE, folder("extracted")),
         ),
         ChangeRoute {
-            tags: true,
+            rw: RwKind::Tags,
             ..route(
                 "tags put",
                 "PUT",
@@ -873,12 +904,38 @@ fn change_routes() -> Vec<ChangeRoute> {
             )
         },
         ChangeRoute {
-            tags: true,
+            rw: RwKind::Tags,
             ..route(
                 "tags bulk",
                 "POST",
                 "/api/tags/bulk",
                 r#"{"instance":"rw","prefix":"folder/","add":[{"key":"a","value":"1"}]}"#,
+                false,
+                true,
+                vec![(ACTION_READ, FOLDER.to_owned())],
+                (ACTION_WRITE, FOLDER.to_owned()),
+            )
+        },
+        ChangeRoute {
+            rw: RwKind::Multiparts,
+            ..route(
+                "abort of a list of incomplete uploads",
+                "POST",
+                "/api/multiparts/abort",
+                r#"{"instance":"rw","uploads":[{"key":"folder/a.bin","uploadId":"u1"},{"key":"other/b.bin","uploadId":"u2"}]}"#,
+                false,
+                true,
+                vec![(ACTION_WRITE, other.clone())],
+                (ACTION_WRITE, FOLDER.to_owned()),
+            )
+        },
+        ChangeRoute {
+            rw: RwKind::Multiparts,
+            ..route(
+                "abort of the old incomplete uploads",
+                "POST",
+                "/api/multiparts/abort",
+                r#"{"instance":"rw","olderThanDays":7,"prefix":"folder/"}"#,
                 false,
                 true,
                 vec![(ACTION_READ, FOLDER.to_owned())],
@@ -906,9 +963,18 @@ impl ChangeRoute {
         out
     }
 
+    /// A new environment with the back end of `rw` that the route needs.
+    fn env(&self) -> Env {
+        match self.rw {
+            RwKind::Memory => Env::new(),
+            RwKind::Tags => Env::with_tags(),
+            RwKind::Multiparts => Env::with_multiparts(),
+        }
+    }
+
     /// Send the request in a new environment with an answer function.
     async fn send(&self, answer: impl Fn(&FakeQuestion) -> Value + Send + Sync + 'static) -> (Env, TestResponse) {
-        let env = if self.tags { Env::with_tags() } else { Env::new() };
+        let env = self.env();
         env.fake.set_answer(answer);
         let response = env.send(self.method, self.target, self.body()).await;
         (env, response)
@@ -1018,7 +1084,7 @@ impl ChangeRoute {
             failures.push(format!("{name} (budget): error {}", answer.text()));
         }
 
-        let env = Env::new();
+        let env = self.env();
         env.fake.set_status(500);
         let answer = env.send(self.method, self.target, self.body()).await;
         if answer.status != 503 {
