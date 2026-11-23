@@ -22,7 +22,7 @@ use super::session::{
     STATUS_COMPLETED, STATUS_UPLOADING, UploadPartState, UploadSession, nanos_between, parse_content_range,
     upload_chunk_size,
 };
-use super::target::{AccessCheck, Targets, UploadTarget, initiation_context, validate_upload_tags};
+use super::target::{AccessCheck, Targets, UploadTarget, initiation_context};
 use super::token::{open_resume_token, seal_resume_token, upload_id_from_token};
 use crate::common::config::{PERMISSION_READ, PERMISSION_WRITE, PROVIDER_VOLUME};
 use crate::common::ctx::OpCtx;
@@ -330,7 +330,7 @@ impl UploadManager {
             "" => "application/octet-stream".to_owned(),
             value => value.to_owned(),
         };
-        validate_upload_tags(&request.tags)?;
+        crate::lifecycle::validate_tags(&request.tags)?;
         target.require_tags(&request.tags)?;
         let ctx = with_upload_tags(ctx, &request.tags);
         if !request.checksum.is_empty() && request.checksum != UPLOAD_CHECKSUM_SHA256 {
@@ -886,15 +886,5 @@ impl UploadManager {
     }
 }
 
-/// The id that the list of the incomplete uploads gives to the temporary file of a volume session: its name.
-pub fn volume_session_upload_id(session: &str) -> String {
-    let temporary = session.split('\0').next().unwrap_or("");
-    if temporary.is_empty() {
-        return ".".to_owned();
-    }
-    let trimmed = temporary.trim_end_matches('/');
-    if trimmed.is_empty() {
-        return "/".to_owned();
-    }
-    trimmed.rsplit('/').next().unwrap_or(trimmed).to_owned()
-}
+/// The id that the list of the incomplete uploads gives to the temporary file of a volume session.
+pub use crate::volume::uploads::session_upload_id as volume_session_upload_id;

@@ -1,26 +1,7 @@
 //! Media types: the built-in table of the extensions, the text of a `Content-Disposition` value, and the detection of
 //! the media type of the first bytes of a body (the algorithm of <https://mimesniff.spec.whatwg.org/>).
 
-/// The media type of an extension (with its dot, in lower case), or an empty text. The table is the built-in table of
-/// the server: the server reads no media type file of the system.
-pub fn type_by_extension(extension: &str) -> &'static str {
-    match extension.to_ascii_lowercase().as_str() {
-        ".avif" => "image/avif",
-        ".css" => "text/css; charset=utf-8",
-        ".gif" => "image/gif",
-        ".htm" | ".html" => "text/html; charset=utf-8",
-        ".jpeg" | ".jpg" => "image/jpeg",
-        ".js" | ".mjs" => "text/javascript; charset=utf-8",
-        ".json" => "application/json",
-        ".pdf" => "application/pdf",
-        ".png" => "image/png",
-        ".svg" => "image/svg+xml",
-        ".wasm" => "application/wasm",
-        ".webp" => "image/webp",
-        ".xml" => "text/xml; charset=utf-8",
-        _ => "",
-    }
-}
+pub use crate::common::mediatype::{base_media_type, type_by_extension};
 
 fn is_tspecial(byte: u8) -> bool {
     b"()<>@,;:\\\"/[]?=".contains(&byte)
@@ -95,11 +76,6 @@ pub fn format_media_type(media_type: &str, params: &[(&str, &str)]) -> String {
         out.push('"');
     }
     out
-}
-
-/// The media type of a `Content-Type` value without its parameters, in lower case and without spaces.
-pub fn base_media_type(value: &str) -> String {
-    value.split(';').next().unwrap_or("").trim().to_ascii_lowercase()
 }
 
 /// The largest number of bytes that the detection reads.

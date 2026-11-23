@@ -41,15 +41,7 @@ pub fn tagging_unsupported() -> Error {
     )
 }
 
-/// True for a provider that does not know a request: it answers 501 or 405.
-pub fn provider_refused_feature(error: &Error) -> bool {
-    error.as_upstream().is_some_and(|upstream| {
-        upstream.status == 501
-            || upstream.status == 405
-            || upstream.code == "NotImplemented"
-            || upstream.code == "MethodNotAllowed"
-    })
-}
+pub use crate::provider::s3::provider_refused_feature;
 
 /// The zero digits of the blocks of decimal digits (the category Nd). Each block has ten digits.
 const DIGIT_BLOCKS: &[u32] = &[

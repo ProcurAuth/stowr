@@ -9,17 +9,7 @@ use crate::common::error::{Error, Result};
 /// The limit of entries when the configuration gives none.
 pub const DEFAULT_MAX_ARCHIVE_ENTRIES: usize = 10_000;
 
-/// The extension of the last element of a path: from its last `.`, or an empty text.
-pub fn path_ext(path: &str) -> &str {
-    for (index, byte) in path.bytes().enumerate().rev() {
-        match byte {
-            b'/' => return "",
-            b'.' => return &path[index..],
-            _ => {}
-        }
-    }
-    ""
-}
+pub use crate::common::mediatype::path_ext;
 
 /// The last element of a path, without the `/` at its end. An empty path gives `.`; a path of `/` only gives `/`.
 pub fn path_base(path: &str) -> &str {
@@ -36,14 +26,7 @@ pub fn path_base(path: &str) -> &str {
     }
 }
 
-/// A prefix with one `/` at its end and none at its start, or an empty text.
-pub fn normalize_prefix(value: &str) -> String {
-    let value = value.trim_start_matches('/');
-    if value.is_empty() {
-        return String::new();
-    }
-    format!("{}/", value.trim_end_matches('/'))
-}
+pub use crate::common::misc::normalize_prefix;
 
 /// The safe relative name of an archive entry. `\` becomes `/` and the name loses its empty elements. A control
 /// character becomes `_`. A first element with `:` as its second byte (a drive letter) gets a `_` before it. A name

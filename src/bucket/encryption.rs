@@ -27,7 +27,7 @@ use http::header::{HeaderName, HeaderValue};
 use http::{HeaderMap, Method};
 use serde::Serialize;
 
-use super::support::{MAX_ANSWER_BYTES, S3Call, begin_request, decode_document, is_success, observe_permission, quote};
+use super::support::{MAX_ANSWER_BYTES, S3Call, decode_document, is_success, quote};
 use super::{BucketEncryption, EncryptionReader};
 use crate::access;
 use crate::common::BoxFuture;
@@ -253,9 +253,9 @@ impl Instance {
         if !self.encryption_probe_supported() {
             return Err(bucket_encryption_unsupported());
         }
-        let _slot = begin_request(self, ctx).await?;
+        let _slot = self.begin_storage_request(ctx).await?;
         let result = reader.bucket_encryption(ctx).await;
-        observe_permission(self, PERMISSION_READ, result.as_ref().err());
+        self.observe_permission(PERMISSION_READ, result.as_ref().err());
         result
     }
 }

@@ -14,7 +14,6 @@
 //! `upload_tagging_header(ctx)` in the header `x-amz-tagging`.
 
 mod editor;
-mod md5;
 mod routes;
 mod rules;
 mod s3;

@@ -66,20 +66,7 @@ pub fn base(path: &str) -> &str {
     }
 }
 
-/// The extension of the last element of a slash path, with its dot (`.pdf`), or an empty text.
-pub fn ext(path: &str) -> &str {
-    let bytes = path.as_bytes();
-    let mut index = bytes.len();
-    while index > 0 {
-        index -= 1;
-        match bytes[index] {
-            b'/' => return "",
-            b'.' => return &path[index..],
-            _ => {}
-        }
-    }
-    ""
-}
+pub use crate::common::mediatype::path_ext as ext;
 
 fn hex_value(byte: u8) -> Option<u8> {
     match byte {
@@ -201,14 +188,7 @@ pub fn html_escape(text: &str) -> String {
     out
 }
 
-/// A relative prefix: the `/` at the start removed, and one `/` at the end (an empty prefix stays empty).
-pub fn normalize_prefix(value: &str) -> String {
-    let value = value.trim_start_matches('/');
-    if value.is_empty() {
-        return String::new();
-    }
-    format!("{}/", value.trim_end_matches('/'))
-}
+pub use crate::common::misc::normalize_prefix;
 
 #[cfg(test)]
 mod tests {

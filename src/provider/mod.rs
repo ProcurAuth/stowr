@@ -7,7 +7,7 @@
 
 pub mod client;
 pub mod gcs;
-pub mod md5;
+pub use crate::common::md5;
 pub mod s3;
 pub mod url;
 pub mod xml;

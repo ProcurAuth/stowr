@@ -248,26 +248,6 @@ impl VersionCursor {
     }
 }
 
-/// The value of the header `x-amz-tagging`: the tags as a query text (`a=b&c=d`), in the order of the keys. A key
-/// that comes two times keeps its last value.
-pub fn encode_tags(tags: &[crate::lifecycle::Tag]) -> String {
-    let mut values = std::collections::BTreeMap::new();
-    for tag in tags {
-        values.insert(tag.key.as_str(), tag.value.as_str());
-    }
-    values
-        .iter()
-        .map(|(key, value)| {
-            format!(
-                "{}={}",
-                crate::common::query::query_escape(key),
-                crate::common::query::query_escape(value)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("&")
-}
-
 /// One value of a header of a request of the caller: the first value when it is not empty.
 pub(crate) fn first_value(headers: &HeaderMap, name: &HeaderName) -> Option<HeaderValue> {
     headers.get(name).filter(|value| !value.as_bytes().is_empty()).cloned()
@@ -444,11 +424,8 @@ impl S3Backend {
     }
 
     fn put_upload_tags(ctx: &OpCtx, headers: &mut HeaderMap) -> Result<()> {
-        if let Some(tags) = &ctx.upload_tags {
-            let encoded = encode_tags(tags);
-            if !encoded.is_empty() {
-                set_header(headers, "x-amz-tagging", &encoded)?;
-            }
+        if let Some(encoded) = crate::lifecycle::upload_tagging_header(ctx) {
+            set_header(headers, "x-amz-tagging", &encoded)?;
         }
         Ok(())
     }
@@ -817,7 +794,7 @@ impl S3Backend {
             document.push_str("</Object>");
         }
         document.push_str("</Delete>");
-        let digest = super::md5::md5(document.as_bytes());
+        let digest = crate::common::md5::md5(document.as_bytes());
         let query = [("delete".to_owned(), String::new())];
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/xml"));

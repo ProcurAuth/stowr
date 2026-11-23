@@ -26,8 +26,8 @@ use http::header::{CONTENT_TYPE, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 
 use super::support::{
-    MAX_ANSWER_BYTES, S3_NAMESPACE, S3Call, begin_request, decode_document, embedded_error, is_success, md5,
-    observe_permission, printable_ascii, provider_refused_feature, quote, upstream_status_text, xml_integer,
+    MAX_ANSWER_BYTES, S3_NAMESPACE, S3Call, decode_document, embedded_error, is_success, printable_ascii,
+    provider_refused_feature, quote, upstream_status_text, xml_integer,
 };
 use super::{ObjectLockConfiguration, ObjectLockDefaultJson, ObjectLockManager, Retention};
 use crate::access;
@@ -179,8 +179,7 @@ async fn put_lock_document(
     body: String,
     mut headers: http::HeaderMap,
 ) -> Result<()> {
-    use base64::Engine as _;
-    let digest = base64::engine::general_purpose::STANDARD.encode(md5(body.as_bytes()));
+    let digest = crate::common::md5::content_md5(body.as_bytes());
     headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/xml"));
     if let Ok(value) = HeaderValue::from_str(&digest) {
         headers.insert(HeaderName::from_static("content-md5"), value);
@@ -530,14 +529,14 @@ impl Instance {
     pub async fn read_object_lock(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectLockState> {
         let manager = self.lock_manager()?;
         let retention = {
-            let _slot = begin_request(self, ctx).await?;
+            let _slot = self.begin_storage_request(ctx).await?;
             manager.retention(ctx, key, version).await?
         };
         let legal_hold = {
-            let _slot = begin_request(self, ctx).await?;
+            let _slot = self.begin_storage_request(ctx).await?;
             manager.legal_hold(ctx, key, version).await?
         };
-        observe_permission(self, crate::common::config::PERMISSION_READ, None);
+        self.observe_permission(crate::common::config::PERMISSION_READ, None);
         Ok(ObjectLockState { retention, legal_hold })
     }
 
@@ -594,7 +593,7 @@ impl Instance {
                     && value.retain_until.map(|date| date.secs) == next.retain_until.map(|date| date.secs)
             });
             if !same {
-                let _slot = begin_request(self, ctx).await?;
+                let _slot = self.begin_storage_request(ctx).await?;
                 manager
                     .put_retention(ctx, key, version, next, bypass)
                     .await
@@ -604,13 +603,13 @@ impl Instance {
         if let Some(hold) = change.legal_hold
             && hold != current.legal_hold
         {
-            let _slot = begin_request(self, ctx).await?;
+            let _slot = self.begin_storage_request(ctx).await?;
             manager
                 .put_legal_hold(ctx, key, version, hold)
                 .await
                 .map_err(|error| object_lock_write_error(error, "legal hold"))?;
         }
-        observe_permission(self, crate::common::config::PERMISSION_WRITE, None);
+        self.observe_permission(crate::common::config::PERMISSION_WRITE, None);
         Ok(())
     }
 }
@@ -787,7 +786,7 @@ pub async fn object_lock_response_for(
     }
     let state = instance.read_object_lock(ctx, &full, &version).await?;
     let configuration = {
-        let _slot = begin_request(instance, ctx).await?;
+        let _slot = instance.begin_storage_request(ctx).await?;
         manager.configuration(ctx).await?
     };
     let now = Timestamp::now().utc();

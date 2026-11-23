@@ -24,7 +24,6 @@ use super::content::{
     apply_object_safety_headers, archive_entry_active_content, browser_inline_content, format_disposition,
     is_svg_content, preview_content_type,
 };
-use super::md5::Md5;
 use super::names::{
     DEFAULT_MAX_ARCHIVE_ENTRIES, normalize_archive_entry_selection, normalize_prefix, path_base, path_ext, quote,
     safe_archive_entry_name,
@@ -42,6 +41,7 @@ use crate::common::config::{PERMISSION_READ, PERMISSION_WRITE};
 use crate::common::ctx::{GateMode, OpCtx};
 use crate::common::error::{Error, Result};
 use crate::common::http::{Body, Req, Response, answer, api_error, decode_json, empty, json, method_not_allowed};
+use crate::common::md5::Md5;
 use crate::common::misc::{clean_relative_key, hex};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;

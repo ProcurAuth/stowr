@@ -1,5 +1,5 @@
-//! The small helpers that the functions of this folder share. They are the S3 call seam, the gates of a provider
-//! call, the observed permissions, the XML tree of the provider answers, the MD5 digest, and the quoting of a text.
+//! The small helpers that the functions of this folder share. They are the S3 call seam, the XML tree of the provider
+//! answers and the quoting of a text.
 
 use std::fmt::Write as _;
 
@@ -7,14 +7,10 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 
 use crate::common::BoxFuture;
-use crate::common::config::{BucketConfig, PERMISSION_READ};
+use crate::common::config::BucketConfig;
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::query::{path_escape, query_escape};
-use crate::common::storage::{CapabilityState, CapabilityStateName};
-use crate::common::time::Timestamp;
-use crate::instance::Instance;
-use crate::instance::gate::{self, Slot};
 use crate::provider::S3Backend;
 use crate::provider::s3::{S3Answer, S3Request};
 
@@ -23,9 +19,6 @@ pub const S3_NAMESPACE: &str = "http://s3.amazonaws.com/doc/2006-03-01/";
 
 /// The largest answer of a provider that a function of this folder reads: 1 MiB.
 pub const MAX_ANSWER_BYTES: usize = 1 << 20;
-
-/// How long a denial that one provider call taught stays reported.
-const OBSERVED_DENIAL_SECONDS: i64 = 60;
 
 /// The seam between the S3 functions of this folder and the provider client. The S3 back end implements it with
 /// `S3Backend::send`; the tests implement it with a fake provider.
@@ -57,15 +50,7 @@ pub fn is_success(status: u16) -> bool {
     (200..300).contains(&status)
 }
 
-/// True for a provider that does not know a request: it answers 501 or 405.
-pub fn provider_refused_feature(error: &Error) -> bool {
-    error.as_upstream().is_some_and(|upstream| {
-        upstream.status == 501
-            || upstream.status == 405
-            || upstream.code == "NotImplemented"
-            || upstream.code == "MethodNotAllowed"
-    })
-}
+pub use crate::provider::s3::provider_refused_feature;
 
 /// The status and the S3 code of a provider answer, such as `HTTP 403 AccessDenied`.
 pub fn upstream_status_text(status: u16, code: &str) -> String {
@@ -145,69 +130,6 @@ pub fn printable_ascii(text: &str) -> bool {
         return false;
     }
     text.bytes().all(|byte| (0x20..=0x7e).contains(&byte))
-}
-
-/// Count one provider call in the budget of the context and take a slot of the gates of the process and of the
-/// instance. The slot goes back when the value is dropped.
-pub async fn begin_request(instance: &Instance, ctx: &OpCtx) -> Result<Slot> {
-    if let Some(budget) = &ctx.budget {
-        budget.consume_request()?;
-    }
-    gate::acquire(ctx, &[&instance.global_gate, &instance.gate]).await
-}
-
-/// Learn a permission from the result of a real provider operation. A success proves the permission. A 401 or a
-/// 403 reports a short denial; it never replaces a state of the configuration or of the runtime.
-pub fn observe_permission(instance: &Instance, permission: &str, error: Option<&Error>) {
-    if permission.is_empty() {
-        return;
-    }
-    if instance.policy.force_read_only() && permission != PERMISSION_READ {
-        return;
-    }
-    if instance.cfg.permissions_defined && !instance.cfg.permissions.iter().any(|value| value == permission) {
-        return;
-    }
-    let now = Timestamp::now();
-    let next = match error {
-        None => CapabilityState {
-            state: CapabilityStateName::Allowed,
-            allowed: true,
-            verified: true,
-            source: "observed".to_owned(),
-            reason: "a real provider operation succeeded during this process".to_owned(),
-            expires: None,
-        },
-        Some(error) => {
-            let Some(upstream) = error.as_upstream() else {
-                return;
-            };
-            if upstream.status != 401 && upstream.status != 403 {
-                return;
-            }
-            CapabilityState {
-                state: CapabilityStateName::Denied,
-                allowed: false,
-                verified: true,
-                source: "provider".to_owned(),
-                reason: "the storage provider denied a real operation during this process".to_owned(),
-                expires: Some(now.plus_secs(OBSERVED_DENIAL_SECONDS)),
-            }
-        }
-    };
-    let Ok(mut capabilities) = instance.caps.lock() else {
-        return;
-    };
-    let slot = match permission {
-        "read" => &mut capabilities.read,
-        "write" => &mut capabilities.write,
-        "delete" => &mut capabilities.delete,
-        _ => return,
-    };
-    if slot.source != "runtime" && slot.source != "configuration" {
-        *slot = next;
-        capabilities.checked_at = Some(now);
-    }
 }
 
 // --- The XML tree of an answer ----------------------------------------------------------------------------------
@@ -377,68 +299,4 @@ pub fn embedded_error(body: &[u8]) -> Option<Error> {
 /// The path of a URL in its escaped form: the characters that a path may hold stay, each other byte is `%XX`.
 pub fn escape_url_path(path: &str) -> String {
     path.split('/').map(path_escape).collect::<Vec<_>>().join("/")
-}
-
-// --- MD5 ---------------------------------------------------------------------------------------------------------
-
-const MD5_SHIFTS: [u32; 64] = [
-    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15,
-    21,
-];
-
-fn md5_constants() -> [u32; 64] {
-    let mut table = [0u32; 64];
-    for (index, slot) in table.iter_mut().enumerate() {
-        // floor(2^32 * abs(sin(index + 1)))
-        let value = ((index as f64) + 1.0).sin().abs() * 4_294_967_296.0;
-        *slot = value as u32;
-    }
-    table
-}
-
-/// The MD5 digest of bytes (RFC 1321). S3 asks for it in the header `Content-MD5` of the lock requests.
-pub fn md5(data: &[u8]) -> [u8; 16] {
-    let constants = md5_constants();
-    let mut state: [u32; 4] = [0x6745_2301, 0xefcd_ab89, 0x98ba_dcfe, 0x1032_5476];
-    let mut message = data.to_vec();
-    message.push(0x80);
-    while message.len() % 64 != 56 {
-        message.push(0);
-    }
-    message.extend_from_slice(&((data.len() as u64).wrapping_mul(8)).to_le_bytes());
-    let (blocks, _) = message.as_chunks::<64>();
-    for block in blocks {
-        let mut words = [0u32; 16];
-        for (index, word) in words.iter_mut().enumerate() {
-            let start = index * 4;
-            *word = u32::from_le_bytes([block[start], block[start + 1], block[start + 2], block[start + 3]]);
-        }
-        let [mut a, mut b, mut c, mut d] = state;
-        for index in 0..64 {
-            let (mixed, word_index) = match index / 16 {
-                0 => ((b & c) | (!b & d), index),
-                1 => ((d & b) | (!d & c), (5 * index + 1) % 16),
-                2 => (b ^ c ^ d, (3 * index + 5) % 16),
-                _ => (c ^ (b | !d), (7 * index) % 16),
-            };
-            let sum = a
-                .wrapping_add(mixed)
-                .wrapping_add(constants[index])
-                .wrapping_add(words[word_index]);
-            a = d;
-            d = c;
-            c = b;
-            b = b.wrapping_add(sum.rotate_left(MD5_SHIFTS[index]));
-        }
-        state[0] = state[0].wrapping_add(a);
-        state[1] = state[1].wrapping_add(b);
-        state[2] = state[2].wrapping_add(c);
-        state[3] = state[3].wrapping_add(d);
-    }
-    let mut out = [0u8; 16];
-    for (index, word) in state.iter().enumerate() {
-        out[index * 4..index * 4 + 4].copy_from_slice(&word.to_le_bytes());
-    }
-    out
 }

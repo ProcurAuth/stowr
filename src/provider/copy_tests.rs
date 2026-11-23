@@ -401,7 +401,7 @@ async fn a_copy_in_parts_replaces_the_metadata_and_the_tags_on_request() {
     metadata.insert("authorization", HeaderValue::from_static("ignored"));
     let options = MultipartCopyOptions {
         metadata: Some(metadata),
-        tags: Some(super::s3::encode_tags(&[crate::lifecycle::Tag {
+        tags: Some(crate::lifecycle::encode_tagging(&[crate::lifecycle::Tag {
             key: "new".to_owned(),
             value: "1".to_owned(),
         }])),

@@ -52,14 +52,18 @@ impl VolumeSession {
     }
 }
 
-/// The id that the list of the incomplete uploads gives to the temporary file of a session: its name.
+/// The id that the list of the incomplete uploads gives to the temporary file of a session: the last element of its
+/// path. A path without a name gives `.`, and a path of `/` characters only gives `/`.
 pub fn session_upload_id(session: &str) -> String {
     let temporary = session.split('\0').next().unwrap_or("");
-    Path::new(temporary)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .unwrap_or("")
-        .to_owned()
+    if temporary.is_empty() {
+        return ".".to_owned();
+    }
+    let trimmed = temporary.trim_end_matches('/');
+    if trimmed.is_empty() {
+        return "/".to_owned();
+    }
+    trimmed.rsplit('/').next().unwrap_or(trimmed).to_owned()
 }
 
 fn invalid_token() -> Error {

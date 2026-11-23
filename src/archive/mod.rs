@@ -13,7 +13,7 @@
 pub mod content;
 pub mod entry;
 pub mod folder;
-pub mod md5;
+pub use crate::common::md5;
 pub mod names;
 pub mod stream;
 pub mod zip;

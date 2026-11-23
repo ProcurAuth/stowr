@@ -27,7 +27,6 @@ use crate::common::error::{Error, Result};
 use crate::common::json;
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
-use crate::instance::gate::{self, Slot};
 use crate::jobs::{JobRun, JobState};
 
 /// The number of uploads in one answer of the list, when the request gives no number.
@@ -69,15 +68,7 @@ pub fn invalid_multipart_request(message: impl Into<String>) -> Error {
     Error::api(400, "invalid_multipart_request", message)
 }
 
-/// True for a provider that does not know a request: it answers 501 or 405.
-pub fn provider_refused_feature(error: &Error) -> bool {
-    error.as_upstream().is_some_and(|upstream| {
-        upstream.status == 501
-            || upstream.status == 405
-            || upstream.code == "NotImplemented"
-            || upstream.code == "MethodNotAllowed"
-    })
-}
+pub use crate::provider::s3::provider_refused_feature;
 
 /// True for the 404 of an upload that the provider does not know.
 pub fn is_no_such_upload(error: &Error) -> bool {
@@ -140,53 +131,6 @@ pub fn decode_multipart_cursor(token: &str) -> Result<MultipartCursor> {
 
 // --- Storage instance ------------------------------------------------------------------------------------------------
 
-/// Count one provider call and take the slots of the gates.
-async fn begin_request(instance: &Instance, ctx: &OpCtx) -> Result<Slot> {
-    if let Some(budget) = &ctx.budget {
-        budget.consume_request()?;
-    }
-    gate::acquire(ctx, &[&instance.global_gate, &instance.gate]).await
-}
-
-/// Learn the `read` permission from the result of a provider call, as each call of the instance does.
-fn observe_read<T>(instance: &Instance, result: &Result<T>) {
-    if !instance.cfg.allows(PERMISSION_READ) {
-        return;
-    }
-    let next = match result {
-        Ok(_) => crate::common::storage::CapabilityState {
-            state: crate::common::storage::CapabilityStateName::Allowed,
-            allowed: true,
-            verified: true,
-            source: "observed".to_owned(),
-            reason: "a real provider operation succeeded during this process".to_owned(),
-            expires: None,
-        },
-        Err(error) => match error.as_upstream() {
-            Some(upstream) if upstream.status == 401 || upstream.status == 403 => {
-                crate::common::storage::CapabilityState {
-                    state: crate::common::storage::CapabilityStateName::Denied,
-                    allowed: false,
-                    verified: true,
-                    source: "provider".to_owned(),
-                    reason: "the storage provider denied a real operation during this process".to_owned(),
-                    // One object's 403 is not a verdict for the instance: it shows for a short time and is never
-                    // enforced.
-                    expires: Some(Timestamp::now().plus_secs(60)),
-                }
-            }
-            _ => return,
-        },
-    };
-    if let Ok(mut caps) = instance.caps.lock()
-        && caps.read.source != "runtime"
-        && caps.read.source != "configuration"
-    {
-        caps.read = next;
-        caps.checked_at = Some(Timestamp::now());
-    }
-}
-
 impl Instance {
     /// True when the instance can list its incomplete uploads. Until the probe has run, the answer is yes for a back
     /// end that has the list.
@@ -230,7 +174,7 @@ impl Instance {
         maximum: u32,
     ) -> Result<MultipartUploadPage> {
         let lister = self.multipart_lister()?;
-        let _slot = begin_request(self, ctx).await?;
+        let _slot = self.begin_storage_request(ctx).await?;
         let markers = MultipartCursor {
             key_marker: cursor.key_marker.clone(),
             upload_id_marker: cursor.upload_id_marker.clone(),
@@ -243,7 +187,7 @@ impl Instance {
             self.multiparts.off.store(true, Ordering::SeqCst);
             return Err(multipart_unsupported());
         }
-        observe_read(self, &result);
+        self.observe_permission(PERMISSION_READ, result.as_ref().err());
         result
     }
 
@@ -255,9 +199,9 @@ impl Instance {
         upload_id: &str,
     ) -> Result<MultipartPartsSummary> {
         let lister = self.multipart_lister()?;
-        let _slot = begin_request(self, ctx).await?;
+        let _slot = self.begin_storage_request(ctx).await?;
         let result = lister.upload_parts(ctx, key, upload_id, PARTS_PAGE_SIZE).await;
-        observe_read(self, &result);
+        self.observe_permission(PERMISSION_READ, result.as_ref().err());
         result
     }
 }

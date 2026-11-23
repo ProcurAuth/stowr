@@ -7,7 +7,6 @@ use bytes::Bytes;
 use http::header::{CONTENT_TYPE, HeaderValue};
 use http::{HeaderMap, Method};
 
-use super::md5::content_md5;
 use super::rules::{
     FLAVOUR_AWS, FLAVOUR_GARAGE, FLAVOUR_MINIO, FLAVOUR_PROBE_KEY, FLAVOUR_SEAWEEDFS, MAX_LIFECYCLE_DOCUMENT_BYTES,
     parse_lifecycle_rules,
@@ -18,6 +17,7 @@ use crate::common::BoxFuture;
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::full;
+use crate::common::md5::content_md5;
 use crate::provider::S3Backend;
 use crate::provider::s3::{S3Answer, S3Request};
 

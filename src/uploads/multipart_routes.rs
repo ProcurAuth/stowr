@@ -13,7 +13,7 @@ use super::multiparts::{
     invalid_multipart_request, multipart_unsupported, valid_multipart_upload_id,
 };
 use super::target::Targets;
-use crate::access::{ACTION_READ, ACTION_WRITE, Operation, authorize, authorize_read, object_ask};
+use crate::access::{authorize, authorize_read};
 use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::{PERMISSION_READ, PERMISSION_WRITE};
@@ -21,7 +21,6 @@ use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, decode_json, json, method_not_allowed};
 use crate::common::misc::clean_relative_key;
 use crate::common::time::Timestamp;
-use crate::instance::Instance;
 use crate::jobs::{JobState, job_type};
 
 /// A value that is `null` in the JSON text has the default value, as a missing member has.
@@ -182,28 +181,6 @@ async fn list_route(app: Arc<App>, req: Req) -> Result<Response> {
     ))
 }
 
-/// The permissions of the abort of a list of incomplete uploads. The first key is the use. The other keys come first,
-/// without usage.
-fn abort_uploads_operation(app: &App, instance: &Instance, keys: &[String]) -> Operation {
-    let mut operation = Operation {
-        use_ask: object_ask(app, ACTION_WRITE, instance, &keys[0]),
-        ..Operation::default()
-    };
-    for key in &keys[1..] {
-        operation.others.push(object_ask(app, ACTION_WRITE, instance, key));
-    }
-    operation
-}
-
-/// The permissions of a write of every object under a prefix: the abort of the old incomplete uploads.
-fn write_prefix_operation(app: &App, instance: &Instance, prefix: &str) -> Operation {
-    Operation {
-        others: vec![object_ask(app, ACTION_READ, instance, prefix)],
-        use_ask: object_ask(app, ACTION_WRITE, instance, prefix),
-        ..Operation::default()
-    }
-}
-
 async fn abort_route(app: Arc<App>, req: Req) -> Result<Response> {
     if req.method != Method::POST {
         return Ok(method_not_allowed(&["POST"]));
@@ -250,12 +227,12 @@ async fn abort_route(app: Arc<App>, req: Req) -> Result<Response> {
     target.require_multipart_list()?;
     if has_uploads {
         let keys: Vec<String> = request.uploads.iter().map(|item| item.key.clone()).collect();
-        authorize(&app, &ctx, abort_uploads_operation(&app, &instance, &keys)).await?;
+        authorize(&app, &ctx, app.access.abort_uploads_operation(&instance, &keys)).await?;
         let response = abort_selected_multiparts(&app.uploads, &*target, &ctx, &request.uploads).await;
         return Ok(json(200, &response));
     }
     let prefix = clean_relative_key(&request.prefix);
-    authorize(&app, &ctx, write_prefix_operation(&app, &instance, &prefix)).await?;
+    authorize(&app, &ctx, app.access.write_prefix_operation(&instance, &prefix)).await?;
     let job = app.jobs.create(JobState {
         job_type: job_type::ABORT_MULTIPARTS.to_owned(),
         instance: instance.cfg.id.clone(),

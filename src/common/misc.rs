@@ -117,6 +117,15 @@ pub fn clean_relative_key(value: &str) -> String {
     value.replace('\0', "").trim_start_matches('/').to_owned()
 }
 
+/// A relative prefix: the `/` at the start removed, and one `/` at the end. An empty prefix stays empty.
+pub fn normalize_prefix(value: &str) -> String {
+    let value = value.trim_start_matches('/');
+    if value.is_empty() {
+        return String::new();
+    }
+    format!("{}/", value.trim_end_matches('/'))
+}
+
 /// An integer of a query: the fallback for a text that is not an integer or is below the minimum, the maximum for
 /// a larger value.
 pub fn parse_bounded_int(raw: &str, fallback: i64, minimum: i64, maximum: i64) -> i64 {

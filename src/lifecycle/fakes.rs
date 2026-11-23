@@ -9,7 +9,6 @@ use bytes::Bytes;
 use http::header::{CONTENT_TYPE, HeaderValue};
 use http::{HeaderMap, Method};
 
-use super::md5::content_md5;
 use super::s3::{self, S3Wire};
 use super::xml;
 use super::{BucketRules, LifecycleDocument, LifecycleRule, ObjectTagger, Tag};
@@ -20,6 +19,7 @@ use crate::common::config::{BucketConfig, Config, RuntimePolicy};
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Body, Req, Response, empty, full, read_limited};
+use crate::common::md5::content_md5;
 use crate::common::query::Query;
 use crate::common::storage::{Backend, DiscoveredCapabilities, ListOptions, ListPage, ObjectResponse};
 use crate::instance::Instance;

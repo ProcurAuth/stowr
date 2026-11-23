@@ -17,9 +17,7 @@ use http::header::{
     EXPIRES, HeaderName,
 };
 
-use super::{
-    S3Backend, embedded_error, encode_tags, provider_refused_feature, response_error, set_header, trim_quotes,
-};
+use super::{S3Backend, embedded_error, provider_refused_feature, response_error, set_header, trim_quotes};
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::misc::CancelToken;
@@ -287,7 +285,7 @@ impl S3Backend {
         };
         let tags = match &options.tags {
             Some(tags) => tags.clone(),
-            None => encode_tags(&self.source_tags(ctx, &options, source, &head.headers).await?),
+            None => crate::lifecycle::encode_tagging(&self.source_tags(ctx, &options, source, &head.headers).await?),
         };
         if !tags.is_empty() {
             set_header(&mut headers, "x-amz-tagging", &tags)?;
