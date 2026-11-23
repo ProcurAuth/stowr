@@ -218,44 +218,76 @@ fn manifest_metadata(data: &[u8]) -> Option<BTreeMap<String, String>> {
     Some(props)
 }
 
-/// The text of a JSON value for a detail. Strings stay as they are and numbers have the shortest form.
-/// A list is in brackets. A map has its keys in order.
+/// The text of a JSON value for a detail. A text stays as it is, and `null` gives an empty text. A number has the
+/// form of [`print_number`]. A list or an object is compact JSON, with the members of an object in the order of their
+/// names.
 fn print_value(value: &serde_json::Value) -> String {
     use serde_json::Value;
     match value {
-        Value::Null => "<nil>".to_owned(),
-        Value::Bool(flag) => flag.to_string(),
-        Value::Number(number) => print_float(number.as_f64().unwrap_or(0.0)),
+        Value::Null => String::new(),
         Value::String(text) => text.clone(),
-        Value::Array(items) => {
-            let parts: Vec<String> = items.iter().map(print_value).collect();
-            format!("[{}]", parts.join(" "))
-        }
-        Value::Object(map) => {
-            let mut keys: Vec<&String> = map.keys().collect();
-            keys.sort();
-            let parts: Vec<String> = keys
-                .iter()
-                .map(|key| format!("{key}:{}", print_value(&map[key.as_str()])))
-                .collect();
-            format!("map[{}]", parts.join(" "))
+        Value::Bool(_) | Value::Number(_) | Value::Array(_) | Value::Object(_) => {
+            let mut out = String::new();
+            write_compact_json(value, &mut out);
+            out
         }
     }
 }
 
-/// The text of a number with the shortest digits: the exponent form when the exponent is below -4 or at least 6.
-fn print_float(value: f64) -> String {
-    if value == 0.0 {
-        return if value.is_sign_negative() { "-0" } else { "0" }.to_owned();
+/// Write a JSON value in its compact form: no spaces, the members of an object in the order of their names.
+fn write_compact_json(value: &serde_json::Value, out: &mut String) {
+    use serde_json::Value;
+    match value {
+        Value::Null => out.push_str("null"),
+        Value::Bool(flag) => out.push_str(if *flag { "true" } else { "false" }),
+        Value::Number(number) => out.push_str(&print_number(number)),
+        Value::String(text) => out.push_str(&serde_json::to_string(text).unwrap_or_default()),
+        Value::Array(items) => {
+            out.push('[');
+            for (index, item) in items.iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                write_compact_json(item, out);
+            }
+            out.push(']');
+        }
+        Value::Object(map) => {
+            let mut keys: Vec<&String> = map.keys().collect();
+            keys.sort();
+            out.push('{');
+            for (index, key) in keys.into_iter().enumerate() {
+                if index > 0 {
+                    out.push(',');
+                }
+                out.push_str(&serde_json::to_string(key).unwrap_or_default());
+                out.push(':');
+                write_compact_json(&map[key.as_str()], out);
+            }
+            out.push('}');
+        }
     }
+}
+
+/// The text of a JSON number: the digits of an integer, or the shortest decimal form of a fraction that reads back to
+/// the same value. A fraction below 1e-6 or from 1e21 has the exponent form, for example `1e-7`, `1e21` or `1e300`.
+fn print_number(number: &serde_json::Number) -> String {
+    if number.is_i64() || number.is_u64() {
+        return number.to_string();
+    }
+    let Some(value) = number.as_f64() else {
+        return number.to_string();
+    };
     let scientific = format!("{value:e}");
-    let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));
-    let exponent: i32 = exponent.parse().unwrap_or(0);
-    if !(-4..6).contains(&exponent) {
-        let sign = if exponent < 0 { '-' } else { '+' };
-        return format!("{mantissa}e{sign}{:02}", exponent.abs());
+    let exponent: i32 = scientific
+        .split_once('e')
+        .and_then(|(_, exponent)| exponent.parse().ok())
+        .unwrap_or(0);
+    if (-6..21).contains(&exponent) {
+        format!("{value}")
+    } else {
+        scientific
     }
-    format!("{value}")
 }
 
 /// The value of four hexadecimal digits at the start of the bytes.
@@ -350,7 +382,12 @@ fn json_manifest_metadata(data: &[u8]) -> Option<BTreeMap<String, String>> {
         }
     }
     if let Some(serde_json::Value::Array(permissions)) = manifest.get("permissions") {
-        let values: Vec<String> = permissions.iter().map(print_value).collect();
+        // A `null` item of the list is absent.
+        let values: Vec<String> = permissions
+            .iter()
+            .filter(|value| !value.is_null())
+            .map(print_value)
+            .collect();
         if !values.is_empty() {
             props.insert("Permissions".to_owned(), values.join(", "));
         }

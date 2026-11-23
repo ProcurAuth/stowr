@@ -37,6 +37,10 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 - The connections to the providers, to the admin APIs and to the PDP use HTTP/1.1.
 - An archive entry that is a symbolic link gives `403 archive_symlink_blocked`.
 - A read of a file of a volume that is not a regular file (a device, a socket or a pipe) gives `403 volume_not_file`.
+- The details of a package show a manifest value that is a list or an object as compact JSON, for example
+  `{"email":"y","name":"x"}` or `[1,2]`. A `null` value shows as an empty text, and the list of permissions skips it. A
+  number shows in its shortest decimal form, for example `1000000` or `1.5`. Below 1e-6 and from 1e21, it shows in the
+  exponent form, for example `1e-7` or `1e21`. An attribute of a certificate name with no value shows as an empty text.
 - `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
   accepts the value and shows it.
 
