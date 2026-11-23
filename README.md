@@ -1,36 +1,55 @@
 # Stowr
 
-Stowr is a self-contained Go application for browsing and operating on S3-compatible storage and Google Cloud Storage. It can also show a folder of the server, for example a FUSE mount of SeaweedFS, as a bucket (a volume). It is designed for hosts with a small memory budget and for objects that can be hundreds of gigabytes.
+This document uses ASD-STE100 Simplified Technical English.
+
+Stowr is a self-contained web application that browses S3-compatible storage and Google Cloud Storage, and operates on
+the objects. It can also show a folder of the server as a bucket (a volume), for example a FUSE mount of SeaweedFS.
+Stowr is for hosts with a small memory budget, and for objects of hundreds of gigabytes.
 
 Core properties:
 
-- one statically linked Go binary;
-- HCL configuration only;
-- no application configuration or provider credentials from environment variables, except a variable that the HCL file names with an `_env` attribute;
-- no local database, cache directory, temporary file, or persisted job state (a volume is the exception: its uploads write a temporary file in the volume);
-- no hidden control objects, indexes, or checkpoints in connected buckets;
-- compatible with a read-only root filesystem;
-- shared authentication definitions that can serve multiple independently configured buckets;
-- exact byte-range readers for large-object previews and inspection;
-- bounded provider requests, transferred bytes, concurrency, cache size, and in-memory job history;
-- frontend URLs resolved relative to `document.baseURI` for deployment behind a path-stripping reverse proxy;
-- no runtime CDN or third-party asset requests;
-- an access policy that the `access` block sets: the mode `authzen` checks the identity token of the edge and asks a PDP for each operation (protocol ProcurAuth). The mode `open` needs a reverse proxy that authenticates the users.
+- One static binary for Linux (amd64 and arm64), with the browser interface in it.
+- An HCL configuration file only.
+- No configuration and no provider credentials from environment variables. The only exception is a variable that the
+  HCL file names with an `_env` attribute.
+- No local database, no cache folder, no temporary file and no job state on disk. A volume is the exception: an upload
+  to a volume writes a temporary file in the volume.
+- No hidden control objects, indexes or checkpoints in the connected buckets.
+- A read-only root file system is sufficient.
+- One `auth` block can serve many buckets that have their own configuration.
+- Exact byte-range readers for the previews and the inspection of large objects.
+- Limits on the provider requests, the transferred bytes, the concurrency, the cache size and the job history in memory.
+- The interface resolves each URL relative to `document.baseURI`: a reverse proxy can remove a path prefix.
+- No request to a CDN or to another origin at run time.
+- An access policy in the `access` block. The mode `authzen` checks the identity token of the edge and asks a PDP for
+  each operation (protocol ProcurAuth). The mode `open` needs a reverse proxy that authenticates the users.
 
 ## Quick start
 
+Get the archive of your architecture from the page of the release, with `checksums.txt`. Then do these steps:
+
 ```sh
+sha256sum --check --ignore-missing checksums.txt
+tar -xzf stowr_0.3.0_linux_amd64.tar.gz
 cp config.example.hcl config.hcl
-cd src
-CGO_ENABLED=0 go build -trimpath -o stowr .
-./stowr -c ../config.hcl
+./stowr print-config -c config.hcl
+./stowr -c config.hcl
 ```
 
-The configuration must contain one `access` block, and one `bucket` block or one `volume` block at least. A `bucket` block needs an `auth` block. Refer to "Access policy" for the `access` block.
+To build the binary from the source, use Docker only. The binary goes into the current folder:
+
+```sh
+scripts/static.sh --copy .
+```
+
+The configuration must contain one `access` block, and one `bucket` block or one `volume` block at least. A `bucket`
+block needs an `auth` block. Refer to "Access policy" for the `access` block.
 
 ## Access policy
 
-The `access` block is mandatory. Mode `authzen` checks the identity token that the edge signs, and asks a PDP (Policy Decision Point) for each operation. Mode `open` checks nothing: use it only behind a reverse proxy that authenticates the users.
+The `access` block is mandatory. The mode `authzen` checks the identity token that the edge signs, and asks a PDP
+(Policy Decision Point) for each operation. The mode `open` checks nothing: use it only behind a reverse proxy that
+authenticates the users.
 
 ```hcl
 access {
@@ -49,7 +68,8 @@ access {
 }
 ```
 
-Refer to [docs/ACCESS.md](docs/ACCESS.md) for the rules, and to [docs/CONFORMANCE.md](docs/CONFORMANCE.md) for the conformance test.
+Refer to [docs/ACCESS.md](docs/ACCESS.md) for the rules, and to [docs/CONFORMANCE.md](docs/CONFORMANCE.md) for the
+conformance test.
 
 ## Shared authentication and bucket-specific policy
 
@@ -81,27 +101,39 @@ bucket "archive" {
 }
 ```
 
-Both buckets reuse one credential set and HTTP connection pool. Their root prefixes, permission ceilings, navigation scan limits, and learned provider capabilities remain independent.
+The two buckets use one set of credentials and one HTTP connection pool. Each bucket keeps its own root prefix,
+permission ceiling, scan limit and learned provider capabilities.
 
-Omitting `permissions` lets the application attempt every supported file operation. Explicit provider denials are learned only in memory for the current process. Defining `permissions` creates an application-side ceiling in addition to the provider policy.
+Without `permissions`, the application tries each file operation that it supports. When the provider refuses an
+operation, the process keeps this fact in memory until it stops. With `permissions`, the application applies a ceiling
+on top of the policy of the provider.
 
-`max_scan_pages` controls how many 1,000-entry provider listing pages may be combined for one navigation batch. `0` removes the page-count limit. Global column sorting is enabled only when the actual end of the listing has been reached.
+`max_scan_pages` is the maximum number of provider listing pages (1,000 entries each) for one navigation batch. `0`
+sets no limit. The sort of a column applies to the full listing only when the listing reached its real end.
 
-See [Configuration](docs/CONFIGURATION.md) for all fields.
+Refer to [Configuration](docs/CONFIGURATION.md) for all the fields.
 
 ## Stateless runtime
 
-The server never writes application state to the local filesystem. The files of a `volume` block are the only local files that it writes: they are the data of the volume, not state of the application. Background jobs, preview sessions, permission observations, and active upload sessions exist only in bounded process memory and disappear on restart.
+The server writes no application state to the local file system. The files of a `volume` block are the only local
+files that it writes: they are the data of the volume, not the state of the application. The background jobs, the
+preview sessions, the learned permissions and the active upload sessions are in bounded process memory only. A restart
+removes them.
 
-Resumable uploads use an encrypted, authenticated token returned to the client. The token contains the provider-side multipart or resumable-session coordinates. A fresh server process using the same configured credentials can reconstruct the provider upload state from that token; the server does not store the token or a checkpoint file.
+A resumable upload gives the client an encrypted and authenticated token. The token contains the coordinates of the
+multipart upload or of the resumable session on the provider. A new server process with the same credentials can find
+the upload on the provider again with this token. The server does not keep the token or a checkpoint file.
 
-Completed and canceled uploads are removed from server memory. The process tracks at most four active upload sessions. Background jobs are limited to four active or queued operations and a small configurable in-memory terminal history.
+The server removes a completed or cancelled upload from its memory. The process keeps four active upload sessions at
+most. The background jobs are four active or queued operations at most, and a small history of finished jobs in memory
+(`server.job_history_limit`).
 
 ## Volumes
 
 A `volume` block shows a folder of the server as a bucket: a Docker volume, an NFS or CephFS mount, or a FUSE mount such
-as `weed mount` of SeaweedFS. The browser reads and writes its files with the identity of the process. Each write goes
-to a temporary file and replaces the target with one rename. A symbolic link that leaves the folder is not followed. With `access.mode = "authzen"`, no symbolic link is followed.
+as `weed mount` of SeaweedFS. The server reads and writes the files with the identity of its process. Each write goes
+to a temporary file, and one rename replaces the target. The server does not follow a symbolic link that goes out of the
+folder. With `access.mode = "authzen"`, the server follows no symbolic link.
 
 ```hcl
 volume "shared" {
@@ -116,31 +148,42 @@ section "Volumes" of [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Version support
 
-At startup, the server performs one bounded version-listing probe per configured bucket. A provider that returns `501 Not Implemented`, denies the operation, or otherwise fails the probe is marked as not supporting version browsing. Version controls and version-count requests are then omitted from the frontend for that bucket.
+At start, the server sends one bounded version listing to each bucket of the configuration. When the provider answers
+`501 Not Implemented`, refuses the operation, or gives another error, the bucket has no version browser. The interface
+then shows no version controls and asks for no version counts for that bucket.
 
-When supported:
+When the bucket has versions:
 
-- the navigation displays the exact number of non-delete-marker versions for visible files;
-- Preview and Details expose a version selector;
-- the version browser supports paginated listing, exact-version download, restore, and permanent exact-version deletion according to bucket permissions;
-- comparison is available only between two versions of the same object;
-- comparison runs entirely in the browser with two bounded range buffers and stops at the first differing byte.
+- The listing shows the exact number of versions (delete markers excluded) of each visible file.
+- Preview and Details have a version selector.
+- The version browser has a listing in pages, the download of an exact version, the restore, and the permanent delete of
+  an exact version, as the bucket permissions let.
+- The comparison is only between two versions of the same object.
+- The comparison runs in the browser only, with two bounded range buffers. It stops at the first byte that is not equal.
 
-There is no generic cross-object comparison endpoint on the backend.
+The server has no comparison of two different objects.
 
 ## Large-object tools
 
-- **Verify integrity** is an explicit per-object full scan. Hashes are calculated while streaming; object content is not accumulated in memory.
-- **Inspect** performs a bounded technical inspection using object metadata and small exact header/trailer ranges.
-- Both tools are available only in the **Advanced** tab of Details. Opening Details or the Advanced tab does not start either operation; computation begins only after the corresponding button is clicked, and results remain inside Details.
-- **Archive entry access** uses the ZIP central directory and reads only selected regular, unencrypted members. Members can be opened, downloaded, verified, or streamed directly to an explicit destination object.
-- **Insights** returns inline when complete within 100 ms; otherwise it continues as a memory-only background job with pause, resume, and cancel controls. The backend also produces the semantic treemap tree, applies the global one-percent grouping rule, and contracts redundant single-child folder chains before the response reaches the browser.
+- **Verify integrity** reads the full object, one object at a time, when you ask for it. The server calculates the
+  hashes on the stream. It does not keep the content of the object in memory.
+- **Inspect** is a bounded technical inspection. It uses the metadata of the object and small exact ranges at the start
+  and at the end of the object.
+- The two tools are only in the **Advanced** tab of Details. To open Details or the Advanced tab starts no operation. The
+  operation starts when you click its button. The result stays in Details.
+- **Archive entry access** uses the central directory of a ZIP file. It reads only the selected regular entries that have
+  no encryption. You can open, download or verify an entry, or copy it directly to an object that you name.
+- **Insights** gives the result at once when it ends in 100 ms. If not, it continues as a background job in memory, with
+  pause, resume and cancel. The server also makes the tree of the treemap. It applies the rule that groups the entries
+  below one percent, and it contracts each chain of folders that have one child only. The browser receives the result.
 
-The project intentionally has no global duplicate finder and no global checksum-manifest generator. Exact global results would require retaining or emitting large scan state, which conflicts with the stateless low-memory runtime contract.
+The project has no global duplicate finder and no global checksum manifest. Exact global results need a large scan
+state in memory or on disk. This is not possible with a stateless runtime of low memory.
 
 ## Reverse proxy path prefixes
 
-The backend always serves paths from `/`. The frontend uses relative URLs. To publish it at `/stowr/`, strip that prefix before forwarding:
+The server always serves its paths from `/`. The interface uses relative URLs. To publish Stowr at `/stowr/`, remove
+this prefix in the reverse proxy:
 
 ```nginx
 location /stowr/ {
@@ -150,20 +193,22 @@ location /stowr/ {
 }
 ```
 
-Keep the public trailing slash so browser-relative URLs resolve inside the proxy prefix. No public-path setting is required or accepted in HCL.
+Keep the slash at the end of the public path: the relative URLs of the browser then stay in the prefix. The HCL file has
+no key for a public path.
 
 ## PDF.js
 
-The PDF preview is a local canvas viewer using a custom `PDFDataRangeTransport`; it does not use an iframe, embed, object element, or native-browser fallback.
+The PDF preview is a local canvas viewer with its own `PDFDataRangeTransport`. It uses no iframe, no embed, no object
+element and no viewer of the browser.
 
-The release build expects:
+The binary embeds these files:
 
 ```text
 src/public/assets/vendor/pdfjs/4.10.38/pdf.min.mjs
 src/public/assets/vendor/pdfjs/4.10.38/pdf.worker.min.mjs
 ```
 
-The application never downloads these files at runtime.
+The application never downloads these files at run time.
 
 ## Documentation
 
@@ -179,4 +224,5 @@ The application never downloads these files at runtime.
 
 ## License
 
-Add the project license required for your deployment before redistribution. Third-party assets retain their own notices under `src/public/assets/vendor/`.
+Add the project license that your deployment needs before you distribute Stowr. The third-party assets keep their own
+notices under `src/public/assets/vendor/`.

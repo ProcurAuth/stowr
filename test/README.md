@@ -6,6 +6,8 @@ The SeaweedFS service is one process: it has the master, the volume server, the 
 
 `config.hcl` defines one S3 authentication shared by two buckets. Each bucket has its own permission ceiling and navigation scan limit.
 
+`browser/Dockerfile` builds the static binary of Stowr (musl target) in the pinned Rust image, and puts it on `scratch` with the CA bundle. Docker keeps the crates and the build files in cache mounts between two builds. The image stays on the machine: no script pushes it to a registry.
+
 The browser container:
 
 - uses the HCL file read-only;
@@ -46,7 +48,7 @@ Each provider reads the first `access_key_id` and the first `secret_access_key_f
 
 The seed (`frontend/seed.js`) enables the versioning of the bucket `default` on SeaweedFS and MinIO. It puts the same objects in `smoke/` on each provider: one file with tags where the provider has tags, and one file with two versions. On SeaweedFS, the seed also puts the data of the other tests: files with several versions in `versions/`, tags, a lifecycle rule, and a JSON file, a CSV file and a binary file for the comparison. The other browser tests use SeaweedFS only.
 
-The image of Stowr in this stack copies in parts from 8 KiB up, in parts of 5 MiB (the build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `browser/Dockerfile`). The seed puts `copy/source.bin` (11 MiB, three parts) with standard headers, a user metadata and tags on each provider. On SeaweedFS and MinIO, it also puts `copy/versioned.bin` with two versions. The tests of the copy in parts copy and rename `source.bin` through the page and compare the SHA-256, the headers and the tags. They also restore the older version of `versioned.bin`.
+The image of Stowr in this stack copies in parts from 8 KiB up, in parts of 5 MiB (the build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `browser/Dockerfile`, which become the compile-time values `STOWR_MULTIPART_COPY_THRESHOLD` and `STOWR_MULTIPART_COPY_PART_SIZE`). The seed puts `copy/source.bin` (11 MiB, three parts) with standard headers, a user metadata and tags on each provider. On SeaweedFS and MinIO, it also puts `copy/versioned.bin` with two versions. The tests of the copy in parts copy and rename `source.bin` through the page and compare the SHA-256, the headers and the tags. They also restore the older version of `versioned.bin`.
 
 The seed also puts the objects of the metadata tests in `meta/` on each provider: `small.txt` (under the threshold of the copy in parts), `large.bin` (20000 bytes, above it) and `conflict.txt`, each with `Cache-Control: max-age=60` and the user metadata `owner`. `small.txt` and `large.bin` have tags where the provider has them. `versioned.txt` has two versions on SeaweedFS and MinIO. The metadata tests edit these objects through the details on each provider. They check each sentence that the form shows before the save against the result: the date, the ETag, the versions and the tags. They also check that the form shows and sends the stored `Cache-Control`, not the value of the gateway (`private, no-store, max-age=60`). Refer to the section "Edit of the metadata" of [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
 
@@ -177,7 +179,7 @@ The files:
 | `conformance/expected.txt` | The failed cases that are known. It has no case now. |
 
 The fixture is a volume with the file `reports/a.txt` (12 bytes) and the empty folder `reports/2026`. The runner is the client,
-the edge and the PDP. Stowr never reaches a real PDP. The expected result is 99 cases: 74 passed, 0 failed and 25 skipped.
+the edge and the PDP. Stowr never reaches a real PDP. [docs/CONFORMANCE.md](../docs/CONFORMANCE.md) gives the expected result.
 
 ## Functions of each provider
 

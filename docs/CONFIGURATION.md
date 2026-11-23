@@ -49,7 +49,7 @@ server {
 | `access_mode` | `inherit_credentials` | `inherit_credentials` or `force_read_only`. |
 | `log_mode` | `anonymous` | `anonymous` avoids object keys in request logs; `detailed` is for controlled diagnostics. |
 | `allow_full_object_fallback` | `false` | Allows explicitly implemented parser fallbacks that require a complete object. It never changes strict Range validation into an implicit oversized response. |
-| `memory_limit_bytes` | `0` | Optional Go soft memory limit. `0` leaves the Go runtime default unchanged. |
+| `memory_limit_bytes` | `0` | A soft limit of the memory of the process. `0` sets no limit. The server accepts the value and shows it. Valid values: `0`, or 32 MiB to 1 PiB. |
 | `max_storage_bytes_per_request` | 256 GiB | Provider bytes allowed for one interactive HTTP request. |
 | `max_storage_requests_per_request` | `4096` | Provider calls allowed for one interactive HTTP request. |
 | `max_range_cache_bytes` | 8 MiB | Maximum in-memory cache used by a range reader session. |

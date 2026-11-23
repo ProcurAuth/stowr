@@ -47,11 +47,12 @@ server {
   access_mode       = "inherit_credentials"
   log_mode          = "anonymous"
 
-  # This is a soft Go heap target, not a container memory reservation.
+  # A soft limit of the memory of the process. 0 sets no limit. The server accepts the value and
+  # shows it. It is not a memory reservation of the container.
   memory_limit_bytes = 67108864
 
-  # Complete user-triggered reads of objects close to 100 GB remain possible,
-  # while previews and metadata readers still use exact bounded byte ranges.
+  # A person can read a full object of almost 100 GB with one request. The previews and the
+  # metadata readers always read exact bounded byte ranges.
   max_storage_bytes_per_request       = 274877906944
   max_storage_requests_per_request    = 4096
   max_range_cache_bytes               = 8388608
@@ -62,14 +63,14 @@ server {
   max_stats_folders   = 1000
   max_archive_entries = 10000
 
-  # These limits apply only to explicit complete-object operations such as
-  # per-object integrity verification and selected archive extraction.
+  # These limits apply only to the operations that read a full object when a person asks for
+  # them: the integrity check of one object and the extraction of selected archive entries.
   max_background_storage_bytes    = 274877906944
   max_background_storage_requests = 100000
 }
 
-# One authentication can be reused by any number of buckets. Each bucket keeps
-# its own root, permission ceiling, and navigation scan limit.
+# Many buckets can use one authentication. Each bucket keeps its own root, permission ceiling
+# and navigation scan limit.
 auth "primary-s3" {
   provider               = "s3"
   mode                   = "access_key"
@@ -122,7 +123,7 @@ bucket "archive" {
   # quota_bytes  = 107374182400
 }
 
-# A separate authentication may use another provider.
+# Another authentication can use another provider.
 auth "gcs-service-account" {
   provider         = "gcs"
   mode             = "service_account"

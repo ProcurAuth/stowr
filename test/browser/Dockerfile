@@ -27,6 +27,7 @@ COPY src/ src/
 # The cache mounts keep the crates and the build files between two builds of the test stacks. They are not in the image.
 # Two checkouts can share the cache: the touch makes cargo compile the sources of this context again.
 RUN --mount=type=cache,id=stowr-test-cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=stowr-test-cargo-git,target=/usr/local/cargo/git \
     --mount=type=cache,id=stowr-test-target,target=/build/target \
     set -eu; \
     find build.rs src -type f -exec touch {} +; \
