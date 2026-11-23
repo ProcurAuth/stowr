@@ -133,6 +133,8 @@ pub async fn probe_instances(app: &App) {
 /// Build the application and run its start probes.
 pub async fn start_app(config: Config) -> Result<Arc<App>> {
     let app = build_app(config)?;
+    // The fingerprint of the interface reads each embedded file: compute it one time before the first request.
+    let _ = super::frontend::frontend_version();
     probe_instances(&app).await;
     Ok(app)
 }

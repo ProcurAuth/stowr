@@ -207,6 +207,13 @@ pub fn app_with(config: Config, instances: Vec<Arc<Instance>>) -> Arc<App> {
         .unwrap_or_else(|error| panic!("application: {error}"))
 }
 
+/// An application over instances, with a configuration and an access layer (for example a fake guard of the mode
+/// `authzen`).
+pub fn app_with_access(config: Config, instances: Vec<Arc<Instance>>, access: crate::access::AccessLayer) -> Arc<App> {
+    super::assemble::assemble(Arc::new(config), BTreeMap::new(), instances, access)
+        .unwrap_or_else(|error| panic!("application: {error}"))
+}
+
 /// An application over instances, with the test configuration.
 pub fn app_of(instances: Vec<Arc<Instance>>) -> Arc<App> {
     app_with(test_config(), instances)
