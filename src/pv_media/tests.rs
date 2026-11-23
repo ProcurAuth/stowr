@@ -861,3 +861,80 @@ impl MemoryLayer for IgnoredPreviewRange {
         })
     }
 }
+
+#[tokio::test]
+async fn the_routes_refuse_an_instance_without_the_read_permission() {
+    let backend = memory();
+    backend.insert("tenant/photo.raf", synthetic_raf(64, 48), "image/x-fuji-raf");
+    let app = app_of(vec![
+        instance(
+            bucket_config("readonly", "", &[PERMISSION_READ]),
+            Arc::new(MemoryBackend::new()),
+        ),
+        instance(bucket_config("wo", "tenant/", &[PERMISSION_WRITE]), backend.clone()),
+    ]);
+    for endpoint in ["/api/media-info", "/api/image-preview"] {
+        let called = call(&app, "GET", &format!("{endpoint}?instance=wo&key=photo.raf&size=6")).await;
+        assert_eq!(called.status, 403, "{endpoint}: {}", called.text());
+    }
+    let (gets, heads, _) = read_counts(&backend);
+    assert_eq!((gets, heads), (0, 0));
+}
+
+/// A back end that refuses each read of an object with a key of the client: the HEAD answer has no text, the GET
+/// answer names the encryption.
+struct CustomerKeyObjects {
+    memory: MemoryBackend,
+}
+
+impl MemoryLayer for CustomerKeyObjects {
+    fn memory(&self) -> &MemoryBackend {
+        &self.memory
+    }
+
+    fn head<'a>(&'a self, _ctx: &'a OpCtx, _key: &'a str) -> BoxFuture<'a, Result<ObjectResponse>> {
+        Box::pin(async move {
+            self.memory.state().head_count += 1;
+            Err(crate::common::error::Error::upstream(400, "", ""))
+        })
+    }
+
+    fn get<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        _key: &'a str,
+        _headers: &'a HeaderMap,
+    ) -> BoxFuture<'a, Result<ObjectResponse>> {
+        Box::pin(async move {
+            self.memory.state().get_count += 1;
+            Err(crate::common::error::Error::upstream(
+                400,
+                "InvalidRequest",
+                "The object was stored using a form of Server Side Encryption",
+            ))
+        })
+    }
+}
+
+#[tokio::test]
+async fn an_object_with_a_key_of_the_client_gets_its_listed_facts() {
+    let layer = Arc::new(CustomerKeyObjects {
+        memory: MemoryBackend::new(),
+    });
+    layer
+        .memory
+        .insert("tenant/secret.bin", vec![7u8; 42], "application/octet-stream");
+    layer.memory.insert("tenant/secret.png", vec![7u8; 42], "image/png");
+    let app = test_app(layer.clone());
+
+    for key in ["secret.bin", "secret.png"] {
+        let called = call(&app, "GET", &format!("/api/media-info?instance=rw&key={key}")).await;
+        assert_eq!(called.status, 200, "{key}: {}", called.text());
+        assert_eq!(called.header("cache-control"), "no-store");
+        let response = called.json();
+        assert_eq!(response["customerKey"], true, "{response}");
+        assert_eq!(number(&response, "size"), 42);
+        assert_eq!(response["headers"]["etag"], format!("\"etag-tenant/{key}\""));
+        assert!(response.get("container").is_none(), "{response}");
+    }
+}
