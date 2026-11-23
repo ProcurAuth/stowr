@@ -160,7 +160,8 @@ impl Timestamp {
         format!("{weekday}, {day:02} {month_name} {year:04} {hour:02}:{minute:02}:{second:02} GMT")
     }
 
-    /// The log form in UTC: `1994/11/06 08:49:37`.
+    /// The date and the time at the start of each log line, in UTC and to the second: `YYYY/MM/DD hh:mm:ss`, for
+    /// example `1994/11/06 08:49:37`. The form does not change, so that a log parser can rely on it.
     pub fn log_form(self) -> String {
         let (year, month, day, hour, minute, second) = self.utc().local_parts();
         format!("{year:04}/{month:02}/{day:02} {hour:02}:{minute:02}:{second:02}")

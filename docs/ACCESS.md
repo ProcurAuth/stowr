@@ -632,7 +632,8 @@ The library `procurauth-pep` gives the rules of a PEP. Stowr adds these rules ar
 
 ## Log lines
 
-Each line is `key=value`. A request with a valid token also gives `subject` and `request_id` in the request log.
+Each line starts with the date and the time in UTC, in the form `YYYY/MM/DD hh:mm:ss`. The fields of a line are
+`key=value`. A request with a valid token also gives `subject` and `request_id` in the request log.
 
 | Event | When |
 |---|---|

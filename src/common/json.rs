@@ -2,8 +2,9 @@
 //!
 //! The answers keep one exact form, so that a client sees the same bytes for the same value:
 //!
-//! - the characters `<`, `>` and `&`, U+2028 and U+2029 are escaped as `\u003c`, `\u003e`, `\u0026`, `\u2028` and
-//!   `\u2029`;
+//! - the characters `<`, `>` and `&` are escaped as `\u003c`, `\u003e` and `\u0026`, so that the text is safe to put
+//!   in an HTML page or in a `<script>` element. U+2028 and U+2029 are escaped as `\u2028` and `\u2029`, so that the
+//!   text is also a valid JavaScript literal;
 //! - a control character has the form `\u00XX`, except `\n`, `\r` and `\t`;
 //! - a number with a fraction has the shortest form that reads back to the same value. The exponent form applies
 //!   below 1e-6 and from 1e21 (`1e-7`, `1e+21`);
