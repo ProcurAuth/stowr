@@ -13,7 +13,8 @@ use http::{HeaderMap, Method};
 use http_body_util::BodyExt;
 use serde::{Deserialize, Serialize};
 
-use super::digest::{Crc32c, Md5};
+use super::digest::Crc32c;
+use crate::common::md5::Md5;
 use super::{JobRun, JobState, job_status, job_type};
 use crate::common::BoxFuture;
 use crate::common::app::App;
