@@ -66,13 +66,19 @@ pub struct BatchDeleteError {
 }
 
 impl BatchDeleteError {
-    /// The provider error that represents the batch: the first failure, with the status 502.
+    /// The provider error that represents the batch: the code of the first failure, the status 502, and the message
+    /// `<refused> of <total> keys were not deleted: <first message>`.
     pub fn upstream(&self) -> UpstreamError {
         let first = self.failures.first();
         UpstreamError {
             status: 502,
             code: first.map(|failure| failure.code.clone()).unwrap_or_default(),
-            message: first.map(|failure| failure.message.clone()).unwrap_or_default(),
+            message: format!(
+                "{} of {} keys were not deleted: {}",
+                self.failures.len(),
+                self.total,
+                first.map(|failure| failure.message.as_str()).unwrap_or_default()
+            ),
         }
     }
 }
