@@ -472,26 +472,7 @@ pub fn parse_document(data: &[u8]) -> Result<Element, XmlError> {
     }
 }
 
-/// Escape a text for an XML document: the quotes, the line ends and the tab as references, and a character that XML
-/// does not allow as U+FFFD.
-pub fn escape_text(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("&#34;"),
-            '\'' => out.push_str("&#39;"),
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '\t' => out.push_str("&#x9;"),
-            '\n' => out.push_str("&#xA;"),
-            '\r' => out.push_str("&#xD;"),
-            other if xml_char(other) => out.push(other),
-            _ => out.push('\u{fffd}'),
-        }
-    }
-    out
-}
+pub use crate::provider::xml::escape_text;
 
 #[cfg(test)]
 mod tests {

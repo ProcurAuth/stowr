@@ -412,16 +412,20 @@ fn the_names_of_the_columns_match_their_indexes() {
 
 #[test]
 fn the_values_are_compared_as_numbers_times_or_text() {
-    assert_eq!(compare_values("10", "9"), 1);
-    assert_eq!(compare_values("-1", "1e0"), -1);
-    assert_eq!(compare_values(" 2 ", "2"), 0);
-    assert_eq!(compare_values("", ""), 0);
-    assert_eq!(compare_values("", "a"), 1);
-    assert_eq!(compare_values("a", ""), -1);
-    assert_eq!(compare_values("Beta", "alpha"), 1);
-    assert_eq!(compare_values("ABC", "abc"), 0);
-    assert_eq!(compare_values("2024-01-02T10:00:00Z", "2024-01-02T11:00:00+02:00"), 1);
-    assert_eq!(compare_values("9", "abc"), -1);
+    use std::cmp::Ordering::{Equal, Greater, Less};
+    assert_eq!(compare_values("10", "9"), Greater);
+    assert_eq!(compare_values("-1", "1e0"), Less);
+    assert_eq!(compare_values(" 2 ", "2"), Equal);
+    assert_eq!(compare_values("", ""), Equal);
+    assert_eq!(compare_values("", "a"), Greater);
+    assert_eq!(compare_values("a", ""), Less);
+    assert_eq!(compare_values("Beta", "alpha"), Greater);
+    assert_eq!(compare_values("ABC", "abc"), Equal);
+    assert_eq!(
+        compare_values("2024-01-02T10:00:00Z", "2024-01-02T11:00:00+02:00"),
+        Greater
+    );
+    assert_eq!(compare_values("9", "abc"), Less);
 }
 
 #[test]

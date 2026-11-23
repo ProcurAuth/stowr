@@ -8,7 +8,6 @@ use std::sync::Arc;
 use bytes::Bytes;
 use serde::Serialize;
 
-use super::text::lossy_each_byte;
 use super::thrift::{BINARY, CompactReader, LIST, STOP, STRUCT, ThriftError, ThriftResult};
 use crate::common::app::App;
 use crate::common::config::PERMISSION_READ;
@@ -17,6 +16,7 @@ use crate::common::error::{Error, Result};
 use crate::common::http::{self, Req, Response};
 use crate::instance::Instance;
 use crate::instance::range::RangeSource;
+use crate::pv_docs::util::lossy_bytes;
 
 /// The largest metadata of a footer: 128 MiB.
 pub(crate) const MAX_METADATA_BYTES: i64 = 128 << 20;
@@ -213,7 +213,7 @@ pub(crate) fn parse_metadata_detail(data: &[u8]) -> ThriftResult<MetadataDetail>
                     reader.skip(field_type)?;
                     continue;
                 }
-                detail.created_by = lossy_each_byte(reader.read_binary(4096)?);
+                detail.created_by = lossy_bytes(reader.read_binary(4096)?);
             }
             _ => reader.skip(field_type)?,
         }
@@ -241,7 +241,7 @@ fn read_schema_element(reader: &mut CompactReader<'_>) -> ThriftResult<SchemaEle
                 if field_type != BINARY {
                     return Err(ThriftError::new("unexpected Parquet schema name type"));
                 }
-                element.name = lossy_each_byte(reader.read_binary(16 << 10)?);
+                element.name = lossy_bytes(reader.read_binary(16 << 10)?);
             }
             5 => {
                 let value = reader.read_integer(field_type)?;
@@ -520,7 +520,7 @@ pub(crate) fn parse_optional_size(raw: &str) -> Result<i64> {
     if raw.is_empty() {
         return Ok(0);
     }
-    match super::text::parse_int(raw) {
+    match crate::pv_docs::util::parse_integer(raw) {
         (value, true) if value >= 0 => Ok(value),
         _ => Err(Error::api(400, "invalid_size", "size must be a non-negative integer")),
     }

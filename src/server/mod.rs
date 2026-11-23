@@ -21,11 +21,23 @@ pub mod seams;
 pub mod serve_content;
 
 #[cfg(test)]
+mod access_route_tests;
+#[cfg(test)]
 mod access_tests;
+#[cfg(test)]
+mod ceiling_route_tests;
+#[cfg(test)]
+mod documented_rules_tests;
+#[cfg(test)]
+mod log_route_tests;
+#[cfg(test)]
+mod preview_route_tests;
 #[cfg(test)]
 pub mod testing;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod volume_usage_tests;
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -41,7 +53,7 @@ use crate::common::misc::CancelToken;
 
 pub use api::{
     handle_build, handle_copy, handle_delete_prefix, handle_health, handle_instances, handle_list,
-    handle_permission_refresh, handle_rename, handle_stats,
+    handle_permission_refresh, handle_rename,
 };
 pub use assemble::{build_app, close_app, probe_instances, start_app};
 pub use frontend::{handle_static, handle_storage_frontend};
@@ -288,7 +300,7 @@ pub fn own_routes() -> Vec<Route> {
             handle_permission_refresh,
         ),
         route("/api/list", RouteAccess::HandlerAsks, handle_list),
-        route("/api/stats", RouteAccess::HandlerAsks, handle_stats),
+        route("/api/stats", RouteAccess::HandlerAsks, crate::jobs::handle_stats),
         route("/api/copy", RouteAccess::HandlerAsks, handle_copy),
         route("/api/rename", RouteAccess::HandlerAsks, handle_rename),
         route("/api/delete-prefix", RouteAccess::HandlerAsks, handle_delete_prefix),

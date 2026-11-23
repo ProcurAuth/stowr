@@ -875,9 +875,7 @@ fn the_job_that_the_abort_route_gives_has_the_form_of_a_job() {
     job.status = "queued".to_owned();
     job.created_at = created;
     job.updated_at = created;
-    let text =
-        String::from_utf8(crate::common::json::to_vec(&super::multipart_routes::PublicAbortJob::from(&job)).unwrap())
-            .unwrap();
+    let text = String::from_utf8(crate::common::json::to_vec(&job.public()).unwrap()).unwrap();
     assert_eq!(
         text,
         r#"{"id":"job_1","type":"abort_multiparts","instance":"rw","prefix":"logs/","status":"queued","processed":0,"olderThanDays":5,"multipartAbort":{"aborted":0,"skippedUndated":0,"skippedRecent":0,"skippedActive":0,"failed":0},"createdAt":"2026-11-23T12:00:00Z","updatedAt":"2026-11-23T12:00:00Z"}"#

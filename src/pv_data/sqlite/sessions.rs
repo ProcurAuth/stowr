@@ -22,7 +22,7 @@ use crate::common::error::{Error, Result};
 use crate::common::http::{self, Req, Response};
 use crate::common::misc::{CancelToken, clean_relative_key, hex, parse_bounded_int, random_bytes};
 use crate::instance::range::RangeSource;
-use crate::pv_data::text::{lower, quote};
+use crate::pv_docs::util::{lower, quote};
 
 /// The largest SQLite object of a preview: 16 TiB.
 pub(crate) const MAX_PREVIEW_BYTES: i64 = 16 << 40;

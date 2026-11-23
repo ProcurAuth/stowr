@@ -12,13 +12,13 @@ use http::HeaderMap;
 use serde::Serialize;
 
 use super::{Tag, TagChange};
+use crate::common::BoxFuture;
 use crate::common::ctx::OpCtx;
-use crate::common::error::{Error, Interrupt, Result};
+use crate::common::error::{Error, Result};
 use crate::common::query::{encode_sorted, unescape};
-use crate::common::storage::ListOptions;
-use crate::common::time::Timestamp;
+use crate::common::storage::ObjectInfo;
 use crate::instance::Instance;
-use crate::jobs::{JobRun, JobState, job_type};
+use crate::jobs::{JobRun, JobState, ObjectStep, WalkHost, job_type, run_object_walk};
 
 /// The most tags of an object.
 pub const MAX_OBJECT_TAGS: usize = 10;
@@ -312,34 +312,21 @@ pub struct TagsResponse {
 
 // --- Job ---------------------------------------------------------------------------------------------------------
 
-const STATUS_QUEUED: &str = "queued";
-const STATUS_RUNNING: &str = "running";
-const STATUS_PAUSED: &str = "paused";
-const STATUS_CANCELED: &str = "canceled";
-/// The most objects of one page of the walk.
-const WALK_PAGE: usize = 1000;
-
-/// What the walk of a job needs from the job manager.
-pub(crate) trait JobHost: Sync {
-    /// `Err(Error::Interrupted)` when a person paused or canceled the job.
-    fn control(&self) -> Result<()>;
-    /// The job as the manager has it now.
-    fn latest(&self) -> Option<JobState>;
-    /// Save the progress.
-    fn save(&self, job: &JobState) -> Result<()>;
+/// The step of the tag job: it changes the tags of one object of the walk.
+struct TagStep<'r> {
+    instance: &'r Instance,
+    ctx: &'r OpCtx,
+    change: TagChange,
 }
 
-impl JobHost for JobRun {
-    fn control(&self) -> Result<()> {
-        self.check_control()
-    }
-
-    fn latest(&self) -> Option<JobState> {
-        self.app.jobs.get(&self.id)
-    }
-
-    fn save(&self, job: &JobState) -> Result<()> {
-        JobRun::save(self, job)
+impl ObjectStep for TagStep<'_> {
+    fn apply<'a>(
+        &'a mut self,
+        _job: &'a mut JobState,
+        _object: &'a ObjectInfo,
+        relative: &'a str,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async move { change_tags_of(self.instance, self.ctx, relative, &self.change).await })
     }
 }
 
@@ -347,80 +334,23 @@ impl JobHost for JobRun {
 /// has the result is not written again.
 pub async fn run_tag_job(run: &JobRun, job: &mut JobState) -> Result<()> {
     let instance = run.app.instance(&job.instance)?.clone();
-    walk_tag_job(run, &instance, &run.ctx, job).await
+    walk_tag_job(run, &instance, job).await
 }
 
-pub(crate) async fn walk_tag_job(
-    host: &dyn JobHost,
-    instance: &Instance,
-    ctx: &OpCtx,
-    job: &mut JobState,
-) -> Result<()> {
+/// Walk the objects under the prefix of a tag job with the shared walk of the jobs: the same checkpoints, pauses and
+/// cancels as the other jobs that walk a prefix.
+pub(crate) async fn walk_tag_job(host: &dyn WalkHost, instance: &Instance, job: &mut JobState) -> Result<()> {
     instance.require_permission(crate::common::config::PERMISSION_READ)?;
     instance.require_permission(crate::common::config::PERMISSION_WRITE)?;
     let Some(change) = job.tag_change.clone() else {
         return Err(invalid_tags("the tag job has no change"));
     };
-    let prefix = if job.prefix.is_empty() {
-        job.source.clone()
-    } else {
-        job.prefix.clone()
+    let mut step = TagStep {
+        instance,
+        ctx: host.ctx(),
+        change,
     };
-    let full_prefix = instance.full_key(&prefix);
-    let mut last_key = job.last_key.clone();
-    let mut processed_this_run = 0i64;
-    loop {
-        let options = ListOptions {
-            prefix: full_prefix.clone(),
-            delimiter: String::new(),
-            max_results: WALK_PAGE as u32,
-            page_token: String::new(),
-            start_after: if last_key.is_empty() {
-                String::new()
-            } else {
-                instance.full_key(&last_key)
-            },
-        };
-        let mut page = instance.list(ctx, &options).await?;
-        page.objects.sort_by(|left, right| left.key.cmp(&right.key));
-        let mut progressed = false;
-        for object in &page.objects {
-            let Some(relative) = instance.relative_key(&object.key) else {
-                continue;
-            };
-            if relative.is_empty() || !relative.starts_with(&prefix) || (!last_key.is_empty() && relative <= last_key) {
-                continue;
-            }
-            host.control()?;
-            change_tags_of(instance, ctx, &relative, &change).await?;
-            job.processed += 1;
-            processed_this_run += 1;
-            job.last_key.clone_from(&relative);
-            job.updated_at = Timestamp::now();
-            if let Some(latest) = host.latest() {
-                job.status = latest.status;
-                job.ended_at = latest.ended_at;
-                if job.status == STATUS_QUEUED {
-                    job.status = STATUS_RUNNING.to_owned();
-                }
-            }
-            host.save(job)?;
-            match job.status.as_str() {
-                STATUS_PAUSED => return Err(Error::Interrupted(Interrupt::Paused)),
-                STATUS_CANCELED => return Err(Error::Interrupted(Interrupt::Canceled)),
-                _ => {}
-            }
-            last_key = relative;
-            progressed = true;
-        }
-        if !progressed || (page.next_page_token.is_empty() && page.objects.len() < WALK_PAGE) {
-            break;
-        }
-    }
-    if job.processed == 0 && processed_this_run == 0 {
-        return Err(Error::api(404, "empty_prefix", "source prefix contains no objects"));
-    }
-    Ok(())
+    run_object_walk(host, instance, job, &mut step).await
 }
 
 /// Change the tags of one object. An object that already has the result is not written.

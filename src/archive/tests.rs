@@ -1277,7 +1277,6 @@ impl Backend for BarrierPutBackend {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "needs the job manager"]
 async fn concurrent_extract_jobs_do_not_deadlock_on_storage_gates() {
     let backend = Arc::new(BarrierPutBackend {
         inner: MemoryBackend::default(),

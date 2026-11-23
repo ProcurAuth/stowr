@@ -1,5 +1,6 @@
 //! Small text helpers of the previews: UTF-8 decoding with the rules of a byte stream, truncation on a character
-//! border, simple lower case, and the number syntax of the previews.
+//! border, simple lower case, the number syntax of the previews, the stable sort of the previews and the quoted form
+//! of a name in a message.
 
 /// The replacement character.
 pub const REPLACEMENT: char = '\u{FFFD}';
@@ -232,280 +233,431 @@ pub fn parse_i64(text: &str) -> Option<i64> {
     }
 }
 
-/// Underscores in a number: each one is between two digits, or between the prefix of the base and a digit.
-fn underscores_valid(text: &str) -> bool {
+/// The length of the common start of a text and a lower-case word, without regard to case.
+fn common_prefix_ignore_case(text: &[u8], word: &[u8]) -> usize {
+    text.iter()
+        .zip(word)
+        .take_while(|(left, right)| left.to_ascii_lowercase() == **right)
+        .count()
+}
+
+/// The special values: an optional sign and `inf` or `infinity`, or `nan`, without regard to case.
+fn special_float(text: &str) -> Option<f64> {
     let bytes = text.as_bytes();
-    let mut index = 0;
-    if matches!(bytes.first(), Some(b'+' | b'-')) {
-        index = 1;
+    let (sign, rest, signed) = match bytes.first() {
+        Some(b'+') => (1.0, &bytes[1..], true),
+        Some(b'-') => (-1.0, &bytes[1..], true),
+        _ => (1.0, bytes, false),
+    };
+    let infinity = common_prefix_ignore_case(rest, b"infinity");
+    if (infinity == 3 || infinity == 8) && rest.len() == infinity {
+        return Some(sign * f64::INFINITY);
     }
+    if !signed && rest.len() == 3 && common_prefix_ignore_case(rest, b"nan") == 3 {
+        return Some(f64::NAN);
+    }
+    None
+}
+
+/// True when the underscores of a number are each between two digits, or between a base prefix and a digit.
+fn underscores_ok(text: &[u8]) -> bool {
     let mut saw = b'^';
+    let mut index = 0;
+    let text = match text.first() {
+        Some(b'-' | b'+') => &text[1..],
+        _ => text,
+    };
     let mut hex = false;
-    if bytes.len() >= index + 2
-        && bytes[index] == b'0'
-        && matches!(bytes[index + 1].to_ascii_lowercase(), b'b' | b'o' | b'x')
-    {
+    if text.len() >= 2 && text[0] == b'0' && matches!(text[1].to_ascii_lowercase(), b'b' | b'o' | b'x') {
+        index = 2;
         saw = b'0';
-        hex = bytes[index + 1].eq_ignore_ascii_case(&b'x');
-        index += 2;
+        hex = text[1].eq_ignore_ascii_case(&b'x');
     }
-    while index < bytes.len() {
-        let current = bytes[index];
-        index += 1;
-        if current.is_ascii_digit() || (hex && matches!(current.to_ascii_lowercase(), b'a'..=b'f')) {
+    while index < text.len() {
+        let byte = text[index];
+        if byte.is_ascii_digit() || (hex && byte.is_ascii_hexdigit()) {
             saw = b'0';
-            continue;
-        }
-        if current == b'_' {
+        } else if byte == b'_' {
             if saw != b'0' {
                 return false;
             }
             saw = b'_';
-            continue;
+        } else {
+            if saw == b'_' {
+                return false;
+            }
+            saw = b'!';
         }
-        if saw == b'_' {
-            return false;
-        }
-        saw = b'!';
+        index += 1;
     }
     saw != b'_'
 }
 
-/// A number with a base of 16: `0x`, digits with an optional point, and the exponent `p` (it is not optional).
-fn parse_hex_float(text: &str) -> Option<f64> {
-    let (negative, rest) = match text.as_bytes().first() {
-        Some(b'-') => (true, &text[1..]),
-        Some(b'+') => (false, &text[1..]),
-        _ => (false, text),
-    };
-    let rest = rest.get(2..)?;
-    let mut mantissa = 0f64;
-    let mut exponent: i64 = 0;
-    let mut saw_digit = false;
-    let mut saw_point = false;
+/// The parts of a hexadecimal float: the mantissa, the binary exponent and the flag of the lost digits.
+struct HexParts {
+    mantissa: u64,
+    exponent: i64,
+    truncated: bool,
+}
+
+/// The float of a hexadecimal mantissa and a binary exponent, rounded to the nearest even value. `None` when the
+/// value is out of the range.
+fn hex_float(parts: HexParts, negative: bool) -> Option<f64> {
+    const MANTISSA_BITS: u32 = 52;
+    const EXPONENT_BITS: u32 = 11;
+    const BIAS: i64 = -1023;
+    let max_exponent = (1i64 << EXPONENT_BITS) + BIAS - 2;
+    let min_exponent = BIAS + 1;
+    let mut mantissa = parts.mantissa;
+    let mut exponent = parts.exponent + i64::from(MANTISSA_BITS);
+    while mantissa != 0 && mantissa >> (MANTISSA_BITS + 2) == 0 {
+        mantissa <<= 1;
+        exponent -= 1;
+    }
+    if parts.truncated {
+        mantissa |= 1;
+    }
+    while mantissa >> (1 + MANTISSA_BITS + 2) != 0 {
+        mantissa = (mantissa >> 1) | (mantissa & 1);
+        exponent += 1;
+    }
+    while mantissa > 1 && exponent < min_exponent - 2 {
+        mantissa = (mantissa >> 1) | (mantissa & 1);
+        exponent += 1;
+    }
+    let mut round = mantissa & 3;
+    mantissa >>= 2;
+    round |= mantissa & 1;
+    exponent += 2;
+    if round == 3 {
+        mantissa += 1;
+        if mantissa == 1 << (1 + MANTISSA_BITS) {
+            mantissa >>= 1;
+            exponent += 1;
+        }
+    }
+    if mantissa >> MANTISSA_BITS == 0 {
+        exponent = BIAS;
+    }
+    if exponent > max_exponent {
+        return None;
+    }
+    let mut bits = mantissa & ((1 << MANTISSA_BITS) - 1);
+    bits |= (((exponent - BIAS) as u64) & ((1 << EXPONENT_BITS) - 1)) << MANTISSA_BITS;
+    if negative {
+        bits |= 1 << (MANTISSA_BITS + EXPONENT_BITS);
+    }
+    Some(f64::from_bits(bits))
+}
+
+/// Read a float: decimal (`1.5`, `.5`, `5.`, `1e3`, `1_000`) or hexadecimal with a binary exponent (`0x1.8p1`), or
+/// a special value (`inf`, `-Infinity`, `NaN`). `None` for another text, for a text with spaces and for a value out of
+/// the range.
+pub fn parse_float(text: &str) -> Option<f64> {
+    if let Some(value) = special_float(text) {
+        return Some(value);
+    }
+    let bytes = text.as_bytes();
     let mut index = 0;
-    let bytes = rest.as_bytes();
+    let mut negative = false;
+    if let Some(sign @ (b'+' | b'-')) = bytes.first() {
+        negative = *sign == b'-';
+        index = 1;
+    }
+    let mut hex = false;
+    if index + 2 < bytes.len() && bytes[index] == b'0' && bytes[index + 1].eq_ignore_ascii_case(&b'x') {
+        hex = true;
+        index += 2;
+    }
+    let base: u64 = if hex { 16 } else { 10 };
+    let max_digits = if hex { 16 } else { 19 };
+    let mut underscores = false;
+    let mut saw_dot = false;
+    let mut saw_digits = false;
+    let mut digits: i64 = 0;
+    let mut mantissa_digits: i64 = 0;
+    let mut decimal_point: i64 = 0;
+    let mut mantissa: u64 = 0;
+    let mut truncated = false;
     while index < bytes.len() {
-        let current = bytes[index];
-        match current {
-            b'_' => {}
-            b'.' => {
-                if saw_point {
-                    break;
-                }
-                saw_point = true;
+        let byte = bytes[index];
+        if byte == b'_' {
+            underscores = true;
+        } else if byte == b'.' {
+            if saw_dot {
+                break;
             }
-            _ => {
-                let Some(digit) = char::from(current).to_digit(16) else {
-                    break;
-                };
-                saw_digit = true;
-                mantissa = mantissa * 16.0 + f64::from(digit);
-                if saw_point {
-                    exponent -= 4;
+            saw_dot = true;
+            decimal_point = digits;
+        } else if byte.is_ascii_digit() || (hex && byte.is_ascii_hexdigit()) {
+            saw_digits = true;
+            if byte == b'0' && digits == 0 {
+                decimal_point -= 1;
+            } else {
+                digits += 1;
+                let digit = u64::from((byte as char).to_digit(16).unwrap_or(0));
+                if mantissa_digits < max_digits {
+                    mantissa = mantissa.wrapping_mul(base).wrapping_add(digit);
+                    mantissa_digits += 1;
+                } else if byte != b'0' {
+                    truncated = true;
                 }
             }
+        } else {
+            break;
         }
         index += 1;
     }
-    if !saw_digit || index >= bytes.len() || !bytes[index].eq_ignore_ascii_case(&b'p') {
+    if !saw_digits {
         return None;
     }
-    index += 1;
-    let mut exponent_negative = false;
-    match bytes.get(index) {
-        Some(b'+') => index += 1,
-        Some(b'-') => {
-            exponent_negative = true;
+    if !saw_dot {
+        decimal_point = digits;
+    }
+    if hex {
+        decimal_point *= 4;
+        mantissa_digits *= 4;
+    }
+    let exponent_char = if hex { b'p' } else { b'e' };
+    let mut exponent_value: i64 = 0;
+    if index < bytes.len() && bytes[index].to_ascii_lowercase() == exponent_char {
+        index += 1;
+        if index >= bytes.len() {
+            return None;
+        }
+        let mut exponent_sign = 1;
+        if bytes[index] == b'+' {
+            index += 1;
+        } else if bytes[index] == b'-' {
+            index += 1;
+            exponent_sign = -1;
+        }
+        if index >= bytes.len() || !bytes[index].is_ascii_digit() {
+            return None;
+        }
+        let mut exponent: i64 = 0;
+        while index < bytes.len() && (bytes[index].is_ascii_digit() || bytes[index] == b'_') {
+            if bytes[index] == b'_' {
+                underscores = true;
+            } else if exponent < 10_000 {
+                exponent = exponent * 10 + i64::from(bytes[index] - b'0');
+            }
             index += 1;
         }
-        _ => {}
-    }
-    if !bytes.get(index).is_some_and(u8::is_ascii_digit) {
+        exponent_value = exponent * exponent_sign;
+    } else if hex {
         return None;
     }
-    let mut written: i64 = 0;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'_' => {}
-            digit if digit.is_ascii_digit() => {
-                if written < 10_000 {
-                    written = written * 10 + i64::from(digit - b'0');
-                }
-            }
-            _ => return None,
-        }
-        index += 1;
-    }
-    exponent += if exponent_negative { -written } else { written };
-    let exponent = i32::try_from(exponent.clamp(-5000, 5000)).unwrap_or(0);
-    let value = mantissa * 2f64.powi(exponent);
-    if value.is_infinite() {
+    if underscores && !underscores_ok(&bytes[..index]) {
         return None;
     }
-    Some(if negative { -value } else { value })
+    if index != bytes.len() {
+        return None;
+    }
+    if hex {
+        let binary_exponent = if mantissa != 0 {
+            decimal_point + exponent_value - mantissa_digits
+        } else {
+            0
+        };
+        return hex_float(
+            HexParts {
+                mantissa,
+                exponent: binary_exponent,
+                truncated,
+            },
+            negative,
+        );
+    }
+    let cleaned: String = text.chars().filter(|character| *character != '_').collect();
+    match cleaned.parse::<f64>() {
+        Ok(value) if value.is_finite() => Some(value),
+        _ => None,
+    }
 }
 
-/// The number of a text with the syntax of the previews: an optional sign, decimal digits with a point and an
-/// exponent, the forms `inf`, `infinity` and `nan` in any case, hexadecimal numbers with the exponent `p`, and
-/// underscores between digits. A value out of the range of a 64-bit float is not a number.
-pub fn parse_float(text: &str) -> Option<f64> {
-    if text.is_empty() {
-        return None;
-    }
-    let lowered = text.to_ascii_lowercase();
-    let unsigned = lowered.strip_prefix(['+', '-']).unwrap_or(&lowered);
-    let negative = lowered.starts_with('-');
-    if matches!(unsigned, "inf" | "infinity") {
-        return Some(if negative { f64::NEG_INFINITY } else { f64::INFINITY });
-    }
-    if lowered == "nan" {
-        return Some(f64::NAN);
-    }
-    let bytes = lowered.as_bytes();
-    let has_underscore = bytes.contains(&b'_');
-    if has_underscore && !underscores_valid(&lowered) {
-        return None;
-    }
-    let offset = usize::from(matches!(bytes.first(), Some(b'+' | b'-')));
-    if bytes.len() >= offset + 3 && bytes[offset] == b'0' && bytes[offset + 1] == b'x' {
-        return parse_hex_float(&lowered);
-    }
-    if !bytes
-        .iter()
-        .all(|byte| matches!(byte, b'0'..=b'9' | b'.' | b'e' | b'+' | b'-' | b'_'))
-    {
-        return None;
-    }
-    let cleaned: String = lowered.chars().filter(|current| *current != '_').collect();
-    let value = cleaned.parse::<f64>().ok()?;
-    if value.is_infinite() {
-        return None;
-    }
-    Some(value)
-}
-
-/// Sort a slice in place, and keep the order of the equal values. The order of the result is the same for each
-/// order of the input, also for a comparison that is not transitive.
-pub fn stable_sort<T>(data: &mut [T], less: &impl Fn(&T, &T) -> bool) {
-    let length = data.len();
-    let mut block = 20usize;
-    let mut start = 0usize;
+/// Sort a slice and keep the order of the equal items: insertion sorts of 20 items, then in-place merges with
+/// rotations. The result depends only on `less`, also when `less` is not a consistent order.
+pub fn stable_sort<T>(items: &mut [T], mut less: impl FnMut(&T, &T) -> bool) {
+    let count = items.len();
+    let mut block = 20;
+    let mut start = 0;
     let mut end = block;
-    while end <= length {
-        insertion_sort(data, start, end, less);
+    while end <= count {
+        insertion_sort(items, start, end, &mut less);
         start = end;
         end += block;
     }
-    insertion_sort(data, start, length, less);
-    while block < length {
+    insertion_sort(items, start, count, &mut less);
+    while block < count {
         start = 0;
         end = 2 * block;
-        while end <= length {
-            merge_symmetric(data, start, start + block, end, less);
+        while end <= count {
+            sym_merge(items, start, start + block, end, &mut less);
             start = end;
             end += 2 * block;
         }
         let middle = start + block;
-        if middle < length {
-            merge_symmetric(data, start, middle, length, less);
+        if middle < count {
+            sym_merge(items, start, middle, count, &mut less);
         }
         block *= 2;
     }
 }
 
-fn insertion_sort<T>(data: &mut [T], start: usize, end: usize, less: &impl Fn(&T, &T) -> bool) {
+fn insertion_sort<T>(items: &mut [T], start: usize, end: usize, less: &mut impl FnMut(&T, &T) -> bool) {
     for index in start + 1..end {
-        let mut at = index;
-        while at > start && less(&data[at], &data[at - 1]) {
-            data.swap(at, at - 1);
-            at -= 1;
+        let mut current = index;
+        while current > start && less(&items[current], &items[current - 1]) {
+            items.swap(current, current - 1);
+            current -= 1;
         }
     }
 }
 
-fn swap_range<T>(data: &mut [T], first: usize, second: usize, count: usize) {
-    for offset in 0..count {
-        data.swap(first + offset, second + offset);
-    }
-}
-
-fn rotate<T>(data: &mut [T], start: usize, middle: usize, end: usize) {
-    let mut left = middle - start;
-    let mut right = end - middle;
-    while left != right {
-        if left > right {
-            swap_range(data, middle - left, middle, right);
-            left -= right;
-        } else {
-            swap_range(data, middle - left, middle + right - left, left);
-            right -= left;
-        }
-    }
-    swap_range(data, middle - left, middle, left);
-}
-
-fn merge_symmetric<T>(data: &mut [T], start: usize, middle: usize, end: usize, less: &impl Fn(&T, &T) -> bool) {
-    if middle - start == 1 {
-        let mut low = middle;
-        let mut high = end;
-        while low < high {
-            let half = (low + high) >> 1;
-            if less(&data[half], &data[start]) {
-                low = half + 1;
+fn sym_merge<T>(items: &mut [T], a: usize, m: usize, b: usize, less: &mut impl FnMut(&T, &T) -> bool) {
+    if m - a == 1 {
+        let mut i = m;
+        let mut j = b;
+        while i < j {
+            let h = (i + j) / 2;
+            if less(&items[h], &items[a]) {
+                i = h + 1;
             } else {
-                high = half;
+                j = h;
             }
         }
-        for at in start..low.saturating_sub(1) {
-            data.swap(at, at + 1);
+        let mut k = a;
+        while k + 1 < i {
+            items.swap(k, k + 1);
+            k += 1;
         }
         return;
     }
-    if end - middle == 1 {
-        let mut low = start;
-        let mut high = middle;
-        while low < high {
-            let half = (low + high) >> 1;
-            if !less(&data[middle], &data[half]) {
-                low = half + 1;
+    if b - m == 1 {
+        let mut i = a;
+        let mut j = m;
+        while i < j {
+            let h = (i + j) / 2;
+            if !less(&items[m], &items[h]) {
+                i = h + 1;
             } else {
-                high = half;
+                j = h;
             }
         }
-        let mut at = middle;
-        while at > low {
-            data.swap(at, at - 1);
-            at -= 1;
+        let mut k = m;
+        while k > i {
+            items.swap(k, k - 1);
+            k -= 1;
         }
         return;
     }
-    let mid = (start + end) >> 1;
-    let total = mid + middle;
-    let (mut from, mut to) = if middle > mid {
-        (total - end, mid)
-    } else {
-        (start, middle)
-    };
-    let pivot = total - 1;
-    while from < to {
-        let half = (from + to) >> 1;
-        if !less(&data[pivot - half], &data[half]) {
-            from = half + 1;
+    let middle = (a + b) / 2;
+    let n = middle + m;
+    let (mut start, mut r) = if m > middle { (n - b, middle) } else { (a, m) };
+    let p = n - 1;
+    while start < r {
+        let c = (start + r) / 2;
+        if !less(&items[p - c], &items[c]) {
+            start = c + 1;
         } else {
-            to = half;
+            r = c;
         }
     }
-    let stop = total - from;
-    if from < middle && middle < stop {
-        rotate(data, from, middle, stop);
+    let end = n - start;
+    if start < m && m < end {
+        rotate(items, start, m, end);
     }
-    if start < from && from < mid {
-        merge_symmetric(data, start, from, mid, less);
+    if a < start && start < middle {
+        sym_merge(items, a, start, middle, less);
     }
-    if mid < stop && stop < end {
-        merge_symmetric(data, mid, stop, end, less);
+    if middle < end && end < b {
+        sym_merge(items, middle, end, b, less);
     }
+}
+
+fn rotate<T>(items: &mut [T], a: usize, m: usize, b: usize) {
+    let mut i = m - a;
+    let mut j = b - m;
+    while i != j {
+        if i > j {
+            swap_range(items, m - i, m, j);
+            i -= j;
+        } else {
+            swap_range(items, m - i, m + j - i, i);
+            j -= i;
+        }
+    }
+    swap_range(items, m - i, m, i);
+}
+
+fn swap_range<T>(items: &mut [T], a: usize, b: usize, count: usize) {
+    for index in 0..count {
+        items.swap(a + index, b + index);
+    }
+}
+
+/// True for a character that a quoted name shows as it is.
+fn printable(character: char) -> bool {
+    if character == ' ' {
+        return true;
+    }
+    if character.is_control() || character.is_whitespace() {
+        return false;
+    }
+    let code = u32::from(character);
+    let format = matches!(
+        code,
+        0xAD | 0x600..=0x605
+            | 0x61C
+            | 0x6DD
+            | 0x70F
+            | 0x890..=0x891
+            | 0x8E2
+            | 0x180E
+            | 0x200B..=0x200F
+            | 0x202A..=0x202E
+            | 0x2060..=0x2064
+            | 0x2066..=0x206F
+            | 0xFEFF
+            | 0xFFF9..=0xFFFB
+            | 0x110BD
+            | 0x110CD
+            | 0x13430..=0x1343F
+            | 0x1BCA0..=0x1BCA3
+            | 0x1D173..=0x1D17A
+            | 0xE0001
+            | 0xE0020..=0xE007F
+    );
+    let private = matches!(code, 0xE000..=0xF8FF | 0xF0000..=0xFFFFD | 0x100000..=0x10FFFD);
+    let noncharacter = (0xFDD0..=0xFDEF).contains(&code) || code & 0xFFFE == 0xFFFE;
+    !(format || private || noncharacter)
+}
+
+/// The quoted form of a name in a message: double quotes, `\"` and `\\`, the short escapes of the control
+/// characters, `\xNN` for another ASCII control, `\uNNNN` or `\UNNNNNNNN` for another character that is not shown.
+pub fn quote(text: &str) -> String {
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for character in text.chars() {
+        match character {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{7}' => out.push_str("\\a"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{b}' => out.push_str("\\v"),
+            other if printable(other) => out.push(other),
+            other if u32::from(other) < 0x80 => out.push_str(&format!("\\x{:02x}", u32::from(other))),
+            other if u32::from(other) < 0x10000 => out.push_str(&format!("\\u{:04x}", u32::from(other))),
+            other => out.push_str(&format!("\\U{:08x}", u32::from(other))),
+        }
+    }
+    out.push('"');
+    out
 }
 
 #[cfg(test)]
@@ -526,7 +678,7 @@ mod tests {
                 .collect();
             let mut expected = data.clone();
             expected.sort_by_key(|item| item.0);
-            stable_sort(&mut data, &|left: &(u32, usize), right: &(u32, usize)| left.0 < right.0);
+            stable_sort(&mut data, |left: &(u32, usize), right: &(u32, usize)| left.0 < right.0);
             assert_eq!(data, expected, "length {length}");
         }
     }
@@ -609,5 +761,72 @@ mod tests {
         assert_eq!(find_bytes(b"abc", b"d"), None);
         assert_eq!(find_bytes(b"ab", b"abc"), None);
         assert_eq!(find_bytes(b"aab", b"ab"), Some(1));
+    }
+
+    #[test]
+    fn quoted_names_escape_what_they_do_not_show() {
+        assert_eq!(
+            quote("a\"b\\c\u{200b}\u{1}é\u{ad}\u{e000} \u{a0}\u{2028}"),
+            "\"a\\\"b\\\\c\\u200b\\x01é\\u00ad\\ue000 \\u00a0\\u2028\""
+        );
+    }
+
+    #[test]
+    fn floats_follow_the_strict_grammar() {
+        let accepted = [
+            ("1_000", 1000.0),
+            ("1_23.50_0_0e+1_2", 1.235e14),
+            ("0x1p4", 16.0),
+            ("0x1.8p1", 3.0),
+            ("1e-400", 0.0),
+            ("+inf", f64::INFINITY),
+            ("-Infinity", f64::NEG_INFINITY),
+            (".5", 0.5),
+            ("5.", 5.0),
+            ("1.e3", 1000.0),
+            ("0x_1p0", 1.0),
+            ("-0x1p-2", -0.25),
+        ];
+        for (text, want) in accepted {
+            assert_eq!(parse_float(text), Some(want), "{text}");
+        }
+        assert!(parse_float("nan").is_some_and(f64::is_nan));
+        for text in [
+            "_1", "1__0", "0x10", "1e400", "+nan", "1,5", " 1", "", ".", "e5", "1e", "inff", "0x",
+        ] {
+            assert_eq!(parse_float(text), None, "{text}");
+        }
+    }
+
+    #[test]
+    fn the_stable_sort_keeps_the_order_of_equal_items() {
+        let mut items: Vec<(u32, usize)> = (0..500).map(|index| ((index * 7919 % 13) as u32, index)).collect();
+        stable_sort(&mut items, |left, right| left.0 < right.0);
+        for pair in items.windows(2) {
+            assert!(pair[0].0 < pair[1].0 || (pair[0].0 == pair[1].0 && pair[0].1 < pair[1].1));
+        }
+        let mut cyclic = vec!["9", "1e1", "1f", "9", "1e1", "1f"];
+        stable_sort(&mut cyclic, |left, right| {
+            crate::pv_docs::compare::compare_values(left, right).is_lt()
+        });
+        assert_eq!(cyclic.len(), 6);
+    }
+
+    #[test]
+    fn integers_have_a_sign_and_digits_only() {
+        assert_eq!(parse_integer("+5"), (5, true));
+        assert_eq!(parse_integer("-12"), (-12, true));
+        assert_eq!(parse_integer(" 1"), (0, false));
+        assert_eq!(parse_integer("99999999999999999999"), (i64::MAX, false));
+        assert_eq!(parse_integer("-9223372036854775808"), (i64::MIN, true));
+        assert_eq!(parse_integer("-99999999999999999999"), (i64::MIN, false));
+        assert_eq!(parse_integer(""), (0, false));
+    }
+
+    #[test]
+    fn each_invalid_byte_or_each_invalid_run_becomes_one_replacement_character() {
+        assert_eq!(lossy_bytes(b"a\xf0\x9f\x98b"), "a\u{FFFD}\u{FFFD}\u{FFFD}b");
+        assert_eq!(to_valid_utf8(b"a\xf0\x9f\x98\xffb\xffc"), "a\u{FFFD}b\u{FFFD}c");
+        assert_eq!(to_valid_utf8("été".as_bytes()), "été");
     }
 }

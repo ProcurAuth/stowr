@@ -192,25 +192,6 @@ impl std::fmt::Debug for Route {
     }
 }
 
-/// Define a handler that a work package has not written yet: it answers `501 not_served`.
-///
-/// `stub_handler!(handle_tags, "the route /api/tags");`
-#[macro_export]
-macro_rules! stub_handler {
-    ($name:ident, $what:expr) => {
-        /// A handler that the work package has not written yet: it answers `501 not_served`.
-        pub fn $name(
-            app: std::sync::Arc<$crate::common::app::App>,
-            req: $crate::common::http::Req,
-        ) -> $crate::common::BoxFuture<'static, $crate::common::http::Response> {
-            Box::pin(async move {
-                let _ = (app, req);
-                $crate::common::http::api_error(&$crate::common::error::Error::not_served($what))
-            })
-        }
-    };
-}
-
 /// A route of the table.
 pub const fn route(pattern: &'static str, access: RouteAccess, handler: Handler) -> Route {
     Route {

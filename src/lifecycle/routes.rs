@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use http::Method;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::editor::{LifecycleResponse, lifecycle_deletes};
 use super::rules::{EditRule, invalid_lifecycle};
@@ -16,9 +16,7 @@ use crate::common::config::{PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE
 use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, decode_json, json, method_not_allowed};
 use crate::common::misc::{clean_relative_key, normalize_prefix};
-use crate::common::time::Timestamp;
 use crate::instance::Instance;
-use crate::jobs::JobState;
 
 fn answer(result: Result<Response>) -> Response {
     result.unwrap_or_else(|error| api_error(&error))
@@ -151,50 +149,6 @@ pub(super) fn bulk_change(instance: &Instance, request: &TagsBulkRequest) -> Res
     ))
 }
 
-/// The answer that gives the job that a request created.
-#[derive(Debug, Serialize)]
-struct CreatedJob {
-    id: String,
-    #[serde(rename = "type")]
-    job_type: String,
-    instance: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    prefix: String,
-    status: String,
-    processed: i64,
-    #[serde(rename = "lastKey", skip_serializing_if = "String::is_empty")]
-    last_key: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    error: String,
-    #[serde(rename = "createdAt")]
-    created_at: Timestamp,
-    #[serde(rename = "updatedAt")]
-    updated_at: Timestamp,
-    #[serde(rename = "startedAt", skip_serializing_if = "Option::is_none")]
-    started_at: Option<Timestamp>,
-    #[serde(rename = "endedAt", skip_serializing_if = "Option::is_none")]
-    ended_at: Option<Timestamp>,
-}
-
-impl From<JobState> for CreatedJob {
-    fn from(job: JobState) -> Self {
-        Self {
-            id: job.id,
-            job_type: job.job_type,
-            instance: job.instance,
-            prefix: job.prefix,
-            status: job.status,
-            processed: job.processed,
-            last_key: job.last_key,
-            error: job.error,
-            created_at: job.created_at,
-            updated_at: job.updated_at,
-            started_at: job.started_at,
-            ended_at: job.ended_at,
-        }
-    }
-}
-
 /// The handler of `/api/tags/bulk`: start the job that changes the tags of each object under a prefix.
 pub fn handle_tags_bulk(app: Arc<App>, req: Req) -> BoxFuture<'static, Response> {
     Box::pin(async move { answer(tags_bulk_route(app, req).await) })
@@ -210,7 +164,7 @@ async fn tags_bulk_route(app: Arc<App>, req: Req) -> Result<Response> {
     let (prefix, change) = bulk_change(&instance, &request)?;
     access::authorize(&app, &ctx, app.access.write_prefix_operation(&instance, &prefix)).await?;
     let job = app.jobs.create(tag_job(&instance.cfg.id, &prefix, change))?;
-    Ok(json(202, &CreatedJob::from(job)))
+    Ok(crate::jobs::job_answer(202, &job))
 }
 
 // --- /api/lifecycle ----------------------------------------------------------------------------------------------

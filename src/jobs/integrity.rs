@@ -13,7 +13,7 @@ use http::{HeaderMap, Method};
 use http_body_util::BodyExt;
 use serde::{Deserialize, Serialize};
 
-use super::digest::{Crc32c, Md5};
+use super::digest::Crc32c;
 use super::{JobRun, JobState, job_status, job_type};
 use crate::common::BoxFuture;
 use crate::common::app::App;
@@ -21,6 +21,7 @@ use crate::common::config::PERMISSION_READ;
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, decode_json, json, method_not_allowed};
+use crate::common::md5::Md5;
 use crate::common::misc::{clean_relative_key, hex};
 use crate::instance::ceiling::ceilings_of;
 use crate::instance::versions::provider_checksums;

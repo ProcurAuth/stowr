@@ -20,7 +20,10 @@ fn the_dimensions_of_a_sheet_are_the_last_row_and_column_with_a_value() {
     // The row without a number follows the row 3: it is the row 4.
     assert_eq!(dimensions(xml).unwrap(), (4, 3));
     assert_eq!(dimensions("<worksheet/>").unwrap(), (0, 0));
+    // An end of the text in a row keeps the error of the XML; outside a row, the error is `invalid_sheet`.
     let error = dimensions("<worksheet><row>").unwrap_err();
+    assert_eq!((error.status(), error.code().as_str()), (502, "storage_error"));
+    let error = dimensions("<worksheet><sheetData>").unwrap_err();
     assert!(error.has_code("invalid_sheet"));
 }
 
@@ -94,4 +97,29 @@ async fn the_count_of_lines_counts_the_last_line_without_a_line_end() {
         .await
         .unwrap();
     assert_eq!(summary.total, 5);
+}
+
+#[test]
+fn the_delimited_count_reads_quoted_line_ends_and_empty_columns() {
+    let input = "name,,description,\nalpha,,\"line one\nline two\",\n,,,\nbeta,,\"a \"\"quoted\"\" value\",\n";
+    let mut counter = DelimitedCounter::new(b',');
+    for chunk in input.as_bytes().chunks(7) {
+        counter.feed(chunk);
+    }
+    assert_eq!(
+        counter.finish().unwrap(),
+        (2, 2),
+        "two data rows and two non-empty columns"
+    );
+    let mut open = DelimitedCounter::new(b',');
+    open.feed(b"a,\"b\n");
+    assert!(open.finish().err().unwrap().has_code("invalid_delimited_file"));
+}
+
+#[test]
+fn the_delimiter_detection_prefers_regular_records() {
+    assert_eq!(detect_delimited_separator(b"a;b;c\n1;2;3\n4;5;6\n"), b';');
+    assert_eq!(detect_delimited_separator(b"a\tb\n1\t2\n"), b'\t');
+    assert_eq!(detect_delimited_separator(b"a|b|c\n\"x|y\"|2|3\n"), b'|');
+    assert_eq!(detect_delimited_separator(b"single\n"), b',');
 }

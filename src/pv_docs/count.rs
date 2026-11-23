@@ -8,10 +8,10 @@ use std::sync::Arc;
 use http::HeaderMap;
 
 use super::delimited::{DocumentCount, PEEK_BYTES, detect_delimited_separator};
-use super::package::{Fault, HardLimit, parse_entry};
+use super::package::{Fault, parse_entry};
 use super::request::{Call, answer, key_extension, object_target, start};
 use super::spreadsheet::{
-    MAX_OBJECT_BYTES, MAX_SHEET_BYTES, excel_column_index, open_workbook, read_active_sheet_index, read_workbook_sheets,
+    MAX_OBJECT_BYTES, excel_column_index, open_workbook, read_active_sheet_index, read_workbook_sheets,
 };
 use super::stream::ObjectStream;
 use super::util::parse_i64;
@@ -306,18 +306,22 @@ pub async fn count_object_lines(ctx: &OpCtx, instance: &Arc<Instance>, key: &str
 
 // --- workbooks ---------------------------------------------------------------------------------------------------
 
-/// The last row and the last column with a value of a sheet, from the XML of the sheet.
+/// The failure of a count of the dimensions: a failure outside a row, or a failure in a row with its cause.
+enum DimensionFault {
+    Sheet,
+    Row(Fault),
+}
+
+/// The last row and the last column with a value of a sheet, from the XML of the sheet. The count reads the whole
+/// sheet. A failure outside a row is `422 invalid_sheet`. A failure in a row keeps its cause: the error of the
+/// storage, else the error of the XML.
 pub fn count_worksheet_dimensions(reader: &mut dyn Read) -> Result<(i64, i64)> {
     count_dimensions_inner(reader).map_err(|fault| match fault {
-        Fault::Limit => Error::api(
-            413,
-            "sheet_too_large",
-            format!(
-                "the worksheet XML exceeds {} MiB once decompressed",
-                MAX_SHEET_BYTES >> 20
-            ),
-        ),
-        _ => Error::api(422, "invalid_sheet", "unable to inspect worksheet dimensions"),
+        DimensionFault::Row(Fault::Source(error)) => error,
+        DimensionFault::Row(Fault::Syntax(text)) => Error::internal(text),
+        DimensionFault::Row(Fault::Limit) | DimensionFault::Sheet => {
+            Error::api(422, "invalid_sheet", "unable to inspect worksheet dimensions")
+        }
     })
 }
 
@@ -382,12 +386,12 @@ fn count_worksheet_row<R: Read>(xml: &mut XmlReader<R>) -> std::result::Result<(
     Ok((visible, maximum_column))
 }
 
-fn count_dimensions_inner(reader: &mut dyn Read) -> std::result::Result<(i64, i64), Fault> {
-    let mut xml = XmlReader::new(HardLimit::new(reader, MAX_SHEET_BYTES + 1));
+fn count_dimensions_inner(reader: &mut dyn Read) -> std::result::Result<(i64, i64), DimensionFault> {
+    let mut xml = XmlReader::new(reader);
     let mut maximum_row: i64 = 0;
     let mut maximum_column: i64 = 0;
     let mut fallback_row: i64 = 0;
-    while let Some(event) = xml.next_event()? {
+    while let Some(event) = xml.next_event().map_err(|_| DimensionFault::Sheet)? {
         let XmlEvent::Start { name, attrs } = event else {
             continue;
         };
@@ -405,7 +409,8 @@ fn count_dimensions_inner(reader: &mut dyn Read) -> std::result::Result<(i64, i6
                 fallback_row = parsed;
             }
         }
-        let (visible, row_maximum) = count_worksheet_row(&mut xml)?;
+        let (visible, row_maximum) =
+            count_worksheet_row(&mut xml).map_err(|fault| DimensionFault::Row(Fault::from(fault)))?;
         if visible && row_number > maximum_row {
             maximum_row = row_number;
         }

@@ -1,5 +1,5 @@
-//! The tests of the document details, of the Parquet reader, of the Thrift reader and of the workbook counts, and the
-//! helpers of the route tests of this folder.
+//! The tests of the document details, of the Parquet reader, of the Thrift reader and of the counts that the details
+//! share with `crate::pv_docs::count`, and the helpers of the route tests of this folder.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -8,11 +8,10 @@ use std::time::Duration;
 use bytes::Bytes;
 use http::{HeaderMap, Method};
 
-use super::details::{DelimitedCounter, detect_delimited_separator, text_container_label};
+use super::details::text_container_label;
+use super::inspect_document_details;
 use super::parquet::{flatten_schema, parse_file_metadata, parse_metadata_detail};
 use super::thrift::{CompactReader, LIST, STRUCT};
-use super::workbook::count_worksheet_dimensions;
-use super::{count_object_lines, inspect_delimited_summary, inspect_document_details, inspect_spreadsheet_dimensions};
 use crate::access::AccessLayer;
 use crate::archive::zip::writer::{EntryHeader, ZipWriter};
 use crate::common::app::App;
@@ -21,6 +20,10 @@ use crate::common::ctx::OpCtx;
 use crate::common::http::{Req, Response, empty, full, read_limited};
 use crate::common::query::Query;
 use crate::instance::Instance;
+use crate::pv_docs::count::{
+    count_object_lines, count_worksheet_dimensions, inspect_delimited_summary, inspect_spreadsheet_dimensions,
+    inspect_spreadsheet_summary,
+};
 use crate::pv_media::MediaSourceMetadata;
 use crate::testkit::{MemoryBackend, bucket_config, instance_over};
 
@@ -351,33 +354,6 @@ async fn the_parquet_route_gives_the_footer_metadata() {
 
 // --- Delimited text and lines ------------------------------------------------------------------------------------
 
-#[test]
-fn the_delimited_count_reads_quoted_line_ends_and_empty_columns() {
-    let input = "name,,description,\nalpha,,\"line one\nline two\",\n,,,\nbeta,,\"a \"\"quoted\"\" value\",\n";
-    let mut counter = DelimitedCounter::new(b',');
-    for chunk in input.as_bytes().chunks(7) {
-        counter.feed(chunk);
-    }
-    let (summary, total) = counter.finish().unwrap();
-    assert_eq!(total, input.len() as i64);
-    assert_eq!(
-        (summary.rows, summary.columns),
-        (2, 2),
-        "two data rows and two non-empty columns"
-    );
-    let mut open = DelimitedCounter::new(b',');
-    open.feed(b"a,\"b\n");
-    assert!(open.finish().err().unwrap().has_code("invalid_delimited_file"));
-}
-
-#[test]
-fn the_delimiter_detection_prefers_regular_records() {
-    assert_eq!(detect_delimited_separator(b"a;b;c\n1;2;3\n4;5;6\n"), b';');
-    assert_eq!(detect_delimited_separator(b"a\tb\n1\t2\n"), b'\t');
-    assert_eq!(detect_delimited_separator(b"a|b|c\n\"x|y\"|2|3\n"), b'|');
-    assert_eq!(detect_delimited_separator(b"single\n"), b',');
-}
-
 #[tokio::test]
 async fn the_details_of_delimited_text_wait_for_the_explicit_count() {
     let (instance, backend) = memory_instance("csv");
@@ -401,10 +377,13 @@ async fn the_details_of_delimited_text_wait_for_the_explicit_count() {
         (state.get_count, state.head_count)
     };
     assert_eq!(counts, (0, 1), "the details read the object");
-    let (summary, _, total) = inspect_delimited_summary(&OpCtx::default(), &instance, "table.csv", "csv")
+    let summary = inspect_delimited_summary(&OpCtx::default(), &instance, "table.csv", "csv")
         .await
         .unwrap();
-    assert_eq!((summary.rows, summary.columns, total), (2, 3, content.len() as i64));
+    assert_eq!(
+        (summary.rows, summary.columns, summary.total),
+        (2, 3, content.len() as i64)
+    );
 }
 
 #[tokio::test]
@@ -443,7 +422,7 @@ async fn the_details_of_tab_separated_text_accept_the_tab_extension_and_type() {
     .await
     .unwrap();
     assert_eq!(typed.container, "TSV");
-    let (summary, _, _) = inspect_delimited_summary(&ctx, &instance, "table.tab", "tab")
+    let summary = inspect_delimited_summary(&ctx, &instance, "table.tab", "tab")
         .await
         .unwrap();
     assert_eq!((summary.rows, summary.columns), (2, 2));
@@ -455,9 +434,9 @@ async fn the_line_count_counts_a_last_line_without_a_line_end() {
     backend.insert("notes.txt", "one\ntwo\nthree", "text/plain");
     backend.insert("empty.txt", "", "text/plain");
     let ctx = OpCtx::default();
-    let (lines, _, total) = count_object_lines(&ctx, &instance, "notes.txt").await.unwrap();
-    assert_eq!((lines, total), (3, 13));
-    assert_eq!(count_object_lines(&ctx, &instance, "empty.txt").await.unwrap().0, 0);
+    let count = count_object_lines(&ctx, &instance, "notes.txt").await.unwrap();
+    assert_eq!((count.lines, count.total), (3, 13));
+    assert_eq!(count_object_lines(&ctx, &instance, "empty.txt").await.unwrap().lines, 0);
 }
 
 #[test]
@@ -621,16 +600,19 @@ fn the_row_summary_ignores_empty_styled_cells() {
 
 #[test]
 fn the_dimension_count_tells_errors_in_and_out_of_rows() {
-    use super::workbook::SheetFault;
-    let outside = count_worksheet_dimensions(&mut "<sheetData><row></sheetData>".as_bytes());
-    assert!(matches!(outside, Err(SheetFault::Raw(_))), "{outside:?}");
-    let unclosed = count_worksheet_dimensions(&mut "<worksheet><sheetData>".as_bytes());
-    assert_eq!(unclosed, Err(SheetFault::Sheet));
+    // An error in a row keeps its cause: it is not an error of the request.
+    let inside = count_worksheet_dimensions(&mut "<sheetData><row></sheetData>".as_bytes()).unwrap_err();
+    assert!(inside.as_api().is_none(), "{inside:?}");
+    assert_eq!(inside.status(), 502);
+    let unclosed = count_worksheet_dimensions(&mut "<worksheet><sheetData>".as_bytes()).unwrap_err();
+    assert!(unclosed.has_code("invalid_sheet"), "{unclosed:?}");
+    assert_eq!(unclosed.status(), 422);
     let fallback = count_worksheet_dimensions(
         &mut "<x><row><c><v>1</v></c><c><v> </v></c><c><is><t>t</t></is></c></row><row/><row><c t=\"s\"><v>&#49;</v></c></row></x>"
             .as_bytes(),
-    );
-    assert_eq!(fallback, Ok((3, 3)));
+    )
+    .unwrap();
+    assert_eq!(fallback, (3, 3));
 }
 
 /// A workbook with two sheets: `Data` (rows 2 to 5, two used columns) and the hidden sheet `Archive`.
@@ -706,10 +688,9 @@ async fn the_spreadsheet_details_describe_the_active_sheet_only() {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
     let ctx = OpCtx::default();
-    let (summary, _, size) =
-        super::workbook::inspect_spreadsheet_summary(&ctx, &instance, "book.xlsx", workbook.len() as i64)
-            .await
-            .unwrap();
+    let (summary, _, size) = inspect_spreadsheet_summary(&ctx, &instance, "book.xlsx", workbook.len() as i64)
+        .await
+        .unwrap();
     assert_eq!((summary.sheets, summary.active_sheet.as_str()), (2, "Data"));
     assert_eq!((summary.rows, summary.columns), (0, 0), "the details count no cell");
     assert_eq!(size, workbook.len() as i64);
@@ -749,7 +730,6 @@ async fn the_spreadsheet_counts_refuse_other_containers() {
 // --- The readers of the other parts ---------------------------------------------------------------------------------
 
 #[tokio::test]
-#[ignore = "needs the package properties of crate::pv_docs"]
 async fn the_word_details_read_only_the_property_parts() {
     let (instance, backend) = memory_instance("docx");
     let archive = zip_of(&[
@@ -807,7 +787,6 @@ async fn the_word_details_read_only_the_property_parts() {
 }
 
 #[tokio::test]
-#[ignore = "needs the package properties of crate::pv_docs"]
 async fn the_presentation_details_use_only_the_package_metadata_and_the_central_directory() {
     let (instance, backend) = memory_instance("ppt");
     let archive = zip_of(&[
@@ -868,7 +847,6 @@ async fn the_presentation_details_use_only_the_package_metadata_and_the_central_
 }
 
 #[tokio::test]
-#[ignore = "needs the structured metadata of crate::pv_structured"]
 async fn the_structured_details_of_small_text_formats() {
     let (instance, backend) = memory_instance("meta");
     let objects = [
