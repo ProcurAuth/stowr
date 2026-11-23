@@ -49,7 +49,7 @@ fn not_here<T>() -> BoxFuture<'static, crate::common::error::Result<T>>
 where
     T: Send + 'static,
 {
-    Box::pin(async { Err(Error::not_served("this test")) })
+    Box::pin(async { Err(Error::api(501, "unsupported", "This test does not use this call.")) })
 }
 
 impl Backend for Scripted {
