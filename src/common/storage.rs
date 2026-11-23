@@ -204,6 +204,10 @@ pub struct CompletedPart {
 /// The progress function of a copy in parts: it gets the size of each copied part.
 pub type CopyProgress = Arc<dyn Fn(i64) + Send + Sync>;
 
+/// The gate of each provider request of a copy in parts: it counts one request in the budget of the context and
+/// takes a slot of the gates of the instance. The gates get the slot back when the value is dropped.
+pub type RequestGate = Arc<dyn Fn(OpCtx) -> BoxFuture<'static, Result<crate::instance::gate::Slot>> + Send + Sync>;
+
 /// The options of a copy in parts (docs/ARCHITECTURE.md, "Copy in parts").
 #[derive(Clone, Default)]
 pub struct MultipartCopyOptions {
@@ -219,6 +223,8 @@ pub struct MultipartCopyOptions {
     pub expected_etag: String,
     /// The progress function.
     pub progress: Option<CopyProgress>,
+    /// The gate of each provider request of the copy. The instance sets it; `None` takes no slot.
+    pub gate: Option<RequestGate>,
 }
 
 impl std::fmt::Debug for MultipartCopyOptions {
