@@ -9,7 +9,7 @@ use serde_json::json;
 use super::fakes::{
     FakeS3, TagMode, TaggingMemory, WireBackend, application, call, instance, instance_config, with_versions,
 };
-use super::tags::{JobHost, tag_job, walk_tag_job};
+use super::tags::{tag_job, walk_tag_job};
 use super::{MAX_OBJECT_TAGS, Tag, TagChange, apply_tag_change, encode_tagging, parse_tagging_header, same_tags};
 use super::{upload_tagging_header, validate_tags, with_upload_tags};
 use crate::common::config::{PERMISSION_READ, PERMISSION_WRITE};
@@ -18,6 +18,7 @@ use crate::common::error::{Error, Result};
 use crate::common::storage::Backend;
 use crate::instance::Instance;
 use crate::jobs::JobState;
+use crate::jobs::WalkHost;
 
 fn tag(key: &str, value: &str) -> Tag {
     Tag::new(key, value)
@@ -330,25 +331,28 @@ async fn the_bulk_request_gives_a_job_with_a_normal_prefix() {
 /// A job manager of a test: it keeps the saved states and can pause the job after some saves.
 #[derive(Default)]
 struct TestHost {
+    ctx: OpCtx,
     saved: std::sync::Mutex<Vec<JobState>>,
     pause_after: Option<usize>,
 }
 
-impl JobHost for TestHost {
-    fn control(&self) -> Result<()> {
+impl WalkHost for TestHost {
+    fn ctx(&self) -> &OpCtx {
+        &self.ctx
+    }
+
+    fn check_control(&self) -> Result<()> {
         Ok(())
     }
 
-    fn latest(&self) -> Option<JobState> {
+    fn refresh_status(&self, job: &mut JobState) {
         let saved = self.saved.lock().unwrap();
         let status = match self.pause_after {
             Some(count) if saved.len() >= count => "paused",
             _ => "running",
         };
-        Some(JobState {
-            status: status.to_owned(),
-            ..JobState::default()
-        })
+        job.status = status.to_owned();
+        job.ended_at = None;
     }
 
     fn save(&self, job: &JobState) -> Result<()> {
@@ -366,7 +370,7 @@ fn running_job(prefix: &str, change: TagChange) -> JobState {
 
 async fn run_job(rig: &Rig, host: &TestHost, job: &mut JobState) -> Result<()> {
     let rw: Arc<Instance> = rig.app.instance("rw").unwrap().clone();
-    walk_tag_job(host, &rw, &OpCtx::default(), job).await
+    walk_tag_job(host, &rw, job).await
 }
 
 #[tokio::test]
@@ -490,7 +494,7 @@ async fn the_tag_job_needs_a_change_and_the_read_and_write_permissions() {
     assert_eq!(error.code(), "invalid_tags");
     let readonly: Arc<Instance> = rig.app.instance("readonly").unwrap().clone();
     let mut job = running_job("", TagChange::default());
-    let error = walk_tag_job(&TestHost::default(), &readonly, &OpCtx::default(), &mut job)
+    let error = walk_tag_job(&TestHost::default(), &readonly, &mut job)
         .await
         .unwrap_err();
     assert_eq!(error.code(), "permission_denied");

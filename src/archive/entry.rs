@@ -12,13 +12,12 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::Duration;
 
 use aws_lc_rs::digest;
 use http::header::{CACHE_CONTROL, CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_TYPE, HeaderValue};
 use http::{HeaderMap, Method};
 use http_body_util::BodyExt;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::content::{
     apply_object_safety_headers, archive_entry_active_content, browser_inline_content, format_disposition,
@@ -40,7 +39,7 @@ use crate::common::app::App;
 use crate::common::config::{PERMISSION_READ, PERMISSION_WRITE};
 use crate::common::ctx::{GateMode, OpCtx};
 use crate::common::error::{Error, Result};
-use crate::common::http::{Body, Req, Response, answer, api_error, decode_json, empty, json, method_not_allowed};
+use crate::common::http::{Body, Req, Response, answer, api_error, decode_json, empty, method_not_allowed};
 use crate::common::md5::Md5;
 use crate::common::misc::{clean_relative_key, hex};
 use crate::common::time::Timestamp;
@@ -49,8 +48,6 @@ use crate::instance::ceiling::{Ceilings, ceiling_applies, ceiling_error_of, ceil
 use crate::instance::range::{ObjectVersion, RangeSource};
 use crate::jobs::{JobRun, JobState, job_type};
 
-/// The wait of the integrity route for a job that ends at once.
-const ANALYSIS_INLINE_WAIT: Duration = Duration::from_millis(100);
 /// The size of a part of the hash work.
 const HASH_CHUNK: usize = 128 << 10;
 
@@ -414,11 +411,11 @@ async fn start_extraction(app: Arc<App>, req: Req) -> Result<Response> {
         ceilings: job_ceilings(&ctx),
         ..JobState::default()
     })?;
-    Ok(json(202, &PublicJob::of(&job)))
+    Ok(crate::jobs::job_answer(202, &job))
 }
 
-/// The handler of `/api/archive-entry/integrity`: it starts the job `archive_entry_integrity` and gives its result
-/// when the job ends in 100 ms.
+/// The handler of `/api/archive-entry/integrity`: it starts the job `archive_entry_integrity` and gives the job when
+/// it ends or pauses in 100 ms.
 pub fn handle_archive_entry_integrity(app: Arc<App>, req: Req) -> BoxFuture<'static, Response> {
     Box::pin(async move {
         if req.method != Method::POST {
@@ -455,113 +452,13 @@ async fn start_entry_integrity(app: Arc<App>, req: Req) -> Result<Response> {
         ceilings: job_ceilings(&ctx),
         ..JobState::default()
     })?;
-    if let Some(ended) = app.jobs.wait_for_terminal(&job.id, ANALYSIS_INLINE_WAIT).await
-        && matches!(ended.status.as_str(), "completed" | "failed" | "canceled")
-    {
-        if ended.status == "failed" {
-            if let Some(refusal) = &ended.refusal {
-                return Ok(api_error(refusal));
-            }
-            return Err(Error::api(422, "analysis_failed", ended.error.clone()));
-        }
-        return Ok(json(200, &PublicJob::of(&ended)));
-    }
-    Ok(json(202, &PublicJob::of(&job)))
+    Ok(crate::jobs::analysis_job_answer(&app, &job).await)
 }
 
 /// A copy of the ceilings of the request (those of the PDP answers and those that the context carries), for the job.
 fn job_ceilings(ctx: &OpCtx) -> Option<Arc<Ceilings>> {
     let map = ceilings_of(ctx);
     (!map.is_empty()).then(|| Arc::new(Ceilings::from_map(&map)))
-}
-
-fn is_zero(value: &i64) -> bool {
-    *value == 0
-}
-
-/// The public form of a job of this work package in the answers of its routes.
-#[derive(Debug, Serialize)]
-struct PublicJob<'a> {
-    id: &'a str,
-    #[serde(rename = "type")]
-    job_type: &'a str,
-    instance: &'a str,
-    #[serde(rename = "targetInstance", skip_serializing_if = "str::is_empty")]
-    target_instance: &'a str,
-    #[serde(skip_serializing_if = "str::is_empty")]
-    source: &'a str,
-    #[serde(skip_serializing_if = "str::is_empty")]
-    version: &'a str,
-    #[serde(skip_serializing_if = "str::is_empty")]
-    target: &'a str,
-    #[serde(skip_serializing_if = "<[String]>::is_empty")]
-    entries: &'a [String],
-    #[serde(skip_serializing_if = "str::is_empty")]
-    prefix: &'a str,
-    status: &'a str,
-    processed: i64,
-    #[serde(rename = "storageRequests", skip_serializing_if = "is_zero")]
-    storage_requests: i64,
-    #[serde(rename = "storageBytes", skip_serializing_if = "is_zero")]
-    storage_bytes: i64,
-    #[serde(rename = "copiedBytes", skip_serializing_if = "is_zero")]
-    copied_bytes: i64,
-    #[serde(rename = "totalBytes", skip_serializing_if = "is_zero")]
-    total_bytes: i64,
-    #[serde(rename = "lastKey", skip_serializing_if = "str::is_empty")]
-    last_key: &'a str,
-    #[serde(rename = "archiveExtract", skip_serializing_if = "Option::is_none")]
-    archive_extract: Option<&'a ArchiveExtractResult>,
-    #[serde(rename = "archiveEntryIntegrity", skip_serializing_if = "Option::is_none")]
-    archive_entry_integrity: Option<&'a ArchiveEntryIntegrityResult>,
-    #[serde(skip_serializing_if = "is_zero")]
-    locked: i64,
-    #[serde(rename = "lockedKeys", skip_serializing_if = "<[String]>::is_empty")]
-    locked_keys: &'a [String],
-    #[serde(skip_serializing_if = "str::is_empty")]
-    error: &'a str,
-    #[serde(rename = "createdAt")]
-    created_at: Timestamp,
-    #[serde(rename = "updatedAt")]
-    updated_at: Timestamp,
-    #[serde(rename = "startedAt", skip_serializing_if = "Option::is_none")]
-    started_at: Option<Timestamp>,
-    #[serde(rename = "endedAt", skip_serializing_if = "Option::is_none")]
-    ended_at: Option<Timestamp>,
-}
-
-impl<'a> PublicJob<'a> {
-    /// The public form: the result only after the end of the job.
-    fn of(job: &'a JobState) -> Self {
-        let completed = job.status == "completed";
-        Self {
-            id: &job.id,
-            job_type: &job.job_type,
-            instance: &job.instance,
-            target_instance: &job.target_instance,
-            source: &job.source,
-            version: &job.version,
-            target: &job.target,
-            entries: &job.entries,
-            prefix: &job.prefix,
-            status: &job.status,
-            processed: job.processed,
-            storage_requests: job.storage_requests,
-            storage_bytes: job.storage_bytes,
-            copied_bytes: job.copied_bytes + job.copying_bytes,
-            total_bytes: job.total_bytes,
-            last_key: &job.last_key,
-            archive_extract: job.archive_extract.as_ref().filter(|_| completed),
-            archive_entry_integrity: job.archive_entry_integrity.as_ref().filter(|_| completed),
-            locked: job.locked,
-            locked_keys: &job.locked_keys,
-            error: &job.error,
-            created_at: job.created_at,
-            updated_at: job.updated_at,
-            started_at: job.started_at,
-            ended_at: job.ended_at,
-        }
-    }
 }
 
 /// The destination of an extraction and the save of the progress of the job.

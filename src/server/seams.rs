@@ -1,16 +1,13 @@
-//! The points where the routes of this folder meet a function of another folder: the display questions of the access
-//! policy, the public form of a job and the reuse of a recent Insights job.
+//! The points where the routes of this folder meet the access policy: the instances that a person sees, the display
+//! questions of a listing and the folders of a navigation listing.
 //!
-//! The display questions call the access layer: in mode `open` they ask nothing. The public form of a job and the
-//! reuse of a recent Insights job belong to the job manager.
+//! The display questions call the access layer: in mode `open` they ask nothing.
 
 use crate::access::display::{ListDisplay, operations_of, with_access_capabilities};
 use crate::common::app::App;
 use crate::common::ctx::OpCtx;
-use crate::common::error::{Error, Result};
-use crate::common::http::{Response, api_error};
+use crate::common::error::Result;
 use crate::instance::{Instance, InstanceInfo};
-use crate::jobs::JobState;
 
 use super::api::ListItem;
 
@@ -57,17 +54,4 @@ pub async fn navigation_items(
         .zip(kept)
         .filter_map(|(item, keep)| keep.then_some(item))
         .collect())
-}
-
-/// A recent Insights job of the same instance and prefix: a completed one of the last 30 seconds, else one that
-/// waits or runs. No job: the route makes a new job.
-pub fn reusable_stats_job(app: &App, instance: &str, prefix: &str) -> Option<JobState> {
-    let _ = (app, instance, prefix);
-    None
-}
-
-/// The JSON answer of a job: the public form of the job manager.
-pub fn job_answer(status: u16, job: &JobState) -> Response {
-    let _ = (status, job);
-    api_error(&Error::not_served("the public form of a job"))
 }

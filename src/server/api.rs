@@ -28,8 +28,6 @@ use crate::jobs::{JobState, job_type};
 
 /// The page size of a provider listing.
 pub const PROVIDER_LIST_PAGE_SIZE: u32 = 1000;
-/// How long `/api/stats` waits for a job before it answers 202.
-pub const STATS_INLINE_WAIT: Duration = Duration::from_millis(100);
 
 fn api_result(result: Result<Response>) -> Response {
     result.unwrap_or_else(|error| api_error(&error))
@@ -386,39 +384,6 @@ fn object_item(relative: &str, object: &ObjectInfo) -> ListItem {
     }
 }
 
-/// The handler of `/api/stats`.
-pub fn handle_stats(app: Arc<App>, req: Req) -> BoxFuture<'static, Response> {
-    Box::pin(async move {
-        if req.method != Method::GET {
-            return method_not_allowed(&["GET"]);
-        }
-        api_result(stats(&app, &split(req).0).await)
-    })
-}
-
-async fn stats(app: &App, req: &RequestHead) -> Result<Response> {
-    let instance = app.instance_of("", req.query.get("instance"))?;
-    let prefix = normalize_prefix(&clean_relative_key(req.query.get("prefix")));
-    instance.require_permission(PERMISSION_READ)?;
-    crate::access::authorize_read(app, &req.ctx, instance, &prefix).await?;
-    let job = match seams::reusable_stats_job(app, &instance.cfg.id, &prefix) {
-        Some(job) => job,
-        None => app.jobs.create(JobState {
-            job_type: job_type::STATS_PREFIX.to_owned(),
-            instance: instance.cfg.id.clone(),
-            prefix,
-            ..JobState::default()
-        })?,
-    };
-    if job.status == "completed" && job.stats.is_some() {
-        return Ok(seams::job_answer(200, &job));
-    }
-    if let Some(finished) = app.jobs.wait_for_terminal(&job.id, STATS_INLINE_WAIT).await {
-        return Ok(seams::job_answer(200, &finished));
-    }
-    Ok(seams::job_answer(202, &job))
-}
-
 /// The body of a copy or a rename.
 #[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields, default)]
@@ -761,12 +726,12 @@ async fn copy_or_rename(app: &App, req: Req, move_object: bool) -> Result<Respon
             ceilings: job_ceilings(&ctx),
             ..JobState::default()
         })?;
-        return Ok(seams::job_answer(202, &job));
+        return Ok(crate::jobs::job_answer(202, &job));
     }
     let (source, target) = clean_object_pair(&request.src, &request.dst)?;
     crate::access::authorize(app, &ctx, operation(&source, &target)).await?;
     if let Some(job) = start_large_copy(app, &ctx, instance, &source, &target, move_object).await? {
-        return Ok(seams::job_answer(202, &job));
+        return Ok(crate::jobs::job_answer(202, &job));
     }
     let count = copy_or_move(&ctx, instance, &source, &target, false, move_object).await?;
     if move_object {
@@ -807,7 +772,7 @@ async fn delete_prefix(app: &App, req: Req) -> Result<Response> {
         prefix,
         ..JobState::default()
     })?;
-    Ok(seams::job_answer(202, &job))
+    Ok(crate::jobs::job_answer(202, &job))
 }
 
 #[derive(Serialize)]

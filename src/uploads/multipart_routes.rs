@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use http::Method;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 
 use super::MultipartAbortResult;
 use super::multiparts::{
@@ -46,74 +46,6 @@ struct AbortRequest {
     older_than_days: i64,
     #[serde(default, deserialize_with = "null_as_default")]
     prefix: String,
-}
-
-/// The job `abort_multiparts` as the client sees it. The other members of a job are not in the form of this type of
-/// job.
-#[derive(Clone, Debug, Serialize)]
-pub(super) struct PublicAbortJob {
-    id: String,
-    #[serde(rename = "type")]
-    job_type: String,
-    instance: String,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    prefix: String,
-    status: String,
-    processed: i64,
-    #[serde(rename = "storageRequests", skip_serializing_if = "is_zero")]
-    storage_requests: i64,
-    #[serde(rename = "storageBytes", skip_serializing_if = "is_zero")]
-    storage_bytes: i64,
-    #[serde(rename = "lastKey", skip_serializing_if = "String::is_empty")]
-    last_key: String,
-    #[serde(rename = "olderThanDays", skip_serializing_if = "is_zero_u32")]
-    older_than_days: u32,
-    #[serde(rename = "multipartAbort", skip_serializing_if = "Option::is_none")]
-    multipart_abort: Option<MultipartAbortResult>,
-    #[serde(skip_serializing_if = "String::is_empty")]
-    error: String,
-    #[serde(rename = "createdAt")]
-    created_at: Timestamp,
-    #[serde(rename = "updatedAt")]
-    updated_at: Timestamp,
-    #[serde(rename = "startedAt", skip_serializing_if = "Option::is_none")]
-    started_at: Option<Timestamp>,
-    #[serde(rename = "endedAt", skip_serializing_if = "Option::is_none")]
-    ended_at: Option<Timestamp>,
-}
-
-fn is_zero(value: &i64) -> bool {
-    *value == 0
-}
-
-fn is_zero_u32(value: &u32) -> bool {
-    *value == 0
-}
-
-impl From<&JobState> for PublicAbortJob {
-    fn from(job: &JobState) -> Self {
-        Self {
-            id: job.id.clone(),
-            job_type: job.job_type.clone(),
-            instance: job.instance.clone(),
-            prefix: job.prefix.clone(),
-            status: job.status.clone(),
-            processed: job.processed,
-            storage_requests: job.storage_requests,
-            storage_bytes: job.storage_bytes,
-            last_key: job.last_key.clone(),
-            older_than_days: job
-                .multipart_abort
-                .as_ref()
-                .map_or(0, |request| request.older_than_days),
-            multipart_abort: job.multipart_result.clone(),
-            error: job.error.clone(),
-            created_at: job.created_at,
-            updated_at: job.updated_at,
-            started_at: job.started_at,
-            ended_at: job.ended_at,
-        }
-    }
 }
 
 /// The handler of `GET /api/multiparts`: the incomplete uploads under a prefix.
@@ -241,5 +173,5 @@ async fn abort_route(app: Arc<App>, req: Req) -> Result<Response> {
         multipart_result: Some(MultipartAbortResult::default()),
         ..JobState::default()
     })?;
-    Ok(json(202, &PublicAbortJob::from(&job)))
+    Ok(crate::jobs::job_answer(202, &job))
 }
