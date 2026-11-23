@@ -166,7 +166,7 @@ fn the_user_metadata_is_checked() {
 fn the_etag_of_a_request_is_checked() {
     let long = "a".repeat(MAX_ETAG_BYTES + 1);
     for etag in ["", "\"abc\"", "a b", "a,b", long.as_str()] {
-        assert!(validate_etag(etag).is_err(), "the ETag {etag:?} was accepted");
+        assert!(validate_etag(etag).is_err(), "the ETag {etag:?} is accepted");
     }
     assert!(validate_etag("66f827ff4c27058d46432a4ee1974b78-2").is_ok());
 }
@@ -286,11 +286,14 @@ struct StoredObject {
     data: String,
     headers: HeaderMap,
     tags: String,
+    /// The size that the HEAD answer gives, when it is not the size of the data.
+    claimed_size: Option<u64>,
 }
 
 #[derive(Default)]
 struct CopyState {
     objects: BTreeMap<String, StoredObject>,
+    versions: BTreeMap<String, StoredObject>,
     copy_headers: Vec<HeaderMap>,
     fail_copy_with_412: bool,
     copy_status: Option<u16>,
@@ -317,6 +320,7 @@ impl CopyState {
                 data: data.to_owned(),
                 headers,
                 tags: tags.to_owned(),
+                claimed_size: None,
             },
         );
     }
@@ -324,13 +328,18 @@ impl CopyState {
 
 fn serve_copy(state: &mut CopyState, recorded: &Recorded) -> Reply {
     if recorded.method == Method::HEAD {
-        let Some(object) = state.objects.get(&recorded.key) else {
+        let object = match recorded.value("versionId") {
+            "" => state.objects.get(&recorded.key),
+            version => state.versions.get(&format!("{}?{version}", recorded.key)),
+        };
+        let Some(object) = object else {
             return Reply::new(404, "");
         };
         let mut reply = Reply::new(200, "");
         reply.headers = object.headers.clone();
         set(&mut reply.headers, "etag", &format!("\"etag-{}\"", recorded.key));
-        set(&mut reply.headers, "content-length", &object.data.len().to_string());
+        let size = object.claimed_size.unwrap_or(object.data.len() as u64);
+        set(&mut reply.headers, "content-length", &size.to_string());
         return reply;
     }
     if recorded.method == Method::PUT && !recorded.header("x-amz-copy-source").is_empty() {
@@ -351,8 +360,16 @@ fn serve_copy(state: &mut CopyState, recorded: &Recorded) -> Reply {
             .header("x-amz-copy-source")
             .trim_start_matches("/bucket/")
             .to_owned();
-        let source = source.split('?').next().unwrap_or("").to_owned();
-        let Some(object) = state.objects.get(&source) else {
+        let (source, version) = match source.split_once("?versionId=") {
+            Some((path, version)) => (path.to_owned(), version.to_owned()),
+            None => (source, String::new()),
+        };
+        let found = if version.is_empty() {
+            state.objects.get(&source)
+        } else {
+            state.versions.get(&format!("{source}?{version}"))
+        };
+        let Some(object) = found else {
             return Reply::new(404, "<Error><Code>NoSuchKey</Code></Error>");
         };
         if recorded.header("x-amz-copy-source-if-match") != format!("\"etag-{source}\"") {
@@ -380,21 +397,29 @@ fn serve_copy(state: &mut CopyState, recorded: &Recorded) -> Reply {
             }
         }
         set(&mut headers, "last-modified", "Tue, 20 Oct 2026 15:00:00 GMT");
-        state
-            .objects
-            .insert(recorded.key.clone(), StoredObject { data, headers, tags });
+        let stored = StoredObject {
+            data,
+            headers,
+            tags,
+            claimed_size: None,
+        };
+        state.objects.insert(recorded.key.clone(), stored);
         return Reply::new(200, "<CopyObjectResult/>");
     }
     Reply::new(501, "<Error><Code>NotImplemented</Code></Error>")
 }
 
-fn copy_instance(state: &Shared) -> Arc<Instance> {
+fn copy_backend(state: &Shared) -> Arc<FakeBackend> {
     let shared = state.clone();
     let fake = FakeS3::new(move |recorded| match shared.lock() {
         Ok(mut state) => serve_copy(&mut state, recorded),
         Err(_) => Reply::new(500, ""),
     });
-    instance_of(bucket_config("rw"), FakeBackend::flags(fake, false, false, true, None))
+    FakeBackend::flags(fake, false, false, true, None)
+}
+
+fn copy_instance(state: &Shared) -> Arc<Instance> {
+    instance_of(bucket_config("rw"), copy_backend(state))
 }
 
 fn new_copy_state() -> Shared {
@@ -660,32 +685,99 @@ async fn a_refusal_of_the_edit_makes_the_edit_unavailable() {
     assert_eq!(with_copy(&state, |state| state.copy_headers.len()), 1);
 }
 
-// --- The tests that need the version functions and the copy in parts of the instance ----------------------------
+// --- The copy in parts and the copy of an older version ----------------------------------------------------------
 
+// The decision to copy in parts and the copy in parts are functions of the instance work package: these tests
+// need them.
 #[tokio::test]
 #[ignore = "needs Instance::copies_in_parts and Instance::copy_multipart of the instance work package"]
 async fn the_route_copies_a_large_object_in_parts_with_the_new_metadata() {
     let state = new_copy_state();
     with_copy(&state, |state| {
-        state.put(
-            "tenant/big.bin",
-            &"0123456789".repeat(4),
-            "application/octet-stream",
-            "keep=1",
-        )
+        state.put("tenant/big.bin", "0123456789", "application/octet-stream", "keep=1");
+        if let Some(object) = state.objects.get_mut("tenant/big.bin") {
+            object.claimed_size = Some(6_000_000_000);
+        }
     });
-    let app = app_of(vec![copy_instance(&state)]);
+    let backend = copy_backend(&state);
+    let app = app_of(vec![instance_of(bucket_config("rw"), backend.clone())]);
     let (status, value, text) = metadata_call(&app, Method::GET, "/api/metadata?instance=rw&key=big.bin", None).await;
     assert_eq!(status, 200, "{text}");
     assert_eq!(value["copyInParts"], true);
+    let body = json!({
+        "instance": "rw", "key": "big.bin", "etag": value["etag"],
+        "headers": {"contentType": "application/x-big", "cacheControl": "no-cache"},
+        "metadata": [{"key": "owner", "value": "ops"}],
+    });
+    let (status, _, text) = metadata_call(&app, Method::PUT, "/api/metadata", Some(body)).await;
+    assert_eq!(status, 200, "{text}");
+    let copies = backend.copies.lock().unwrap().clone();
+    assert_eq!(copies.len(), 1);
+    let (source, destination, options) = &copies[0];
+    assert_eq!(
+        (source.as_str(), destination.as_str()),
+        ("tenant/big.bin", "tenant/big.bin")
+    );
+    assert_eq!(options.expected_etag, "etag-tenant/big.bin");
+    let metadata = options.metadata.clone().unwrap();
+    let text = |name: &str| {
+        metadata
+            .get(name)
+            .and_then(|value| value.to_str().ok())
+            .unwrap_or("")
+            .to_owned()
+    };
+    assert_eq!(text("content-type"), "application/x-big");
+    assert_eq!(text("cache-control"), "no-cache");
+    assert_eq!(text("x-amz-meta-owner"), "ops");
+    assert_eq!(text("x-amz-meta-origin"), "");
+    assert_eq!(
+        with_copy(&state, |state| state.copy_headers.len()),
+        0,
+        "a copy in parts sends no CopyObject"
+    );
+    // A wrong ETag stops the copy in parts before any upload.
+    let body = json!({"instance": "rw", "key": "big.bin", "etag": "old", "headers": {}});
+    let (status, ..) = metadata_call(&app, Method::PUT, "/api/metadata", Some(body)).await;
+    assert_eq!(status, 412);
+    assert_eq!(backend.copies.lock().unwrap().len(), 1);
 }
 
 #[tokio::test]
 #[ignore = "needs Instance::head_version of the instance work package"]
 async fn the_route_copies_an_older_version_onto_the_key() {
     let state = new_copy_state();
+    with_copy(&state, |state| {
+        let mut headers = HeaderMap::new();
+        set(&mut headers, "content-type", "text/old");
+        state.versions.insert(
+            "tenant/doc.txt?v1".to_owned(),
+            StoredObject {
+                data: "old".to_owned(),
+                headers,
+                tags: "age=old".to_owned(),
+                claimed_size: None,
+            },
+        );
+    });
     let app = app_of(vec![copy_instance(&state)]);
-    let body = json!({"instance": "rw", "key": "doc.txt", "version": "v1", "etag": "etag-tenant/doc.txt", "headers": {"contentType": "text/markdown"}});
+    let body = json!({
+        "instance": "rw", "key": "doc.txt", "version": "v1", "etag": "etag-tenant/doc.txt",
+        "headers": {"contentType": "text/markdown"},
+    });
     let (status, _, text) = metadata_call(&app, Method::PUT, "/api/metadata", Some(body)).await;
     assert_eq!(status, 200, "{text}");
+    with_copy(&state, |state| {
+        let source = state.copy_headers[0]
+            .get("x-amz-copy-source")
+            .and_then(|value| value.to_str().ok());
+        assert_eq!(source, Some("/bucket/tenant/doc.txt?versionId=v1"));
+        let object = &state.objects["tenant/doc.txt"];
+        assert_eq!(object.data, "old");
+        assert_eq!(
+            object.headers.get("content-type").and_then(|value| value.to_str().ok()),
+            Some("text/markdown")
+        );
+        assert_eq!(object.tags, "age=old");
+    });
 }

@@ -1,5 +1,5 @@
-//! The tests of Object Lock: the S3 requests and documents, the probe, the validation of a request, the rules of the
-//! retention, the route, and the explanation of a refused delete.
+//! The tests of Object Lock. They check the S3 requests and documents, the probe, the validation of a request, the
+//! rules of the retention, the route, and the explanation of a refused delete.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};

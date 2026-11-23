@@ -4,8 +4,8 @@
 //! `Content-Disposition`, `Content-Encoding`, `Content-Language`, `Expires`) and the user metadata (`x-amz-meta-*`).
 //! A header that the request does not give is removed. The tags stay (`x-amz-tagging-directive: COPY`). The copy
 //! names the ETag that the form read, so the provider refuses the copy of an object whose content changed in the
-//! meantime. A change of the metadata only keeps the ETag on SeaweedFS, MinIO and Garage: a HEAD request before the
-//! copy also compares the modification date that the form read. From the threshold of the copy in parts up, the copy
+//! meantime. A change of the metadata only keeps the ETag on SeaweedFS, MinIO and Garage. Thus a HEAD request before
+//! the copy also compares the modification date that the form read. From the threshold of the copy in parts up, the copy
 //! goes in parts and `CreateMultipartUpload` gets the metadata. The copy of an older version makes that version the
 //! current version, as a restore does. Only the S3 back end has the edit: the GCS back end answers 501.
 
@@ -406,8 +406,8 @@ fn is_metadata_key(key: &str) -> bool {
     bytes.all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || matches!(byte, b'.' | b'_' | b'-'))
 }
 
-/// Check the user metadata: a unique key of lowercase letters, digits, `.`, `_` and `-`, a value of printable ASCII,
-/// and the S3 limit of 2 KiB for the sum of the keys and the values.
+/// Check the user metadata. Each key is unique and has lowercase letters, digits, `.`, `_` and `-`. Each value is
+/// printable ASCII. The sum of the keys and the values is at most 2 KiB, the S3 limit.
 pub fn validate_user_metadata(entries: &[MetadataEntry]) -> Result<()> {
     let mut seen: Vec<&str> = Vec::with_capacity(entries.len());
     let mut total = 0usize;
@@ -514,8 +514,8 @@ pub fn stored_metadata(headers: &HeaderMap) -> (ObjectHeaders, Vec<MetadataEntry
     (stored, entries)
 }
 
-/// The headers of the source that the copy must send again, or the provider changes them: the storage class, the
-/// redirect of a website and the server-side encryption with a key of the provider.
+/// The headers of the source that the copy must send again, or the provider changes them. These are the storage
+/// class, the redirect of a website and the server-side encryption with a key of the provider.
 pub fn kept_object_headers(headers: &HeaderMap) -> HeaderMap {
     let mut out = kept_encryption_headers(headers);
     for name in ["x-amz-storage-class", "x-amz-website-redirect-location"] {
@@ -637,7 +637,7 @@ impl Instance {
         }
     }
 
-    async fn head_of_version(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectResponse> {
+    async fn head_for_metadata(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectResponse> {
         if version.trim().is_empty() {
             self.head(ctx, key).await
         } else {
@@ -646,9 +646,8 @@ impl Instance {
     }
 
     /// Give the object, or the version that `version` names, the headers of metadata. `etag` and `modified` are the
-    /// ETag and the modification date that the caller read; a `None` date is not compared. A HEAD request compares
-    /// both, and the copy names the ETag again, so the content of an object that changes between the two requests is
-    /// not overwritten. An older version becomes the current version.
+    /// ETag and the modification date that the caller read. A `None` date is not compared. A HEAD request compares
+    /// both. The copy names the ETag again. Thus an object that changes between the two requests is not overwritten. An older version becomes the current version.
     pub async fn replace_metadata(
         &self,
         ctx: &OpCtx,
@@ -673,7 +672,7 @@ impl Instance {
                 return Err(versioning_unavailable());
             }
         }
-        let head = self.head_of_version(ctx, key, version).await?;
+        let head = self.head_for_metadata(ctx, key, version).await?;
         let stored_etag = head
             .headers
             .get(http::header::ETAG)
@@ -821,7 +820,9 @@ fn is_multipart_etag(etag: &str) -> bool {
 
 /// Read the stored metadata of the object, or of one version of it, with a HEAD request.
 pub async fn metadata_state(ctx: &OpCtx, instance: &Instance, key: &str, version: &str) -> Result<MetadataResponse> {
-    let head = instance.head_of_version(ctx, &instance.full_key(key), version).await?;
+    let head = instance
+        .head_for_metadata(ctx, &instance.full_key(key), version)
+        .await?;
     let headers = head.headers;
     drop(head.body);
     let (stored, entries) = stored_metadata(&headers);

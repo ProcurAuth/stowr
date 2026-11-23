@@ -6,10 +6,10 @@
 //! `usage_garage`, `usage_seaweedfs` and `usage_minio`. AWS S3 has no quota: no reader.
 //!
 //! Cost and safety: each admin request is a read (`GET`), with a time limit of 5 seconds and a size limit for the
-//! answer. The server keeps the result of an instance for 60 seconds (a failure for 10 seconds), and one read at a
-//! time runs for an instance. A request with `fresh=1` (the reload of the page, or the end of a change) reads again
-//! when the result is older than 10 seconds. The token and the URLs of the admin API never go into an answer or a
-//! log line: the errors of the readers name the step and the HTTP status only.
+//! answer. The server keeps the result of an instance for 60 seconds (a failure for 10 seconds). One read at a time
+//! runs for an instance. A request with `fresh=1` (the reload of the page, or the end of a change) reads again when
+//! the result is older than 10 seconds. The token and the URLs of the admin API never go into an answer or a log
+//! line. The errors of the readers name the step and the HTTP status only.
 //!
 //! The numbers are for the whole bucket, also for an instance with a root prefix.
 
@@ -262,7 +262,7 @@ impl Instance {
         self.usage.reader.lock().is_ok_and(|reader| reader.is_some())
     }
 
-    fn usage_reader(&self) -> Option<Arc<dyn BucketUsageReader>> {
+    fn current_usage_reader(&self) -> Option<Arc<dyn BucketUsageReader>> {
         self.usage.reader.lock().ok().and_then(|reader| reader.clone())
     }
 
@@ -273,7 +273,7 @@ impl Instance {
         {
             return source.clone();
         }
-        if let Some(reader) = self.usage_reader()
+        if let Some(reader) = self.current_usage_reader()
             && !reader.source().is_empty()
         {
             return reader.source().to_owned();
@@ -297,7 +297,7 @@ impl Instance {
     /// requests wait for its result. With `fresh`, a result older than 10 seconds is read again. The read does not
     /// stop when the request that started it stops, so the other requests get its result.
     pub async fn usage_read(&self, ctx: &OpCtx, fresh: bool) -> UsageResult {
-        let Some(reader) = self.usage_reader() else {
+        let Some(reader) = self.current_usage_reader() else {
             return UsageResult {
                 error: Some(usage_unsupported()),
                 ..UsageResult::default()
@@ -390,7 +390,7 @@ impl Instance {
         if !self.usage_available() || !self.permitted(PERMISSION_READ) {
             return;
         }
-        let flavour = self.provider_flavour(ctx).await;
+        let flavour = self.probe_flavour(ctx).await;
         let source = self.usage_source();
         if !flavour.is_empty() && flavour != source {
             crate::log!(
@@ -404,9 +404,9 @@ impl Instance {
     }
 }
 
-/// The used part of the limit in percent, with one decimal (the next decimals are cut), and the level: empty without
-/// a limit, `ok`, `warning` from 80 %, `error` from 95 %. With a limit of bytes and a limit of objects, the larger
-/// part applies.
+/// The used part of the limit in percent, with one decimal (the next decimals are cut), and the level. The level is
+/// empty without a limit, `ok`, `warning` from 80 %, or `error` from 95 %. With a limit of bytes and a limit of
+/// objects, the larger part applies.
 pub fn usage_level(value: &BucketUsage) -> (f64, &'static str) {
     let mut ratio = -1.0_f64;
     if value.limit_bytes > 0 && value.used_bytes >= 0 {
@@ -640,8 +640,8 @@ pub fn usage_answer_of(instance: &Instance, result: &UsageResult) -> UsageRespon
 }
 
 /// `GET` gives the usage and the quota of the bucket of an instance (permission read). An instance without a usage
-/// block gives `{"supported": false}`. A failed read gives 200 with `"available": false` and the reason: an answer 502
-/// would tell the page that the server does not answer, and a failure must not break the page.
+/// block gives `{"supported": false}`. A failed read gives 200 with `"available": false` and the reason. An answer
+/// 502 would tell the page that the server does not answer, and a failure must not break the page.
 pub fn handle_usage(app: Arc<App>, req: Req) -> BoxFuture<'static, Response> {
     Box::pin(async move {
         if req.method != http::Method::GET {

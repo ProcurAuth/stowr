@@ -1,5 +1,5 @@
-//! The small helpers that the functions of this folder share: the S3 call seam, the gates of a provider call, the
-//! observed permissions, the XML tree of the provider answers, the MD5 digest, and the quoting of a text.
+//! The small helpers that the functions of this folder share. They are the S3 call seam, the gates of a provider
+//! call, the observed permissions, the XML tree of the provider answers, the MD5 digest, and the quoting of a text.
 
 use std::fmt::Write as _;
 

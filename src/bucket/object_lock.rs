@@ -452,7 +452,7 @@ pub fn retention_change(current: Option<&Retention>, next: &Retention, now: Time
 }
 
 /// The answer of the API for the refusal of a change. A provider that refuses for the lock answers 403 on
-/// SeaweedFS and 400 on MinIO: the refusal does not change the write permission of the instance.
+/// SeaweedFS and 400 on MinIO. The refusal does not change the write permission of the instance.
 fn object_lock_write_error(error: Error, part: &str) -> Error {
     let Some(upstream) = error.as_upstream() else {
         return error;
@@ -514,7 +514,7 @@ impl Instance {
         default_json(&configuration)
     }
 
-    fn object_lock_manager(&self) -> Result<&dyn ObjectLockManager> {
+    fn lock_manager(&self) -> Result<&dyn ObjectLockManager> {
         match self.backend.object_lock() {
             Some(manager) if self.object_lock.on.load(Ordering::SeqCst) => Ok(manager),
             _ => Err(object_lock_unsupported()),
@@ -524,7 +524,7 @@ impl Instance {
     /// Read the retention and the legal hold of the version (the current version for an empty version). The caller
     /// holds no slot of the gates.
     pub async fn read_object_lock(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectLockState> {
-        let manager = self.object_lock_manager()?;
+        let manager = self.lock_manager()?;
         let retention = {
             let _slot = begin_request(self, ctx).await?;
             manager.retention(ctx, key, version).await?
@@ -564,7 +564,7 @@ impl Instance {
         version: &str,
         change: &ObjectLockChange,
     ) -> Result<()> {
-        let manager = self.object_lock_manager()?;
+        let manager = self.lock_manager()?;
         let current = self.read_object_lock(ctx, key, version).await?;
         let now = Timestamp::now();
         if let Some(next) = &change.retention {
@@ -708,8 +708,8 @@ fn valid_version_id(version: &str) -> bool {
     !version.is_empty() && version.len() <= MAX_OBJECT_LOCK_VERSION_BYTES && printable_ascii(version)
 }
 
-/// Check the request without the provider: the version, a closed set of modes, and a retain-until date in the
-/// future and not later than 36500 days from now.
+/// Check the request without the provider. The version must be valid, and the mode must be in a closed set. The
+/// retain-until date must be in the future and at most 36500 days from now.
 pub fn validate_object_lock_request(request: &ObjectLockRequest, now: Timestamp) -> Result<ObjectLockChange> {
     if !valid_version_id(&request.version) {
         return Err(invalid_object_lock(
@@ -768,7 +768,7 @@ pub async fn object_lock_response_for(
     key: &str,
     version: &str,
 ) -> Result<ObjectLockResponse> {
-    let manager = instance.object_lock_manager()?;
+    let manager = instance.lock_manager()?;
     let full = instance.full_key(key);
     let mut version = version.to_owned();
     if version.is_empty() {

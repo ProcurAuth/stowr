@@ -1,4 +1,4 @@
-//! The capacity of the storage behind the buckets, for the usage readers that can read it. The numbers are raw: the
+//! The capacity of the storage behind the buckets, for the usage readers that can read it. The numbers are raw. The
 //! replication or the erasure code of the provider uses more than one byte of the disks for one byte of an object.
 //! Each request is a `GET` of the admin API of the `usage` block, with the same credentials and the same size limits.
 //!
@@ -9,7 +9,7 @@
 //!   `Topology: {DataCenters: [{Racks: [{DataNodes: [{Url, PublicUrl, Max, ...}]}]}]}` with the counts of volumes.
 //!   `GET http://<volume server>/status` gives `DiskStatuses: [{dir, all, used, free, percent_used}]`: the file
 //!   system of each folder of the volume server. A volume server that listens on a loopback address is on the host
-//!   of the master: the reader asks the host of the master, at the port of the volume server.
+//!   of the master. The reader then asks the host of the master, at the port of the volume server.
 //! - MinIO RELEASE.2025-10-15T17-29-55Z: `GET /minio/admin/v3/storageinfo` gives `Disks: [{state, totalspace,
 //!   usedspace, availspace, ...}]` and `Backend: {StandardSCParity, ...}`. `usedspace` + `availspace` can be less
 //!   than `totalspace`: the file system keeps blocks for itself.

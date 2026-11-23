@@ -1,5 +1,5 @@
-//! The tests of the usage: the readers of Garage, SeaweedFS and MinIO, the limits and the failures of the admin
-//! requests, the cache and the single read, the levels, the answers and the route.
+//! The tests of the usage. They check the readers of Garage, SeaweedFS and MinIO, and the limits and the failures of
+//! the admin requests. They also check the cache, the single read, the levels, the answers and the route.
 
 use std::sync::atomic::{AtomicI64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};

@@ -1,5 +1,5 @@
-//! The tests of the encryption: the headers of the writes, the default encryption of the bucket, the probe, the route,
-//! and the objects with a key of the client.
+//! The tests of the encryption. They check the headers of the writes, the default encryption of the bucket, the
+//! probe, the route, and the objects with a key of the client.
 
 use std::sync::Arc;
 
@@ -48,7 +48,7 @@ fn sse_s3(mode: Encryption) -> BucketConfig {
 const BUCKET_ENCRYPTION_KMS: &str = "<ServerSideEncryptionConfiguration><Rule><ApplyServerSideEncryptionByDefault><SSEAlgorithm>aws:kms</SSEAlgorithm><KMSMasterKeyID>arn:k</KMSMasterKeyID></ApplyServerSideEncryptionByDefault><BucketKeyEnabled>true</BucketKeyEnabled></Rule></ServerSideEncryptionConfiguration>";
 const BUCKET_ENCRYPTION_AES: &str = "<ServerSideEncryptionConfiguration xmlns=\"http://s3.amazonaws.com/doc/2006-03-01/\"><Rule><ApplyServerSideEncryptionByDefault><SSEAlgorithm>AES256</SSEAlgorithm></ApplyServerSideEncryptionByDefault><BucketKeyEnabled>false</BucketKeyEnabled></Rule></ServerSideEncryptionConfiguration>";
 const BUCKET_ENCRYPTION_GARAGE: &str = "<Error><Code>NotImplemented</Code><Message>Unimplemented action: GetBucketEncryption</Message><Resource>/default</Resource><Region>garage</Region></Error>";
-const NO_ENCRYPTION: &str = "<Error><Code>ServerSideEncryptionConfigurationNotFoundError</Code><Message>The server side encryption configuration was not found</Message></Error>";
+const NO_ENCRYPTION: &str = "<Error><Code>ServerSideEncryptionConfigurationNotFoundError</Code><Message>The server side encryption configuration does not exist</Message></Error>";
 
 // --- The headers of the writes -----------------------------------------------------------------------------------
 

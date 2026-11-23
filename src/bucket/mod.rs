@@ -1,10 +1,10 @@
-//! The protection and the facts of the objects and of the buckets: Object Lock, the encryption, the edit of the
-//! metadata, and the usage and the quota of a bucket with the capacity of its storage (docs/ARCHITECTURE.md,
-//! "Object Lock", "Encryption", "Edit of the metadata", "Usage and quota of a bucket").
+//! The protection and the facts of the objects and of the buckets. This folder has four functions: Object Lock, the
+//! encryption, the edit of the metadata, and the usage and the quota of a bucket with the capacity of its storage
+//! (docs/ARCHITECTURE.md, "Object Lock", "Encryption", "Edit of the metadata", "Usage and quota of a bucket").
 //!
-//! This work package owns the routes `/api/object-lock`, `/api/encryption`, `/api/metadata` and `/api/usage`, the
-//! start probes of these functions, the usage readers of Garage, SeaweedFS and MinIO, and the S3 requests of these
-//! functions.
+//! This work package owns the routes `/api/object-lock`, `/api/encryption`, `/api/metadata` and `/api/usage`. It also
+//! owns the start probes of these functions and the usage readers of Garage, SeaweedFS and MinIO. It sends the S3
+//! requests of these functions.
 //!
 //! The provider client gives the S3 requests through `S3Backend::send`. It also gives the admin requests of the
 //! usage readers through an [`AdminTransport`], and it builds the reader of an `auth` block with

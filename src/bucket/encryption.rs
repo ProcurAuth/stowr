@@ -3,14 +3,14 @@
 //! The display: a HEAD answer gives the encryption of an object. `x-amz-server-side-encryption` is `AES256` for
 //! SSE-S3 or `aws:kms` for SSE-KMS, with the KMS key id. The details get these headers through `GET
 //! /api/media-info`, as the other headers of the object. A provider does not let a client read an object with a key
-//! of the client (SSE-C) without that key: it refuses the HEAD and the GET with 400. The server does not ask for such
+//! of the client (SSE-C) without that key. It refuses the HEAD and the GET with 400. The server does not ask for such
 //! a key. The details then say that the object has a key of the client. `GET /api/encryption` gives the default
 //! encryption of the bucket (`GetBucketEncryption`). The start probe reads it one time. A provider without the
 //! request (Garage answers 501) hides it.
 //!
 //! The writes: the key `bucket.encryption = "sse-s3"` adds `x-amz-server-side-encryption: AES256` to each request
-//! that writes an object: `PutObject`, `CreateMultipartUpload` (uploads and copies in parts) and `CopyObject` (copy,
-//! move, rename, edit of the metadata, restore of a version). A copy without this header gets the default
+//! that writes an object. These requests are `PutObject`, `CreateMultipartUpload` (uploads and copies in parts) and
+//! `CopyObject` (copy, move, rename, edit of the metadata, restore of a version). A copy without this header gets the default
 //! encryption of the destination bucket, so an object can lose its encryption in a copy. An edit of the metadata
 //! and a restore keep the SSE-S3 or SSE-KMS headers of their source. The key does not apply to `UploadPart` and
 //! `UploadPartCopy`: S3 takes the encryption of a multipart upload from its creation.
@@ -191,9 +191,9 @@ impl EncryptionReader for S3Backend {
 // --- The instance -------------------------------------------------------------------------------------------------
 
 impl Instance {
-    /// The default encryption of the bucket at start (`AES256`, `aws:kms` or `aws:kms:dsse`; empty when the bucket
-    /// has none), and what the provider does with the encryption of the writes (`yes`, `no`, `unknown`; empty for an
-    /// instance without the key). The page shows a lock next to the name of the bucket from these two facts.
+    /// The default encryption of the bucket at start, and what the provider does with the encryption of the writes.
+    /// The first text is `AES256`, `aws:kms` or `aws:kms:dsse`, or empty when the bucket has none. The second text is
+    /// `yes`, `no` or `unknown`, or empty for an instance without the key. The page shows a lock from these two facts.
     pub fn encryption_state(&self) -> (String, String) {
         self.encryption
             .state
@@ -208,7 +208,7 @@ impl Instance {
     }
 
     /// The provider of the instance. The lifecycle probe keeps it; without it, the back end tells it.
-    pub(crate) async fn provider_flavour(&self, ctx: &OpCtx) -> String {
+    pub(crate) async fn probe_flavour(&self, ctx: &OpCtx) -> String {
         if let Ok(inner) = self.rules.inner.lock()
             && !inner.flavour.is_empty()
         {
@@ -243,7 +243,7 @@ impl Instance {
         };
         let mut applied = String::new();
         if self.cfg.encryption == Encryption::SseS3 {
-            let flavour = self.provider_flavour(&probe).await;
+            let flavour = self.probe_flavour(&probe).await;
             applied = sse_s3_provider_applied(&flavour).to_owned();
             if applied.is_empty() {
                 applied = ENCRYPTION_APPLIED_UNKNOWN.to_owned();
@@ -287,8 +287,8 @@ fn bucket_encryption_unsupported() -> Error {
 // --- Objects with a key of the client (SSE-C) ---------------------------------------------------------------------
 
 /// True for the refusal of a read of an object with a key of the client. The providers answer 400 with different
-/// texts: SeaweedFS "Customer provided keys must provide the customer key", Garage "Object is encrypted", AWS and
-/// MinIO "The object was stored using a form of Server Side Encryption". The answer to a HEAD has no text.
+/// texts. SeaweedFS says "Customer provided keys must provide the customer key". Garage says "Object is encrypted".
+/// AWS and MinIO say "The object is stored with a form of Server Side Encryption". The answer to a HEAD has no text.
 pub fn customer_key_refusal(error: &Error) -> bool {
     let Some(upstream) = error.as_upstream() else {
         return false;

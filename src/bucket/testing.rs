@@ -1,5 +1,5 @@
-//! The helpers of the tests of this folder: a fake S3 provider, a back end that exposes it, a fake admin API, and
-//! the construction of an application, of instances and of requests.
+//! The helpers of the tests of this folder. They are a fake S3 provider, a back end that exposes it, and a fake admin
+//! API. They also build an application, instances and requests.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
@@ -20,7 +20,10 @@ use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Body, Req, Response, empty, full, read_limited};
 use crate::common::query::Query;
-use crate::common::storage::{Backend, DiscoveredCapabilities, ListOptions, ListPage, ObjectResponse};
+use crate::common::storage::{
+    Backend, DiscoveredCapabilities, ListOptions, ListPage, MultipartCopier, MultipartCopyOptions, ObjectResponse,
+    ObjectVersionPage, VersionStore,
+};
 use crate::instance::Instance;
 use crate::instance::gate::Gate;
 use crate::provider::s3::{S3Answer, S3Request};
@@ -218,6 +221,8 @@ pub struct FakeBackend {
     pub get_fn: Mutex<Option<ReadFn>>,
     /// A listing that replaces the listing of the memory.
     pub list_fn: Mutex<Option<ListFn>>,
+    /// The copies in parts that the back end received: the source, the destination and the options.
+    pub copies: Mutex<Vec<(String, String, MultipartCopyOptions)>>,
 }
 
 impl FakeBackend {
@@ -233,6 +238,7 @@ impl FakeBackend {
             head_fn: Mutex::new(None),
             get_fn: Mutex::new(None),
             list_fn: Mutex::new(None),
+            copies: Mutex::new(Vec::new()),
         })
     }
 
@@ -248,6 +254,7 @@ impl FakeBackend {
             head_fn: Mutex::new(None),
             get_fn: Mutex::new(None),
             list_fn: Mutex::new(None),
+            copies: Mutex::new(Vec::new()),
         })
     }
 
@@ -346,6 +353,14 @@ impl Backend for FakeBackend {
 
     fn metadata_editor(&self) -> Option<&dyn MetadataEditor> {
         self.metadata.then_some(self as &dyn MetadataEditor)
+    }
+
+    fn multipart_copier(&self) -> Option<&dyn MultipartCopier> {
+        Some(self)
+    }
+
+    fn version_store(&self) -> Option<&dyn VersionStore> {
+        Some(self)
     }
 
     fn bucket_rules(&self) -> Option<&dyn crate::lifecycle::BucketRules> {
@@ -604,5 +619,77 @@ impl crate::lifecycle::BucketRules for FakeBackend {
     fn provider_flavour<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<String>> {
         let flavour = self.flavour.clone().unwrap_or_default();
         Box::pin(async move { Ok(flavour) })
+    }
+}
+
+impl MultipartCopier for FakeBackend {
+    fn copy_multipart<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        source: &'a str,
+        destination: &'a str,
+        options: MultipartCopyOptions,
+    ) -> BoxFuture<'a, Result<()>> {
+        if let Ok(mut list) = self.copies.lock() {
+            list.push((source.to_owned(), destination.to_owned(), options));
+        }
+        Box::pin(async { Ok(()) })
+    }
+}
+
+impl VersionStore for FakeBackend {
+    fn list_versions<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        _key: &'a str,
+        _page_token: &'a str,
+        _maximum: u32,
+    ) -> BoxFuture<'a, Result<ObjectVersionPage>> {
+        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+    }
+
+    fn head_version<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        key: &'a str,
+        version: &'a str,
+    ) -> BoxFuture<'a, Result<ObjectResponse>> {
+        Box::pin(async move {
+            let reply = self.s3.serve(Recorded {
+                method: Method::HEAD,
+                key: key.to_owned(),
+                query: vec![("versionId".to_owned(), version.to_owned())],
+                headers: HeaderMap::new(),
+                body: String::new(),
+            });
+            if reply.status >= 300 {
+                return Err(Error::upstream(reply.status, "", ""));
+            }
+            Ok(object_response(reply.status, reply.headers, ""))
+        })
+    }
+
+    fn get_version<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        _key: &'a str,
+        _version: &'a str,
+        _headers: &'a HeaderMap,
+    ) -> BoxFuture<'a, Result<ObjectResponse>> {
+        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+    }
+
+    fn delete_version<'a>(&'a self, _ctx: &'a OpCtx, _key: &'a str, _version: &'a str) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+    }
+
+    fn restore_version<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        _key: &'a str,
+        _version: &'a str,
+        _extra: &'a HeaderMap,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
     }
 }

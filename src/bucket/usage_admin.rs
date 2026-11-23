@@ -1,5 +1,5 @@
-//! The admin requests of the usage readers: the transport seam, the URL of an admin API, the error that names the
-//! step and the status but never the URL, and the read of a size-limited JSON answer.
+//! The admin requests of the usage readers. This file has the transport seam and the URL of an admin API. It also has
+//! the error that names the step and the status but never the URL, and the read of a JSON answer with a size limit.
 //!
 //! Each admin request is a read (`GET`), with a time limit and a size limit for the answer. The token and the URL of
 //! the admin API never go into an error text: an error names the step and the HTTP status only.
@@ -137,7 +137,7 @@ pub async fn get_usage_json<T: DeserializeOwned>(
     let answer = match outcome {
         Ok(Ok(answer)) => answer,
         Ok(Err(failure)) => return Err(transport_error(step, failure)),
-        Err(Error::Canceled) => return Err(AdminError::message(format!("{step}: the request was canceled"))),
+        Err(Error::Canceled) => return Err(AdminError::message(format!("{step}: the request is canceled"))),
         Err(_) => return Err(transport_error(step, AdminFailure::Timeout)),
     };
     if answer.status != 200 {
