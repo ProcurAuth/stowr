@@ -260,7 +260,7 @@ fn row_matches(record: &Record, filters: &HashMap<i64, String>, global_search: &
 
 // --- the dates ---------------------------------------------------------------------------------------------------
 
-/// The text of a date serial of a workbook: `2006-01-02`, or `2006-01-02T15:04:05Z` when it has a time.
+/// The text of a date serial of a workbook: `1994-11-06`, or `1994-11-06T08:49:37Z` when it has a time.
 pub fn format_serial_date(serial: f64) -> String {
     let seconds = (serial * 24.0 * 60.0 * 60.0).round();
     // The epoch of the serials is 1899-12-30, 25569 days before 1970-01-01.

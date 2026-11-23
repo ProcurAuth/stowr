@@ -1,4 +1,4 @@
-//! The test kit: an in-memory back end and the helpers that the tests of each work package share.
+//! The test kit: an in-memory back end and the helpers that the tests of each module share.
 //!
 //! [`MemoryBackend`] acts as a small S3 provider: a listing with or without a delimiter (no page limit, as the
 //! tests expect), exact and suffix byte ranges, the S3 multipart upload and the list of its parts, and the versions

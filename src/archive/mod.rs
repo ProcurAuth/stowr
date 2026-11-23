@@ -2,7 +2,7 @@
 //! folder, the read of one entry, the extraction of entries to objects and the integrity of entries
 //! (docs/ARCHITECTURE.md, "Archive extraction"; docs/SECURITY.md, "Archive members").
 //!
-//! The ZIP reader of this work package is also the reader of the Office Open XML, EPUB, JAR and APK previews.
+//! The ZIP reader of this module is also the reader of the Office Open XML, EPUB, JAR and APK previews.
 //!
 //! - [`zip`]: [`zip::ZipReader`] (the central directory, the entries, the entry streams) and
 //!   [`zip::writer::ZipWriter`].
@@ -92,7 +92,7 @@ pub struct ArchiveEntryIntegrityResult {
     pub crc32_matches: bool,
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/archive", RouteAccess::HandlerAsks, handle_archive),

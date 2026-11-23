@@ -287,7 +287,7 @@ pub fn detect_kind(key: &str, content_type: &str) -> &'static str {
     kind::detect_kind(key, content_type)
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn own_routes() -> Vec<Route> {
     vec![
         route("/s3", RouteAccess::HandlerAsks, handle_object_gateway),

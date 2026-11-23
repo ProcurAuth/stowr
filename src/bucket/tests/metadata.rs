@@ -687,8 +687,8 @@ async fn a_refusal_of_the_edit_makes_the_edit_unavailable() {
 
 // --- The copy in parts and the copy of an older version ----------------------------------------------------------
 
-// The decision to copy in parts and the copy in parts are functions of the instance work package: these tests
-// need them.
+// The decision to copy in parts and the copy in parts are functions of the module `instance`: these tests need
+// them.
 #[tokio::test]
 async fn the_route_copies_a_large_object_in_parts_with_the_new_metadata() {
     let state = new_copy_state();

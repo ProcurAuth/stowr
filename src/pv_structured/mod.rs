@@ -48,7 +48,7 @@ use crate::common::http::{Route, RouteAccess, route};
 pub use metadata::{StructuredMetadata, inspect_structured_metadata};
 pub use routes::{handle_archive_preview, handle_structured_preview};
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route(

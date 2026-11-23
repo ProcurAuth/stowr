@@ -362,7 +362,7 @@ mod tests {
         let mut headers = HeaderMap::new();
         headers.insert("Range", "bytes=0-9".parse().unwrap());
         headers.insert("If-Match", "\"abc\"".parse().unwrap());
-        headers.insert("If-Unmodified-Since", "Mon, 02 Jan 2006 15:04:05 GMT".parse().unwrap());
+        headers.insert("If-Unmodified-Since", "Sun, 06 Nov 1994 08:49:37 GMT".parse().unwrap());
         let clean = without_version_preconditions(&headers);
         assert_eq!(clean.get("Range").unwrap(), "bytes=0-9");
         assert!(clean.get("If-Match").is_none());

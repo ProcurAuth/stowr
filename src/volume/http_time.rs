@@ -1,6 +1,6 @@
 //! The dates of the conditional headers of a read. A client can send an HTTP date in three forms: the standard form
-//! (`Mon, 02 Jan 2006 15:04:05 GMT`), the old form with a long day name and a two-digit year (`Monday, 02-Jan-06
-//! 15:04:05 GMT`), and the form of the C library (`Mon Jan  2 15:04:05 2006`).
+//! (`Sun, 06 Nov 1994 08:49:37 GMT`), the old form with a long day name and a two-digit year (`Sunday, 06-Nov-94
+//! 08:49:37 GMT`), and the form of the C library (`Sun Nov  6 08:49:37 1994`).
 
 use crate::common::time::Timestamp;
 
@@ -53,7 +53,7 @@ fn seconds(year: i64, month: i64, day: i64, clock: &str) -> Option<i64> {
     Some(days_from_civil(year, month, day) * 86_400 + hour * 3600 + minute * 60 + second)
 }
 
-/// `Monday, 02-Jan-06 15:04:05 GMT`.
+/// `Sunday, 06-Nov-94 08:49:37 GMT`.
 fn parse_old_form(text: &str) -> Option<i64> {
     let (weekday, rest) = text.split_once(", ")?;
     if weekday.is_empty() {
@@ -75,7 +75,7 @@ fn parse_old_form(text: &str) -> Option<i64> {
     seconds(year, month, day, clock)
 }
 
-/// `Mon Jan  2 15:04:05 2006`.
+/// `Sun Nov  6 08:49:37 1994`.
 fn parse_c_form(text: &str) -> Option<i64> {
     let parts: Vec<&str> = text.split_whitespace().collect();
     let [_weekday, month, day, clock, year] = parts.as_slice() else {
@@ -98,10 +98,10 @@ mod tests {
 
     #[test]
     fn the_three_forms_of_an_http_date_give_the_same_second() {
-        let expected = Some(1_136_214_245);
-        assert_eq!(parse_http_seconds("Mon, 02 Jan 2006 15:04:05 GMT"), expected);
-        assert_eq!(parse_http_seconds("Monday, 02-Jan-06 15:04:05 GMT"), expected);
-        assert_eq!(parse_http_seconds("Mon Jan  2 15:04:05 2006"), expected);
+        let expected = Some(784_111_777);
+        assert_eq!(parse_http_seconds("Sun, 06 Nov 1994 08:49:37 GMT"), expected);
+        assert_eq!(parse_http_seconds("Sunday, 06-Nov-94 08:49:37 GMT"), expected);
+        assert_eq!(parse_http_seconds("Sun Nov  6 08:49:37 1994"), expected);
     }
 
     #[test]
@@ -109,8 +109,8 @@ mod tests {
         for text in [
             "",
             "yesterday",
-            "Mon, 32 Jan 2006 15:04:05 GMT",
-            "Monday, 02-Foo-06 15:04:05 GMT",
+            "Sun, 32 Nov 1994 08:49:37 GMT",
+            "Sunday, 06-Foo-94 08:49:37 GMT",
         ] {
             assert_eq!(parse_http_seconds(text), None, "{text}");
         }

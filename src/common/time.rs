@@ -130,7 +130,7 @@ impl Timestamp {
         out.push_str(&format!("{sign}{:02}:{:02}", minutes / 60, minutes % 60));
     }
 
-    /// RFC 3339 with seconds: `2006-01-02T15:04:05Z`.
+    /// RFC 3339 with seconds: `1994-11-06T08:49:37Z`.
     pub fn rfc3339(self) -> String {
         let (year, month, day, hour, minute, second) = self.local_parts();
         let mut out = format!("{year:04}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}");
@@ -151,7 +151,7 @@ impl Timestamp {
         out
     }
 
-    /// The HTTP date in UTC: `Mon, 02 Jan 2006 15:04:05 GMT`.
+    /// The HTTP date in UTC: `Sun, 06 Nov 1994 08:49:37 GMT`.
     pub fn http_date(self) -> String {
         let utc = self.utc();
         let (year, month, day, hour, minute, second) = utc.local_parts();
@@ -160,13 +160,13 @@ impl Timestamp {
         format!("{weekday}, {day:02} {month_name} {year:04} {hour:02}:{minute:02}:{second:02} GMT")
     }
 
-    /// The log form in UTC: `2006/01/02 15:04:05`.
+    /// The log form in UTC: `1994/11/06 08:49:37`.
     pub fn log_form(self) -> String {
         let (year, month, day, hour, minute, second) = self.utc().local_parts();
         format!("{year:04}/{month:02}/{day:02} {hour:02}:{minute:02}:{second:02}")
     }
 
-    /// Read an RFC 3339 time: `2006-01-02T15:04:05[.fraction](Z|+hh:mm|-hh:mm)`. A text in another form gives
+    /// Read an RFC 3339 time: `1994-11-06T08:49:37[.fraction](Z|+hh:mm|-hh:mm)`. A text in another form gives
     /// `None`.
     pub fn parse_rfc3339(text: &str) -> Option<Self> {
         let bytes = text.as_bytes();
@@ -238,7 +238,7 @@ impl Timestamp {
         })
     }
 
-    /// Read an HTTP date in the IMF-fixdate form: `Mon, 02 Jan 2006 15:04:05 GMT`.
+    /// Read an HTTP date in the IMF-fixdate form: `Sun, 06 Nov 1994 08:49:37 GMT`.
     pub fn parse_http_date(text: &str) -> Option<Self> {
         let parts: Vec<&str> = text.split(' ').collect();
         let [weekday, day, month, year, clock, zone] = parts.as_slice() else {
@@ -303,13 +303,13 @@ mod tests {
 
     #[test]
     fn forms_of_a_time() {
-        let time = Timestamp::parse_rfc3339("2006-01-02T15:04:05.120Z").unwrap();
-        assert_eq!(time.rfc3339(), "2006-01-02T15:04:05Z");
-        assert_eq!(time.rfc3339_nano(), "2006-01-02T15:04:05.12Z");
-        assert_eq!(time.http_date(), "Mon, 02 Jan 2006 15:04:05 GMT");
-        assert_eq!(time.log_form(), "2006/01/02 15:04:05");
+        let time = Timestamp::parse_rfc3339("1994-11-06T08:49:37.120Z").unwrap();
+        assert_eq!(time.rfc3339(), "1994-11-06T08:49:37Z");
+        assert_eq!(time.rfc3339_nano(), "1994-11-06T08:49:37.12Z");
+        assert_eq!(time.http_date(), "Sun, 06 Nov 1994 08:49:37 GMT");
+        assert_eq!(time.log_form(), "1994/11/06 08:49:37");
         assert_eq!(
-            Timestamp::parse_http_date("Mon, 02 Jan 2006 15:04:05 GMT")
+            Timestamp::parse_http_date("Sun, 06 Nov 1994 08:49:37 GMT")
                 .unwrap()
                 .secs,
             time.secs

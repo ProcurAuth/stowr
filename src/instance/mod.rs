@@ -6,7 +6,7 @@
 //! "Permission enforcement"). The instance also gives the version functions, the multipart functions, the start
 //! probes of the versioning, and the public facts of `/api/instances`.
 //!
-//! The feature work packages add their methods to `Instance` in their own folders (`impl Instance` blocks), and
+//! The feature modules add their methods to `Instance` in their own folders (`impl Instance` blocks), and
 //! keep their state in the fields that this structure gives them.
 
 pub mod budget;
@@ -94,19 +94,19 @@ pub struct Instance {
     pub batch_delete_off: AtomicBool,
     /// The source size from which a copy goes in parts (see [`multipart_copy_threshold`]).
     pub copy_threshold: AtomicI64,
-    /// The state of the tags (work package `lifecycle`).
+    /// The state of the tags (module `lifecycle`).
     pub tags: crate::lifecycle::TagsState,
-    /// The state of the lifecycle editor and of the bucket facts (work package `lifecycle`).
+    /// The state of the lifecycle editor and of the bucket facts (module `lifecycle`).
     pub rules: crate::lifecycle::RulesState,
-    /// The state of the list of the incomplete uploads (work package `uploads`).
+    /// The state of the list of the incomplete uploads (module `uploads`).
     pub multiparts: crate::uploads::MultipartsState,
-    /// The state of Object Lock (work package `bucket`).
+    /// The state of Object Lock (module `bucket`).
     pub object_lock: crate::bucket::ObjectLockCapability,
-    /// The state of the default encryption (work package `bucket`).
+    /// The state of the default encryption (module `bucket`).
     pub encryption: crate::bucket::EncryptionCapability,
-    /// The state of the edit of the metadata (work package `bucket`).
+    /// The state of the edit of the metadata (module `bucket`).
     pub metadata: crate::bucket::MetadataCapability,
-    /// The reader and the cache of the usage (work package `bucket`).
+    /// The reader and the cache of the usage (module `bucket`).
     pub usage: crate::bucket::UsageCapability,
 }
 

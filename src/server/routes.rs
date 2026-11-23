@@ -1,4 +1,4 @@
-//! The route table of the service: each work package gives its routes, and the server registers them one time.
+//! The route table of the service: each module gives its routes, and the server registers them one time.
 //!
 //! A pattern that ends with `/` is a subtree (`/api/jobs/`); another pattern is an exact path; `/` takes each other
 //! path. The longest pattern that matches wins. `/s3` and `/-/` come before the other routes, with the path as the
@@ -6,7 +6,7 @@
 
 use crate::common::http::Route;
 
-/// The route table: each route of each work package.
+/// The route table: each route of each module.
 pub fn table() -> Vec<Route> {
     let mut routes = Vec::with_capacity(64);
     routes.extend(super::own_routes());

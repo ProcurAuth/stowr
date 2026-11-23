@@ -261,7 +261,7 @@ impl JobRun {
     }
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/jobs", RouteAccess::TokenOnly, handle_job_collection),

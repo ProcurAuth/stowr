@@ -1,7 +1,4 @@
 //! The tests of the archive routes and of the archive jobs, over the memory back end.
-//!
-//! The test that runs whole jobs is marked `ignore` until the job manager serves: run it with
-//! `cargo test -- --ignored`. The same rules have tests over an archive in memory here.
 
 use std::collections::BTreeMap;
 use std::future::Future;

@@ -437,7 +437,7 @@ pub struct DateTime {
 }
 
 impl DateTime {
-    /// The RFC 3339 form in UTC: `2006-01-02T15:04:05Z`.
+    /// The RFC 3339 form in UTC: `1994-11-06T08:49:37Z`.
     pub fn rfc3339(&self) -> String {
         format!(
             "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",

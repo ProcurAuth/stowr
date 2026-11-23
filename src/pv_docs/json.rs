@@ -353,7 +353,7 @@ fn pop_stack(stack: &mut String, close: u8) -> Result<()> {
 
 /// Where the beautified text goes: the page or the counter of the summary.
 trait Sink {
-    fn rune(&mut self, value: char);
+    fn character(&mut self, value: char);
     fn text(&mut self, value: &str);
     fn newline(&mut self, depth: usize);
 }
@@ -366,7 +366,7 @@ struct PageText {
 }
 
 impl Sink for PageText {
-    fn rune(&mut self, value: char) {
+    fn character(&mut self, value: char) {
         self.text.push(value);
     }
 
@@ -419,7 +419,7 @@ impl PageCounter {
 }
 
 impl Sink for PageCounter {
-    fn rune(&mut self, value: char) {
+    fn character(&mut self, value: char) {
         self.page_bytes += i64::try_from(value.len_utf8()).unwrap_or(4);
         if value == '\n' {
             self.line += 1;
@@ -445,7 +445,7 @@ fn is_json_space(value: char) -> bool {
 /// Write one character of the beautified text and change the state.
 fn beautify_rune<S: Sink>(state: &mut TextCursor, sink: &mut S, value: char) -> Result<()> {
     if state.in_string {
-        sink.rune(value);
+        sink.character(value);
         if state.escaped {
             state.escaped = false;
         } else if value == '\\' {
@@ -459,7 +459,7 @@ fn beautify_rune<S: Sink>(state: &mut TextCursor, sink: &mut S, value: char) -> 
         if is_json_space(value) || matches!(value, ',' | ']' | '}') {
             state.in_scalar = false;
         } else {
-            sink.rune(value);
+            sink.character(value);
             return Ok(());
         }
     }
@@ -471,7 +471,7 @@ fn beautify_rune<S: Sink>(state: &mut TextCursor, sink: &mut S, value: char) -> 
         if state.pending == b'o' && !state.stack.is_empty() && matching_close(top) == low_byte(value) {
             state.pending = 0;
             pop_stack(&mut state.stack, low_byte(value))?;
-            sink.rune(value);
+            sink.character(value);
             return Ok(());
         }
         sink.newline(state.stack.len());
@@ -481,26 +481,26 @@ fn beautify_rune<S: Sink>(state: &mut TextCursor, sink: &mut S, value: char) -> 
         '"' => {
             state.in_string = true;
             state.escaped = false;
-            sink.rune(value);
+            sink.character(value);
         }
         '{' | '[' => {
-            sink.rune(value);
+            sink.character(value);
             push_stack(&mut state.stack, value)?;
             state.pending = b'o';
         }
         ',' => {
-            sink.rune(value);
+            sink.character(value);
             state.pending = b'c';
         }
         ':' => sink.text(": "),
         '}' | ']' => {
             pop_stack(&mut state.stack, low_byte(value))?;
             sink.newline(state.stack.len());
-            sink.rune(value);
+            sink.character(value);
         }
         _ => {
             state.in_scalar = true;
-            sink.rune(value);
+            sink.character(value);
         }
     }
     Ok(())
@@ -727,7 +727,7 @@ async fn summary(app: &App, req: &Call) -> Result<Response> {
                 };
             }
         }
-        raw_counter.rune(value);
+        raw_counter.character(value);
         raw_counter.finish_input_rune();
         beautify_rune(&mut beautify_state, &mut beautify_counter, value)?;
         beautify_counter.finish_input_rune();

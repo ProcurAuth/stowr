@@ -176,7 +176,7 @@ pub struct RulesInner {
     pub facts_running: bool,
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/tags", RouteAccess::HandlerAsks, handle_tags),

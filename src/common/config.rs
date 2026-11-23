@@ -1,8 +1,8 @@
 //! The typed configuration.
 //!
-//! The work package `config` reads the HCL file one time at start into these structures. The rest of the program
-//! reads only these structures (docs/CONFIGURATION.md, docs/configuration-reference.md). The schema of the file is
-//! fixed: a change of these structures needs the agreement of the coordinator.
+//! The module `config` reads the HCL file one time at start into these structures. The rest of the program
+//! reads only these structures (docs/CONFIGURATION.md, docs/configuration-reference.md). The structures follow the
+//! schema of the file: change the two together.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

@@ -2,7 +2,7 @@
 //! encryption, the edit of the metadata, and the usage and the quota of a bucket with the capacity of its storage
 //! (docs/ARCHITECTURE.md, "Object Lock", "Encryption", "Edit of the metadata", "Usage and quota of a bucket").
 //!
-//! This work package owns the routes `/api/object-lock`, `/api/encryption`, `/api/metadata` and `/api/usage`. It also
+//! This module owns the routes `/api/object-lock`, `/api/encryption`, `/api/metadata` and `/api/usage`. It also
 //! owns the start probes of these functions and the usage readers of Garage, SeaweedFS and MinIO. It sends the S3
 //! requests of these functions.
 //!
@@ -274,7 +274,7 @@ pub fn new_usage_reader(
     Ok(Some(reader))
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/metadata", RouteAccess::HandlerAsks, metadata::handle_metadata),
