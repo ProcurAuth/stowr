@@ -50,7 +50,39 @@ pub fn log_line(args: fmt::Arguments<'_>) {
     if !line.ends_with('\n') {
         line.push('\n');
     }
+    #[cfg(test)]
+    log_capture::keep(&line);
     let _ = std::io::stderr().lock().write_all(line.as_bytes());
+}
+
+/// The capture of the log lines of one thread, for the tests. A test with the runtime of one thread sees the lines of
+/// its handlers and of its tasks.
+#[cfg(test)]
+pub mod log_capture {
+    use std::cell::RefCell;
+
+    thread_local! {
+        static LINES: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
+    }
+
+    /// Keep the next log lines of this thread.
+    pub fn start() {
+        LINES.with(|lines| *lines.borrow_mut() = Some(Vec::new()));
+    }
+
+    /// The log lines of this thread since [`start`], and the end of the capture.
+    pub fn take() -> Vec<String> {
+        LINES.with(|lines| lines.borrow_mut().take().unwrap_or_default())
+    }
+
+    /// Keep a line when the capture of this thread is on.
+    pub(super) fn keep(line: &str) {
+        LINES.with(|lines| {
+            if let Some(kept) = lines.borrow_mut().as_mut() {
+                kept.push(line.to_owned());
+            }
+        });
+    }
 }
 
 /// Write one line in the log: `log!("config.warning {}", text)`.
