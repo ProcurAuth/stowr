@@ -175,9 +175,10 @@ async fn the_list_gives_the_access_member_when_the_node_is_readable() {
         serde_json::to_string(&display.access).unwrap(),
         r#"{"read":true,"write":true,"delete":false}"#
     );
+    // The library asks each of the three questions apart: three requests.
     let questions = env.fake.questions();
     assert_eq!(questions.len(), 3);
-    assert_eq!(env.fake.requests(), 1);
+    assert_eq!(env.fake.requests(), 3);
     for (question, action) in questions.iter().zip([ACTION_READ, ACTION_WRITE, ACTION_DELETE]) {
         assert_eq!(question.action, action);
         assert_eq!(question.path, FOLDER);
@@ -232,7 +233,7 @@ async fn the_list_shows_the_folders_only_when_the_person_cannot_read_the_bucket(
         })
         .collect();
     assert_eq!(subtree, BTreeSet::from([FOLDER, folder("a").as_str()]));
-    assert_eq!(env.fake.requests(), 2);
+    assert_eq!(env.fake.requests(), 4);
 }
 
 #[tokio::test]

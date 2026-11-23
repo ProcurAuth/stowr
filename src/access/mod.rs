@@ -15,7 +15,7 @@ pub mod guard;
 pub mod keys;
 pub mod mutation;
 pub mod options;
-#[cfg(feature = "procurauth-pep")]
+pub mod pdp_link;
 pub mod pep_guard;
 pub mod tree;
 
@@ -44,7 +44,7 @@ use crate::instance::Instance;
 use crate::instance::ceiling::Ceilings;
 
 pub use actions::ActionDocument;
-pub use guard::{AccessGuard, Answer, Ask, Identity, OpenGuard};
+pub use guard::{AccessGuard, Answer, Ask, Identity, OpenGuard, OperationAnswers};
 
 /// The action `object.read`.
 pub const ACTION_READ: &str = "object.read";
@@ -85,6 +85,10 @@ pub struct AccessRequest {
     pub subject: String,
     /// The `owner` of the token, for the log only.
     pub owner: String,
+    /// The `iat` of the token.
+    pub issued_at: u64,
+    /// The `exp` of the token.
+    pub expires_at: u64,
     /// The request id (`X-Request-ID` of the client when it is valid, else a random id).
     pub request_id: String,
     /// The ceilings of the true answers of the request.
@@ -102,6 +106,26 @@ impl AccessRequest {
             request_id: request_id.to_owned(),
             ceilings: Arc::new(Ceilings::default()),
             log: Mutex::new(Some((subject.to_owned(), request_id.to_owned()))),
+            ..Self::default()
+        }
+    }
+
+    /// The identity of a request from the identity that the guard gave for its token.
+    pub fn from_identity(identity: &Identity, request_id: &str) -> Self {
+        Self {
+            issued_at: identity.issued_at,
+            expires_at: identity.expires_at,
+            ..Self::new(&identity.subject, &identity.owner, request_id)
+        }
+    }
+
+    /// The identity of the token of the request, for the questions of the guard.
+    pub fn identity(&self) -> Identity {
+        Identity {
+            subject: self.subject.clone(),
+            owner: self.owner.clone(),
+            issued_at: self.issued_at,
+            expires_at: self.expires_at,
         }
     }
 }
@@ -147,26 +171,24 @@ impl std::fmt::Debug for AccessLayer {
 
 impl AccessLayer {
     /// Build the layer from the configuration: the open guard in mode `open`, the guard of the PEP in mode `authzen`.
-    /// A configuration error (an action document above 64 KiB) stops the start.
+    /// A configuration error (an action document above 64 KiB, a key or a link that the PEP refuses) stops the start.
     pub fn new(config: &Config) -> Result<Self> {
         if !config.access.enforced() {
             return Self::with_guard(config, Arc::new(OpenGuard));
         }
-        #[cfg(feature = "procurauth-pep")]
-        {
-            let document = ActionDocument::build(config)?;
-            let guard = pep_guard::PepGuard::new(config, &document)?;
-            Self::with_guard(config, Arc::new(guard))
-        }
-        #[cfg(not(feature = "procurauth-pep"))]
-        Err(Error::not_served("the access mode authzen"))
+        let document = ActionDocument::build(config)?;
+        let guard = pep_guard::PepGuard::new(config, &document)?;
+        Self::with_guard(config, Arc::new(guard))
     }
 
-    /// Build the layer with a guard that the caller gives.
+    /// Build the layer with a guard that the caller gives. The layer gives the guard the configuration and the action
+    /// document.
     pub fn with_guard(config: &Config, guard: Arc<dyn AccessGuard>) -> Result<Self> {
+        let document = ActionDocument::build(config)?;
+        guard.bind(config, &document)?;
         Ok(Self {
             guard,
-            document: ActionDocument::build(config)?,
+            document,
             enforced: config.access.enforced(),
             audience: config.access.audience().to_owned(),
             log_mode: config.runtime.log_mode,
@@ -227,11 +249,7 @@ impl AccessLayer {
         }
         let request_id = request_id_from(headers);
         match self.guard.authenticate(headers) {
-            Ok(Some(identity)) => Ok(Some(Arc::new(AccessRequest::new(
-                &identity.subject,
-                &identity.owner,
-                &request_id,
-            )))),
+            Ok(Some(identity)) => Ok(Some(Arc::new(AccessRequest::from_identity(&identity, &request_id)))),
             refused => {
                 let reason = match refused {
                     Err(reason) => reason,
@@ -294,20 +312,14 @@ impl AccessLayer {
         }
         let request = ctx.access.as_deref().ok_or_else(unauthenticated)?;
         let ask = self.service_ask();
-        let asks = [ask];
-        let answers = run_guarded(
-            ctx,
-            || self.guard.decide(&request.request_id, &request.subject, &asks, false),
-            || vec![Answer::failure()],
-        )
-        .await;
-        let answer = answers.into_iter().next().unwrap_or_else(Answer::failure);
-        self.check_answer(request, &asks[0], &answer, &mut Grant::default(), true)
+        let who = request.identity();
+        let answer = run_guarded(ctx, || self.guard.service(&request.request_id, &who), Answer::failure).await;
+        self.check_answer(request, &ask, &answer, &mut Grant::default(), true)
     }
 
     /// Ask the PDP for the permissions of an operation and give the grant. In mode `open` it asks nothing.
     ///
-    /// Stowr asks the others first, in one batch, with `permission_only` and without usage. A refused other stops
+    /// The guard asks the others first, in one batch, with `permission_only` and without usage. A refused other stops
     /// the operation before the question of the use. When the action of the use lists a budget, the use is one
     /// question with usage. Else the use is one question without usage. A continuation never asks usage.
     pub async fn authorize(&self, ctx: &OpCtx, operation: Operation) -> Result<Grant> {
@@ -331,43 +343,26 @@ impl AccessLayer {
             .collect();
 
         let mut grant = Grant::default();
-        if !others.is_empty() {
-            let count = others.len();
-            let answers = run_guarded(
-                ctx,
-                || self.guard.decide(&request.request_id, &request.subject, &others, true),
-                || vec![Answer::failure(); count],
-            )
-            .await;
-            for (index, ask) in others.iter().enumerate() {
-                let answer = answers.get(index).cloned().unwrap_or_else(Answer::failure);
-                self.check_answer(request, ask, &answer, &mut grant, true)?;
-            }
-        }
         let use_ask = &operation.use_ask;
-        if operation.continuation || !self.document.lists_budget(&use_ask.action) {
-            let asks = std::slice::from_ref(use_ask);
-            let answers = run_guarded(
-                ctx,
-                || self.guard.decide(&request.request_id, &request.subject, asks, false),
-                || vec![Answer::failure()],
-            )
-            .await;
-            let answer = answers.into_iter().next().unwrap_or_else(Answer::failure);
-            self.check_answer(request, use_ask, &answer, &mut grant, false)?;
-        } else {
-            let mut answer = run_guarded(
-                ctx,
-                || self.guard.use_one(&request.request_id, &request.subject, use_ask),
-                Answer::failure,
-            )
-            .await;
-            if answer.decision && !answer.failed && answer.units.is_none() {
-                // A true answer to a usage question without context.usage.units is false (ProcurAuth 6.12).
-                answer = Answer::default();
-            }
-            self.check_answer(request, use_ask, &answer, &mut grant, false)?;
+        let usage = !operation.continuation && self.document.lists_budget(&use_ask.action);
+        let who = request.identity();
+        let count = others.len();
+        let answers = run_guarded(
+            ctx,
+            || self.guard.operation(&request.request_id, &who, &others, use_ask, usage),
+            || OperationAnswers::failure(count),
+        )
+        .await;
+        for (index, ask) in others.iter().enumerate() {
+            let answer = answers.others.get(index).cloned().unwrap_or_else(Answer::failure);
+            self.check_answer(request, ask, &answer, &mut grant, true)?;
         }
+        let mut answer = answers.use_answer.unwrap_or_else(Answer::failure);
+        if usage && answer.decision && !answer.failed && answer.units.is_none() {
+            // A true answer to a usage question without context.usage.units is false (ProcurAuth 6.12).
+            answer = Answer::default();
+        }
+        self.check_answer(request, use_ask, &answer, &mut grant, false)?;
         Ok(grant)
     }
 

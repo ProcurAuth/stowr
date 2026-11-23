@@ -135,8 +135,9 @@ question"). The rules:
   The header name must not be `Cookie`, `Authorization`, `Host`, `Content-Type` or `Content-Length`.
 - Two copies of the header are a refusal. The edge must replace the header (P 9.1).
 
-Stowr keeps the result of a valid token until `exp` plus the skew. The cache has 4096 entries. When it is full, Stowr
-drops the expired entries. When it is still full, Stowr keeps no new result.
+Stowr keeps the result of a valid token until `exp` plus the skew. The key is the SHA-256 hash of the text of the token.
+The cache has 4096 entries. When it is full, Stowr drops the expired entries. When it is still full, Stowr keeps no new
+result.
 
 A request with no valid token gets `401 unauthenticated`. The body has no reason. For a request with an unsafe method,
 Stowr also sets `Connection: close`, so that it does not read the body. The log line `access.unauthenticated` gives the
@@ -560,29 +561,38 @@ A PDP failure gives 503, never 403. The route fails closed. For the code `pdp_un
 
 ## The PDP client
 
-Stowr sends each question to the PDP with the AuthZEN Authorization API 1.0.
+Stowr uses the library `procurauth-pep` of ProcurAuth 1.1 for the check of the token, the questions to the PDP and the
+kept answers. Stowr asks each question with the AuthZEN Authorization API 1.0.
 
-- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` before its first question, and again after
-  one hour. It uses the endpoints of the metadata, or the default paths `/access/v1/evaluation` and
-  `/access/v1/evaluations` when the PDP has no metadata. An endpoint on another origin makes the metadata not valid.
+- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` at start, and writes the line
+  `access.pdp_metadata`. A failure at start writes `access.pdp_failed` and does not stop the start. Stowr then reads the
+  metadata before its next question. It reads the metadata again after one hour.
+- Stowr uses the endpoints of the metadata, or the default paths `/access/v1/evaluation` and `/access/v1/evaluations`
+  when the PDP has no metadata (status 404, 405, 410 or 501). An endpoint on another origin makes the metadata not valid.
 - Stowr reads the four members of the metadata: `procurauth_usage_max_seconds`, `procurauth_idle_max_seconds`,
   `procurauth_evaluations_max_bytes` and `procurauth_evaluations_max_items`.
 - Stowr sends the PDP token in `Authorization: Bearer`. It sends `Content-Type`, `Accept` and `X-Request-ID`. The request id
   is the `X-Request-ID` of the client when it has 1 to 128 safe characters. Else Stowr makes one.
-- One question is one Access Evaluation. Two or more questions without usage are one Access Evaluations request, with the
-  subject at the top. A request has `max_evaluations` items at most, and no more than the maxima of the metadata. Stowr
-  splits a longer batch. Stowr asks a repeated question one time.
+- One question is one Access Evaluation. Two or more questions without usage are Access Evaluations requests, with the
+  subject at the top. A request has `max_evaluations` items at most and 1 MiB at most, and no more than the maxima of the
+  metadata. Stowr splits a longer batch. After a split, each request is an Access Evaluations request, also a request
+  with one item. Stowr asks a repeated question one time.
 - The questions of the others of an operation have `context.permission_only` equal to `true`. A question with
   `permission_only` never has usage.
+- The three questions of the member `access` of `GET /api/list` go in three requests, one after the other.
 - `timeout` is the deadline of a call without usage. One deadline covers all the requests of the call. The default of
   `timeout` is `500ms`.
 - `usage_timeout` is the shortest wait for a question with usage. Stowr waits for the longer of `usage_timeout` and
   `procurauth_usage_max_seconds` plus 1 second. Thus Stowr always waits longer than the time that the PDP publishes
   (P 10.6). The default of `usage_timeout` is `6s`.
-- Stowr never sends a question again, except when the connection failed before Stowr wrote the request. When a request
-  fails, Stowr sends no other request of the call. Each question without an answer is a failure.
-- The client follows no redirect, uses no proxy, and uses TLS 1.2 or newer. It reads at most 256 KiB of an answer. The
-  dial timeout is 5 s.
+- Stowr never sends a question again, except when the request did not leave Stowr: no connection, or a connection that
+  failed before the first byte. Then Stowr sends the request one more time.
+- When a request fails, Stowr sends no other request of the call. Each question of the call is then a failure, also a
+  question with an answer in an earlier request of the call. An item of an Access Evaluations request that is not a
+  valid answer makes the whole request fail.
+- The client follows no redirect, uses no proxy, and uses TLS 1.2 or newer. It trusts the certificate bundle of the
+  image, as the provider client does. It reads at most 256 KiB of an answer. The dial timeout is 5 s, TLS handshake
+  included, or less when the deadline of the call is nearer.
 - The client keeps at most 4 connections. It closes an idle connection after 5 s, or after half of
   `procurauth_idle_max_seconds` when this value is lower.
 - `plain_http = true` accepts an `http` URL. Use it only on a trusted network.
@@ -599,14 +609,26 @@ for `cache_ttl` at most.
 - Stowr keeps the answers of the usage questions apart from the others.
 - Stowr keeps a `true` answer of a usage question only when `units` is 0. It keeps it for `cache_ttl`. A kept answer of this
   kind lets the use run without a question. Stowr never keeps a `true` answer with `units` of 1.
-- Stowr keeps a `budget_exceeded` answer for the lower of `retry_after` and `cache_ttl`. A hit gives the seconds that remain,
-  at least 1.
+- Stowr keeps a `budget_exceeded` answer of a usage question for the lower of `retry_after` and `cache_ttl`. A hit gives
+  the seconds that remain to the end of the `retry_after` of the PDP, at least 1.
 - Stowr never keeps a failure, and never keeps an answer with a reason of P 17.1. A `false` answer to a usage question
-  without `budget_exceeded` counted nothing: Stowr can keep it as the answer to the same question without usage.
-- A kept `false` answer to the same question without usage can refuse a use with no question (P 10.1).
-- The two tables hold 16384 entries and 8 MiB at most. When they are full, Stowr drops the expired entries. When they are
-  still full, Stowr keeps no new answer.
+  without `budget_exceeded` counted nothing: Stowr keeps it as the answer to the same question without usage.
+- A kept `false` answer to the same question without usage refuses a use with no question (P 10.1).
+- The two tables hold 16384 entries at most. When they are full, Stowr drops the expired entries. When they are still
+  full, Stowr keeps no new answer.
 - A cache hit writes no `access.decision` line, unless `server.log_mode` is `detailed`.
+
+### What Stowr adds to the library
+
+The library `procurauth-pep` gives the rules of a PEP. Stowr adds these rules around it:
+
+- The request id in `X-Request-ID`, the wait of a usage question, and one deadline for each call.
+- One question for each repeated question of a call.
+- The depth bound of 32 levels for the JSON of a token, and the reason `kid` in the log for a `kid` of a key of another
+  algorithm.
+- The permission of each refusal: the library gives a refusal for the whole operation. Stowr finds the refused permission
+  in the requests of the call, or in a copy of the kept answers. The answer of Stowr names this action.
+- The `retry_after` of a `budget_exceeded` answer to a question without usage. A continuation that gets it gives `429`.
 
 ## Log lines
 
@@ -617,7 +639,8 @@ Each line is `key=value`. A request with a valid token also gives `subject` and 
 | `access.unauthenticated` | A token is refused. Fields: `request_id`, `method`, `path`, `reason`. |
 | `access.no_rule` | A route has no access rule. |
 | `access.decision` | One question. Fields: `request_id`, `subject`, `action`, `resource`, `match`, `usage`, `decision`, `units`, `retry_after`, `reason`, `source` (`pdp`, `cache` or `error`), `failed`. |
-| `access.pdp_failed` | A request to the PDP failed. Fields: `request_id`, `evaluations`, `error`. |
+| `access.pdp_failed` | A request to the PDP failed, or the read of the metadata at start (`request_id` is `-`). Fields: `request_id`, `evaluations`, `error`. |
+| `access.pdp_metadata` | The metadata of the PDP at start. Fields: `usage_max_seconds`, `usage_wait_ms` (the wait of a usage question), `idle_max_seconds`, `evaluations_max_items`, `evaluations_max_bytes`. |
 | `access.pdp_credential_refused` | The PDP answered 401 or 403. |
 | `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits` (field `limit`), or the answer to an other permission or to the action `access` has a reason of P 17.1 (field `reason`). |
 | `access.ceiling_unenforceable` | A `true` answer has a ceiling that the action does not list. |
@@ -663,8 +686,9 @@ Stowr reads the keys one time at start. A restart clears the cache of tokens.
 | Size of an identity token | 16384 bytes |
 | Keys in `public_keys` (PEM blocks or keys of the JWK Set) | 16 |
 | Base64 text of one PEM block | 4096 bytes |
-| Answer cache of the PDP | 16384 entries and 8 MiB |
+| Answer cache of the PDP | 16384 entries |
 | Body of a PDP answer | 256 KiB |
+| Body of one Access Evaluations request | 1 MiB, or the maximum of the metadata when it is lower |
 | Connections to the PDP | 4; an idle connection closes after 5 s |
 | Wait of a usage question | The longer of `usage_timeout` and `procurauth_usage_max_seconds` plus 1 s |
 | Dial timeout to the PDP | 5 s |

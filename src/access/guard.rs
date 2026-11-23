@@ -1,8 +1,8 @@
 //! The guard of the access policy: the check of the identity token and the questions to the PDP.
 //!
 //! Stowr writes its routes against this trait. The mode `open` has [`OpenGuard`]. The mode `authzen` has the guard
-//! of the library `procurauth-pep`; the library is synchronous, so its guard runs its calls on the blocking threads
-//! of the runtime (`tokio::task::spawn_blocking`).
+//! of the library `procurauth-pep` ([`super::pep_guard::PepGuard`]). The library is synchronous, so its guard runs
+//! its calls on the blocking threads of the runtime (`tokio::task::spawn_blocking`).
 //!
 //! A guard keeps the rules of the client of the PDP: the batches, the deadlines, the answers that it keeps, the
 //! check of the answers. Stowr keeps the rules of the service: the actions, the nodes, the order of the questions,
@@ -13,7 +13,10 @@ use std::time::Duration;
 
 use http::HeaderMap;
 
+use super::actions::ActionDocument;
 use crate::common::BoxFuture;
+use crate::common::config::Config;
+use crate::common::error::Result;
 
 /// The reason of a `false` answer with a budget that is used.
 pub const REASON_BUDGET: &str = "budget_exceeded";
@@ -104,31 +107,66 @@ pub struct Identity {
     pub subject: String,
     /// `owner`, for the log only.
     pub owner: String,
+    /// `iat`, in seconds since the Unix epoch.
+    pub issued_at: u64,
+    /// `exp`, in seconds since the Unix epoch.
+    pub expires_at: u64,
+}
+
+/// The answers to the permissions of one operation.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OperationAnswers {
+    /// One answer for each other permission, in order. The list can stop at the first other that the guard refuses.
+    pub others: Vec<Answer>,
+    /// The answer of the use. `None` when the guard did not ask the use, because it refused an other.
+    pub use_answer: Option<Answer>,
+}
+
+impl OperationAnswers {
+    /// The answers of a call that got no valid answer.
+    pub fn failure(others: usize) -> Self {
+        Self {
+            others: vec![Answer::failure(); others],
+            use_answer: Some(Answer::failure()),
+        }
+    }
 }
 
 /// The check of the token and the questions to the PDP.
 pub trait AccessGuard: Send + Sync {
+    /// Get the configuration and the action document of the service. The access layer calls it one time, before the
+    /// first request. The default does nothing.
+    fn bind(&self, _config: &Config, _document: &ActionDocument) -> Result<()> {
+        Ok(())
+    }
+
     /// Check the identity token of the request headers. `Ok(None)` in mode `open`. `Err` with the reason of the
     /// log (`missing`, `malformed`, `signature`...) for a refused token.
     fn authenticate(&self, headers: &HeaderMap) -> std::result::Result<Option<Identity>, String>;
 
-    /// Ask questions without usage and with the match `node`, in batches; one answer for each question, in order.
-    /// With `permission_only`, each question has `context.permission_only` equal to `true`: the questions are the
-    /// other permissions of an operation, and the kept answers of these questions are apart from the others.
-    fn decide<'a>(
+    /// Ask the permissions of one operation (docs/ACCESS.md, "The routes"). The guard asks the others first, in one
+    /// batch, with `context.permission_only` and without usage. A refused other stops the operation: the guard then
+    /// does not ask the use. Then the guard asks the use. With `usage`, the question of the use has `context.usage`
+    /// of 1 unit and is never sent again after a lost answer.
+    fn operation<'a>(
         &'a self,
         request_id: &'a str,
-        subject: &'a str,
-        asks: &'a [Ask],
-        permission_only: bool,
-    ) -> BoxFuture<'a, Vec<Answer>>;
+        who: &'a Identity,
+        others: &'a [Ask],
+        use_ask: &'a Ask,
+        usage: bool,
+    ) -> BoxFuture<'a, OperationAnswers>;
 
-    /// Ask one question with `context.usage` of 1 unit. Never sent again after a lost answer.
-    fn use_one<'a>(&'a self, request_id: &'a str, subject: &'a str, ask: &'a Ask) -> BoxFuture<'a, Answer>;
+    /// Ask questions without usage, without `permission_only` and with the match `node`. Each answer is apart from
+    /// the others: one answer for each question, in order.
+    fn decide<'a>(&'a self, request_id: &'a str, who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>>;
+
+    /// Ask the action `access` on the service node, without usage (ProcurAuth 10.1c).
+    fn service<'a>(&'a self, request_id: &'a str, who: &'a Identity) -> BoxFuture<'a, Answer>;
 
     /// Ask questions with the match `subtree` and without usage, for the display only; one answer for each
     /// question, in order.
-    fn display<'a>(&'a self, request_id: &'a str, subject: &'a str, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>>;
+    fn display<'a>(&'a self, request_id: &'a str, who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>>;
 }
 
 /// The guard of the mode `open`: no token, and each question is true.
@@ -140,27 +178,34 @@ impl AccessGuard for OpenGuard {
         Ok(None)
     }
 
-    fn decide<'a>(
+    fn operation<'a>(
         &'a self,
         _request_id: &'a str,
-        _subject: &'a str,
-        asks: &'a [Ask],
-        _permission_only: bool,
-    ) -> BoxFuture<'a, Vec<Answer>> {
+        _who: &'a Identity,
+        others: &'a [Ask],
+        _use_ask: &'a Ask,
+        usage: bool,
+    ) -> BoxFuture<'a, OperationAnswers> {
+        let answers = OperationAnswers {
+            others: vec![Answer::allow(); others.len()],
+            use_answer: Some(Answer {
+                units: usage.then_some(1),
+                ..Answer::allow()
+            }),
+        };
+        Box::pin(async move { answers })
+    }
+
+    fn decide<'a>(&'a self, _request_id: &'a str, _who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
         let answers = vec![Answer::allow(); asks.len()];
         Box::pin(async move { answers })
     }
 
-    fn use_one<'a>(&'a self, _request_id: &'a str, _subject: &'a str, _ask: &'a Ask) -> BoxFuture<'a, Answer> {
-        Box::pin(async move {
-            Answer {
-                units: Some(1),
-                ..Answer::allow()
-            }
-        })
+    fn service<'a>(&'a self, _request_id: &'a str, _who: &'a Identity) -> BoxFuture<'a, Answer> {
+        Box::pin(async move { Answer::allow() })
     }
 
-    fn display<'a>(&'a self, _request_id: &'a str, _subject: &'a str, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
+    fn display<'a>(&'a self, _request_id: &'a str, _who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
         let answers = vec![Answer::allow(); asks.len()];
         Box::pin(async move { answers })
     }
@@ -174,14 +219,25 @@ mod tests {
     async fn the_open_guard_says_true_to_each_question() {
         let guard = OpenGuard;
         assert_eq!(guard.authenticate(&HeaderMap::new()), Ok(None));
+        let who = Identity::default();
         let asks = vec![Ask::default(), Ask::default()];
-        let answers = guard.decide("r", "s", &asks, true).await;
-        assert_eq!(answers.len(), 2);
-        assert!(answers.iter().all(|answer| answer.decision && !answer.failed));
-        let answer = guard.use_one("r", "s", &asks[0]).await;
-        assert!(answer.decision);
-        assert_eq!(answer.units, Some(1));
-        let shown = guard.display("r", "s", &asks).await;
+        let answers = guard.operation("r", &who, &asks, &asks[0], true).await;
+        assert_eq!(answers.others.len(), 2);
+        assert!(answers.others.iter().all(|answer| answer.decision && !answer.failed));
+        let used = answers.use_answer.unwrap();
+        assert!(used.decision);
+        assert_eq!(used.units, Some(1));
+        let plain = guard.operation("r", &who, &[], &asks[0], false).await;
+        assert_eq!(plain.use_answer.unwrap().units, None);
+        assert!(
+            guard
+                .decide("r", &who, &asks)
+                .await
+                .iter()
+                .all(|answer| answer.decision)
+        );
+        assert!(guard.service("r", &who).await.decision);
+        let shown = guard.display("r", &who, &asks).await;
         assert!(shown.iter().all(|answer| answer.decision));
     }
 

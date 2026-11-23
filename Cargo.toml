@@ -45,10 +45,10 @@ quick-xml = { version = "=0.42.0", default-features = false }
 base64 = "=0.22.1"
 # statfs, O_NOFOLLOW and the error numbers of the volume back end.
 libc = "=0.2.191"
-
-# The guard of the mode authzen uses the library procurauth-pep. The feature stays off until the dependency exists.
-[features]
-procurauth-pep = []
+# The PEP of ProcurAuth 1.1 (mode authzen): the check of the identity token, the questions to the PDP, the kept answers,
+# and the transport over TLS with rustls and aws-lc-rs. procurauth-core gives the key set of the edge.
+procurauth-pep = { git = "https://github.com/SCcagg5/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false, features = ["tls"] }
+procurauth-core = { git = "https://github.com/SCcagg5/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false }
 
 [profile.release]
 opt-level = 3
