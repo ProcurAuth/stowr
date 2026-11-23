@@ -672,11 +672,14 @@ impl VersionStore for FakeBackend {
     fn get_version<'a>(
         &'a self,
         _ctx: &'a OpCtx,
-        _key: &'a str,
+        key: &'a str,
         _version: &'a str,
         _headers: &'a HeaderMap,
     ) -> BoxFuture<'a, Result<ObjectResponse>> {
-        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+        match Self::replaced(&self.get_fn) {
+            Some(get) => Box::pin(async move { get(key) }),
+            None => Box::pin(async { Err(Error::not_served("the versions of the fake")) }),
+        }
     }
 
     fn delete_version<'a>(&'a self, _ctx: &'a OpCtx, _key: &'a str, _version: &'a str) -> BoxFuture<'a, Result<()>> {
