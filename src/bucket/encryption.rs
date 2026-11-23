@@ -38,6 +38,7 @@ use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, json, method_not_allowed};
 use crate::common::storage::ListOptions;
 use crate::instance::Instance;
+use crate::lifecycle::{FLAVOUR_AWS, FLAVOUR_GARAGE, FLAVOUR_MINIO, FLAVOUR_SEAWEEDFS};
 use crate::provider::S3Backend;
 use crate::provider::s3::S3Request;
 
@@ -68,15 +69,6 @@ pub const ENCRYPTION_APPLIED_NO: &str = "no";
 /// The server does not know what the provider does.
 pub const ENCRYPTION_APPLIED_UNKNOWN: &str = "unknown";
 
-/// The provider flavour `aws`.
-pub const FLAVOUR_AWS: &str = "aws";
-/// The provider flavour `minio`.
-pub const FLAVOUR_MINIO: &str = "minio";
-/// The provider flavour `seaweedfs`.
-pub const FLAVOUR_SEAWEEDFS: &str = "seaweedfs";
-/// The provider flavour `garage`.
-pub const FLAVOUR_GARAGE: &str = "garage";
-
 const PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// What each known provider does with `x-amz-server-side-encryption: AES256`. AWS S3, MinIO and SeaweedFS encrypt
@@ -86,17 +78,6 @@ fn sse_s3_provider_applied(flavour: &str) -> &'static str {
         FLAVOUR_AWS | FLAVOUR_MINIO | FLAVOUR_SEAWEEDFS => ENCRYPTION_APPLIED_YES,
         FLAVOUR_GARAGE => ENCRYPTION_APPLIED_NO,
         _ => "",
-    }
-}
-
-/// The display name of a provider flavour.
-pub fn flavour_name(flavour: &str) -> &str {
-    match flavour {
-        FLAVOUR_AWS => "AWS S3",
-        FLAVOUR_MINIO => "MinIO",
-        FLAVOUR_SEAWEEDFS => "SeaweedFS",
-        FLAVOUR_GARAGE => "Garage",
-        other => other,
     }
 }
 
@@ -225,20 +206,6 @@ impl Instance {
             .is_ok_and(|probed| probed.as_ref().is_some_and(|(supported, _)| *supported))
     }
 
-    /// The provider of the instance. The lifecycle probe keeps it; without it, the back end tells it.
-    pub(crate) async fn probe_flavour(&self, ctx: &OpCtx) -> String {
-        if let Ok(inner) = self.rules.inner.lock()
-            && !inner.flavour.is_empty()
-        {
-            return inner.flavour.clone();
-        }
-        let Some(rules) = self.backend.bucket_rules() else {
-            return String::new();
-        };
-        let probe = ctx.with_timeout(PROBE_TIMEOUT);
-        probe.run(rules.provider_flavour(&probe)).await.unwrap_or_default()
-    }
-
     /// Read the default encryption of the bucket. An answer (a configuration, or "no configuration") shows it. A
     /// provider without the request (501, 405) and any other failure hide it. The request is a read. An instance
     /// without the read permission is not probed. For an instance with `encryption = "sse-s3"`, the probe finds the
@@ -260,7 +227,7 @@ impl Instance {
         }
         let mut applied = String::new();
         if self.cfg.encryption == Encryption::SseS3 {
-            let flavour = self.probe_flavour(&probe).await;
+            let flavour = self.lifecycle_flavour(&probe).await;
             applied = sse_s3_provider_applied(&flavour).to_owned();
             if applied.is_empty() {
                 applied = ENCRYPTION_APPLIED_UNKNOWN.to_owned();

@@ -20,18 +20,27 @@ pub struct BaseUrl {
 }
 
 impl BaseUrl {
-    /// The base URL of a checked endpoint.
+    /// The base URL of a checked endpoint. The host, the port and the escaped path stay as the URL of the
+    /// configuration writes them. An endpoint without these two texts gets them from its parts.
     pub fn from_endpoint(endpoint: &Endpoint) -> Self {
-        let mut authority = endpoint.host.clone();
-        if let Some(port) = endpoint.port {
-            authority.push(':');
-            authority.push_str(&port.to_string());
+        let mut authority = endpoint.authority.clone();
+        if authority.is_empty() {
+            authority = endpoint.host.clone();
+            if let Some(port) = endpoint.port {
+                authority.push(':');
+                authority.push_str(&port.to_string());
+            }
         }
+        let escaped_path = if endpoint.escaped_path.is_empty() {
+            escaped_path_of(&endpoint.path)
+        } else {
+            endpoint.escaped_path.clone()
+        };
         Self {
             scheme: endpoint.scheme.to_ascii_lowercase(),
             hostname: strip_brackets(&endpoint.host).to_owned(),
             authority,
-            escaped_path: escaped_path_of(&endpoint.path),
+            escaped_path,
         }
     }
 
@@ -349,6 +358,7 @@ mod tests {
             host: host.to_owned(),
             port,
             path: path.to_owned(),
+            ..Endpoint::default()
         }
     }
 
@@ -360,6 +370,11 @@ mod tests {
         assert_eq!(base.join("/x", "q=1"), "https://[::1]:9000/a%20b/x?q=1");
         let base = BaseUrl::from_endpoint(&endpoint("http", "example.test", None, "/a%20b"));
         assert_eq!(base.join("/x", ""), "http://example.test/a%20b/x");
+        // A parsed endpoint keeps the escapes of its URL: an escaped slash stays escaped.
+        let parsed = crate::config::url::parse_endpoint("s3", "http://example.test:09000/a%2Fb").unwrap();
+        let base = BaseUrl::from_endpoint(&parsed);
+        assert_eq!(base.authority, "example.test:09000");
+        assert_eq!(base.join("/x", ""), "http://example.test:09000/a%2Fb/x");
     }
 
     #[test]

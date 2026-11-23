@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use http::header::HeaderValue;
 use http::{HeaderMap, Method};
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::mpsc;
 
 use super::S3Backend;
 use super::s3::copy::copy_metadata_headers;
@@ -511,7 +511,8 @@ async fn each_request_of_a_copy_in_parts_takes_a_slot_of_the_gate() {
     let (fake, server, _) = FakeCopyS3::start_with_delay(Duration::from_millis(20)).await;
     fake.put("a.bin", &[b'y'; 40], "application/octet-stream", "k=v");
     let backend = anonymous_s3(&server.url, "bucket");
-    let one_slot = Gate::new(1);
+    let slots = Gate::new(1);
+    let one_slot = slots.clone();
     let taken = Arc::new(AtomicUsize::new(0));
     let gate_taken = taken.clone();
     let gate: RequestGate = Arc::new(move |ctx: OpCtx| {
@@ -531,7 +532,7 @@ async fn each_request_of_a_copy_in_parts_takes_a_slot_of_the_gate() {
     // The HEAD, the tags, the start, eight parts and the completion.
     assert_eq!(taken.load(Ordering::SeqCst), 12);
     assert_eq!(state.objects["b.bin"].data, vec![b'y'; 40]);
-    assert_eq!(slots.available_permits(), 1);
+    assert_eq!(slots.held(), 0);
 }
 
 #[tokio::test]

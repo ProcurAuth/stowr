@@ -461,16 +461,16 @@ pub fn instance_of(cfg: BucketConfig, backend: Arc<dyn Backend>) -> Arc<Instance
 
 /// An application with these instances, in the mode `open`.
 pub fn app_of(instances: Vec<Arc<Instance>>) -> Arc<App> {
+    let config = Arc::new(Config::default());
+    let access = AccessLayer::with_guard(&config, Arc::new(OpenGuard)).unwrap();
     Arc::new(App {
-        config: Arc::new(Config::default()),
+        config,
         instances,
         auths: BTreeMap::new(),
         jobs: crate::jobs::JobManager::default(),
         uploads: crate::uploads::UploadManager::default(),
         sqlite: crate::pv_data::SqliteSessions::default(),
-        access: AccessLayer {
-            guard: Arc::new(OpenGuard),
-        },
+        access,
         resume_token_key: [0; 32],
     })
 }

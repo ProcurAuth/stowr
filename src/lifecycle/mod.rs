@@ -48,7 +48,7 @@ pub use routes::{handle_lifecycle, handle_tags, handle_tags_bulk};
 pub use rules::{
     EditRule, FIELD_ABORT, FIELD_DELETE_MARKER, FIELD_NONCURRENT, FIELD_TAG, FIELDS, FLAVOUR_AWS, FLAVOUR_GARAGE,
     FLAVOUR_MINIO, FLAVOUR_SEAWEEDFS, LifecycleRule, LifecycleTransition, MAX_LIFECYCLE_DAYS, MAX_LIFECYCLE_RULES,
-    lifecycle_hash, parse_lifecycle_rules,
+    flavour_name, lifecycle_hash, parse_lifecycle_rules,
 };
 pub use s3::s3_provider_flavour;
 pub use tags::{

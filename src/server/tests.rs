@@ -517,7 +517,8 @@ async fn the_gateway_keeps_the_opaque_key_and_filters_the_headers() {
     // The provider headers come after the cache rule of the gateway.
     assert_eq!(answer.header_values("cache-control"), vec!["private, no-store"]);
     let trailers = answer.trailers.expect("the budget trailers");
-    assert_eq!(trailers["x-stowr-storage-requests"], "0");
+    // The gateway reads the object with one provider call.
+    assert_eq!(trailers["x-stowr-storage-requests"], "1");
     assert!(answer.headers.get_all("trailer").iter().count() == 3);
 }
 
@@ -1775,10 +1776,13 @@ async fn the_information_page_route() {
 }
 
 #[tokio::test]
-#[ignore = "needs the public facts of the work package instance"]
 async fn the_instance_facts_give_the_known_flavour() {
     let known = instance(bucket_config("m", "", &[]), FakeBackend::with_objects(&[]));
-    known.rules.inner.lock().unwrap().flavour = "minio".to_owned();
+    {
+        let mut rules = known.rules.inner.lock().unwrap();
+        rules.flavour = "minio".to_owned();
+        rules.flavour_known = true;
+    }
     assert_eq!(serde_json::to_value(known.public_info()).unwrap()["flavour"], "minio");
     let unknown = instance(bucket_config("u", "", &[]), FakeBackend::with_objects(&[]));
     let body = serde_json::to_string(&unknown.public_info()).unwrap();

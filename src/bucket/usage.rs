@@ -390,7 +390,7 @@ impl Instance {
         if !self.usage_available() || !self.permitted(PERMISSION_READ) {
             return;
         }
-        let flavour = self.probe_flavour(ctx).await;
+        let flavour = self.lifecycle_flavour(ctx).await;
         let source = self.usage_source();
         if !flavour.is_empty() && flavour != source {
             crate::log!(
@@ -398,7 +398,7 @@ impl Instance {
                 quote(&self.cfg.id),
                 quote(&self.cfg.auth_id),
                 quote(&source),
-                super::encryption::flavour_name(&flavour)
+                crate::lifecycle::flavour_name(&flavour)
             );
         }
     }
