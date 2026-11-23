@@ -5,44 +5,129 @@
 //! `GET` and `PUT`), the job `tag_prefix`, the start probes of the tags and of the lifecycle rules, the provider
 //! flavour, the facts of the bucket in `/api/instances` (versioning state, number of rules), and the S3 requests
 //! of these functions (`impl ObjectTagger for S3Backend`, `impl BucketRules for S3Backend`).
+//!
+//! The instance gets these methods in this folder: `tags_available`, `probe_tags`, `require_tags`, `get_tags`,
+//! `put_tags`, `tag_version`, `lifecycle_available`, `probe_lifecycle`, `lifecycle_rule_count`, `known_flavour`,
+//! `lifecycle_flavour`, `mark_bucket_facts_read`, `refresh_bucket_facts`, `read_lifecycle_state`,
+//! `save_lifecycle`. The public facts of `/api/instances` use `tags_available`, `lifecycle_available`,
+//! `lifecycle_rule_count` and `known_flavour`.
+
+mod editor;
+mod md5;
+mod routes;
+mod rules;
+mod s3;
+mod seam;
+mod tags;
+pub mod xml;
+
+#[cfg(test)]
+mod fakes;
+#[cfg(test)]
+mod lifecycle_tests;
+#[cfg(test)]
+mod tags_tests;
 
 use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
+use std::time::Instant;
 
 use bytes::Bytes;
-use http::HeaderMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::common::BoxFuture;
 use crate::common::ctx::OpCtx;
-use crate::common::error::{Error, Result};
+use crate::common::error::Result;
 use crate::common::http::{Route, RouteAccess, route};
-use crate::provider::S3Backend;
+
+pub use editor::{
+    BUCKET_FACTS_TTL, EditorState, HiddenField, LifecycleEntry, LifecycleResponse, LifecycleState, lifecycle_deletes,
+};
+pub use routes::{handle_lifecycle, handle_tags, handle_tags_bulk};
+pub use rules::{
+    EditRule, FIELD_ABORT, FIELD_DELETE_MARKER, FIELD_NONCURRENT, FIELD_TAG, FIELDS, FLAVOUR_AWS, FLAVOUR_GARAGE,
+    FLAVOUR_MINIO, FLAVOUR_SEAWEEDFS, LifecycleRule, LifecycleTransition, MAX_LIFECYCLE_DAYS, MAX_LIFECYCLE_RULES,
+    lifecycle_hash, parse_lifecycle_rules,
+};
+pub use s3::s3_provider_flavour;
+pub use tags::{
+    MAX_OBJECT_TAGS, TagsResponse, apply_tag_change, encode_tagging, parse_tagging_header, run_tag_job, same_tags,
+    upload_tagging_header, validate_tags, with_upload_tags,
+};
 
 /// One object tag.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Tag {
     /// The key.
+    #[serde(default, deserialize_with = "nullable")]
     pub key: String,
     /// The value.
+    #[serde(default, deserialize_with = "nullable")]
     pub value: String,
+}
+
+impl Tag {
+    /// A tag from two texts.
+    pub fn new(key: &str, value: &str) -> Self {
+        Self {
+            key: key.to_owned(),
+            value: value.to_owned(),
+        }
+    }
 }
 
 /// The change of the job `tag_prefix`: the tags to set and the keys to remove.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagChange {
     /// The tags to set.
+    #[serde(default, deserialize_with = "nullable", skip_serializing_if = "Vec::is_empty")]
     pub add: Vec<Tag>,
     /// The keys to remove.
+    #[serde(default, deserialize_with = "nullable", skip_serializing_if = "Vec::is_empty")]
     pub remove: Vec<String>,
 }
 
-/// One lifecycle rule as `/api/lifecycle` gives it in `rules`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
-pub struct LifecycleRule {
-    /// The ID of the rule.
-    pub id: String,
+/// A value of a JSON request: `null` gives the default value, as a missing member does.
+pub(crate) fn nullable<'de, D, T>(deserializer: D) -> std::result::Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    Ok(Option::<T>::deserialize(deserializer)?.unwrap_or_default())
+}
+
+/// A text between double quotes, with the escapes of a quoted text: for a message that shows a value of the client.
+pub fn quote_text(text: &str) -> String {
+    fn printable(c: char) -> bool {
+        !c.is_control()
+            && !(c.is_whitespace() && c != ' ')
+            && !matches!(
+                c,
+                '\u{ad}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{2064}' | '\u{feff}'
+            )
+    }
+    let mut out = String::with_capacity(text.len() + 2);
+    out.push('"');
+    for c in text.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            '\u{7}' => out.push_str("\\a"),
+            '\u{8}' => out.push_str("\\b"),
+            '\u{c}' => out.push_str("\\f"),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            '\u{b}' => out.push_str("\\v"),
+            c if printable(c) => out.push(c),
+            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
+            c if (c as u32) < 0x10000 => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c => out.push_str(&format!("\\U{:08x}", c as u32)),
+        }
+    }
+    out.push('"');
+    out
 }
 
 /// The raw lifecycle configuration of a bucket: the bytes that the provider sent.
@@ -56,7 +141,7 @@ pub struct LifecycleDocument {
 pub trait ObjectTagger: Send + Sync {
     /// The tags of an object (an empty version: the current object).
     fn get_tags<'a>(&'a self, ctx: &'a OpCtx, key: &'a str, version: &'a str) -> BoxFuture<'a, Result<Vec<Tag>>>;
-    /// Replace the tags of an object.
+    /// Replace the tags of an object. An empty set of tags removes them all.
     fn put_tags<'a>(
         &'a self,
         ctx: &'a OpCtx,
@@ -92,7 +177,11 @@ pub struct TagsState {
 /// The state of the lifecycle editor and of the bucket facts of an instance.
 #[derive(Debug, Default)]
 pub struct RulesState {
-    /// The flavour, the refusals, the dropped fields and the count of the rules.
+    /// Set when the provider refused the read of the configuration (501 or 405).
+    pub off: AtomicBool,
+    /// Makes the read, the check of the hash, the write and the read back of one save one step in this process.
+    pub write: tokio::sync::Mutex<()>,
+    /// The flavour, the refusal, the dropped fields, the count of the rules and the time of the last read.
     pub inner: Mutex<RulesInner>,
 }
 
@@ -101,27 +190,19 @@ pub struct RulesState {
 pub struct RulesInner {
     /// The provider flavour that the probe found.
     pub flavour: String,
-    /// True when the probe found the lifecycle rules.
-    pub supported: bool,
-    /// The number of rules at the last read.
+    /// True after the probe asked the provider one time.
+    pub flavour_known: bool,
+    /// The reason of the last refusal of a write (403, 501 or 405). A later write that works clears it.
+    pub write_refusal: String,
+    /// The fields that the provider dropped after a save in this process.
+    pub dropped: Vec<&'static str>,
+    /// The number of rules at the last read of the configuration.
     pub rule_count: Option<usize>,
+    /// The time of the last read of the facts of the bucket.
+    pub facts_at: Option<Instant>,
+    /// True while a read of the facts runs in the background.
+    pub facts_running: bool,
 }
-
-/// Read the header `X-Amz-Tagging` of an upload (`a=b&c=d`).
-pub fn parse_tagging_header(headers: &HeaderMap) -> Result<Vec<Tag>> {
-    let _ = headers;
-    Ok(Vec::new())
-}
-
-/// Run the job `tag_prefix`.
-pub async fn run_tag_job(run: &crate::jobs::JobRun, job: &mut crate::jobs::JobState) -> Result<()> {
-    let _ = (run, job);
-    Err(Error::not_served("the job tag_prefix"))
-}
-
-crate::stub_handler!(handle_tags, "the route /api/tags");
-crate::stub_handler!(handle_tags_bulk, "the route /api/tags/bulk");
-crate::stub_handler!(handle_lifecycle, "the route /api/lifecycle");
 
 /// The routes of this work package.
 pub fn routes() -> Vec<Route> {
@@ -130,46 +211,4 @@ pub fn routes() -> Vec<Route> {
         route("/api/tags/bulk", RouteAccess::HandlerAsks, handle_tags_bulk),
         route("/api/lifecycle", RouteAccess::HandlerAsks, handle_lifecycle),
     ]
-}
-
-macro_rules! not_served_future {
-    ($what:expr) => {
-        Box::pin(async move { Err(Error::not_served($what)) })
-    };
-}
-
-impl ObjectTagger for S3Backend {
-    fn get_tags<'a>(&'a self, _ctx: &'a OpCtx, _key: &'a str, _version: &'a str) -> BoxFuture<'a, Result<Vec<Tag>>> {
-        not_served_future!("the S3 tags")
-    }
-    fn put_tags<'a>(
-        &'a self,
-        _ctx: &'a OpCtx,
-        _key: &'a str,
-        _version: &'a str,
-        _tags: &'a [Tag],
-    ) -> BoxFuture<'a, Result<()>> {
-        not_served_future!("the S3 tags")
-    }
-}
-
-impl BucketRules for S3Backend {
-    fn lifecycle_rules<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<Vec<LifecycleRule>>> {
-        not_served_future!("the S3 lifecycle rules")
-    }
-    fn read_lifecycle<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<LifecycleDocument>> {
-        not_served_future!("the S3 lifecycle rules")
-    }
-    fn write_lifecycle<'a>(&'a self, _ctx: &'a OpCtx, _body: Bytes) -> BoxFuture<'a, Result<()>> {
-        not_served_future!("the S3 lifecycle rules")
-    }
-    fn delete_lifecycle<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<()>> {
-        not_served_future!("the S3 lifecycle rules")
-    }
-    fn versioning_status<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<String>> {
-        not_served_future!("the S3 versioning status")
-    }
-    fn provider_flavour<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<String>> {
-        not_served_future!("the provider flavour")
-    }
 }
