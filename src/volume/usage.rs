@@ -78,11 +78,6 @@ impl VolumeUsageReader {
         self
     }
 
-    /// True: a read of a volume costs no request.
-    pub fn is_live(&self) -> bool {
-        true
-    }
-
     /// The count of the files of the folder. It starts a walk in the background when the count is old.
     pub fn volume_usage(&self) -> VolumeUsage {
         let count = self.sizer.snapshot();
@@ -138,13 +133,28 @@ fn clamp_to_i64(value: u64) -> i64 {
 impl BucketUsageReader for VolumeUsageReader {
     fn bucket_usage<'a>(&'a self, _ctx: &'a OpCtx, _bucket: &'a str) -> BoxFuture<'a, Result<BucketUsage>> {
         Box::pin(async move {
-            let usage = self.volume_usage();
+            // The count of the sizer gives the state of the count and its time: the answer shows them as
+            // `selfState` and `asOf`.
+            let count = self.sizer.snapshot();
             Ok(BucketUsage {
-                used_bytes: usage.used_bytes,
-                used_objects: usage.used_objects,
+                used_bytes: count.bytes,
+                used_objects: count.files,
+                self_state: count.state.as_str().to_owned(),
+                as_of: count.at,
                 ..BucketUsage::default()
             })
         })
+    }
+
+    /// `statfs`: the capacity comes from the file system of the folder.
+    fn source(&self) -> &'static str {
+        USAGE_SOURCE_STATFS
+    }
+
+    /// True: a read of a volume costs no request, so the server reads it at each request, without the cache of the
+    /// usage. A change of the files then shows at the next read.
+    fn is_live(&self) -> bool {
+        true
     }
 
     fn storage_capacity<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<Option<StorageCapacity>>> {

@@ -36,6 +36,8 @@ mod preview_route_tests;
 pub mod testing;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod volume_usage_tests;
 
 use std::sync::Arc;
 use std::time::Instant;
