@@ -41,6 +41,8 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
   `{"email":"y","name":"x"}` or `[1,2]`. A `null` value shows as an empty text, and the list of permissions skips it. A
   number shows in its shortest decimal form, for example `1000000` or `1.5`. Below 1e-6 and from 1e21, it shows in the
   exponent form, for example `1e-7` or `1e21`. An attribute of a certificate name with no value shows as an empty text.
+- `stowr -h` writes one help with a table of the commands and the options. The names and the forms of the options do
+  not change. An error of an option has a new text, for example `unknown option: -x`. The exit statuses do not change.
 - `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
   accepts the value and shows it.
 

@@ -1,17 +1,15 @@
 //! The flags of the command line: `-name value`, `-name=value`, `--name value` and `--name=value`, a boolean flag
 //! without a value, `--` at the end of the flags, and `-h` or `-help` for the help.
 //!
-//! The flags stop at the first argument that is not a flag. The help and each error give the list of the flags.
-
-use std::fmt::Write as _;
+//! The flags stop at the first argument that is not a flag. The command line writes the help after each error.
 
 use super::quote::quote;
 
 /// The kind of a flag.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum FlagKind {
-    /// A text with its default.
-    Text(&'static str),
+    /// A text. The command gives the default.
+    Text,
     /// A boolean, false by default.
     Bool,
 }
@@ -21,7 +19,6 @@ pub(super) enum FlagKind {
 pub(super) struct Flag {
     pub(super) name: &'static str,
     pub(super) kind: FlagKind,
-    pub(super) usage: &'static str,
 }
 
 /// A value that the command line gives to a flag.
@@ -75,33 +72,6 @@ pub(super) enum Stop {
     Error(String),
 }
 
-/// The help of a set of flags: `Usage of <set>:` and one entry for each flag, in the order of the names.
-pub(super) fn usage(set: &str, flags: &[Flag]) -> String {
-    let mut sorted: Vec<&Flag> = flags.iter().collect();
-    sorted.sort_by_key(|flag| flag.name);
-    let mut out = format!("Usage of {set}:\n");
-    for flag in sorted {
-        let mut line = format!("  -{}", flag.name);
-        if let FlagKind::Text(_) = flag.kind {
-            line.push_str(" string");
-        }
-        if line.len() <= 4 {
-            line.push('\t');
-        } else {
-            line.push_str("\n    \t");
-        }
-        line.push_str(&flag.usage.replace('\n', "\n    \t"));
-        if let FlagKind::Text(default) = flag.kind
-            && !default.is_empty()
-        {
-            let _ = write!(line, " (default {})", quote(default));
-        }
-        out.push_str(&line);
-        out.push('\n');
-    }
-    out
-}
-
 fn parse_bool(text: &str) -> Option<bool> {
     match text {
         "1" | "t" | "T" | "TRUE" | "true" | "True" => Some(true),
@@ -127,7 +97,7 @@ pub(super) fn parse(flags: &[Flag], arguments: &[String]) -> Result<Parsed, Stop
             name = rest;
         }
         if name.is_empty() || name.starts_with('-') || name.starts_with('=') {
-            return Err(Stop::Error(format!("bad flag syntax: {argument}")));
+            return Err(Stop::Error(format!("bad option: {argument}")));
         }
         index += 1;
         let mut value = None;
@@ -139,27 +109,24 @@ pub(super) fn parse(flags: &[Flag], arguments: &[String]) -> Result<Parsed, Stop
             if name == "help" || name == "h" {
                 return Err(Stop::Help);
             }
-            return Err(Stop::Error(format!("flag provided but not defined: -{name}")));
+            return Err(Stop::Error(format!("unknown option: -{name}")));
         };
         match flag.kind {
             FlagKind::Bool => {
                 let given = match value {
                     Some(value) => parse_bool(&value).ok_or_else(|| {
-                        Stop::Error(format!(
-                            "invalid boolean value {} for -{name}: parse error",
-                            quote(&value)
-                        ))
+                        Stop::Error(format!("the option -{name} takes true or false, not {}", quote(&value)))
                     })?,
                     None => true,
                 };
                 parsed.given.push((flag.name, Given::Bool(given)));
             }
-            FlagKind::Text(_) => {
+            FlagKind::Text => {
                 let value = match value {
                     Some(value) => value,
                     None => {
                         let Some(next) = arguments.get(index) else {
-                            return Err(Stop::Error(format!("flag needs an argument: -{name}")));
+                            return Err(Stop::Error(format!("the option -{name} needs a value")));
                         };
                         index += 1;
                         next.clone()
@@ -180,18 +147,15 @@ mod tests {
     const FLAGS: &[Flag] = &[
         Flag {
             name: "c",
-            kind: FlagKind::Text("config.hcl"),
-            usage: "path to the HCL configuration file",
+            kind: FlagKind::Text,
         },
         Flag {
             name: "config",
-            kind: FlagKind::Text("config.hcl"),
-            usage: "path to the HCL configuration file",
+            kind: FlagKind::Text,
         },
         Flag {
             name: "print-config",
             kind: FlagKind::Bool,
-            usage: "check the configuration, write the value and the source of each key, and exit",
         },
     ];
 
@@ -222,37 +186,23 @@ mod tests {
         assert_eq!(parse(FLAGS, &args(&["--help=1"])).unwrap_err(), Stop::Help);
         assert_eq!(
             parse(FLAGS, &args(&["-x"])).unwrap_err(),
-            Stop::Error("flag provided but not defined: -x".to_owned())
+            Stop::Error("unknown option: -x".to_owned())
         );
         assert_eq!(
             parse(FLAGS, &args(&["-c"])).unwrap_err(),
-            Stop::Error("flag needs an argument: -c".to_owned())
+            Stop::Error("the option -c needs a value".to_owned())
         );
         assert_eq!(
             parse(FLAGS, &args(&["---c"])).unwrap_err(),
-            Stop::Error("bad flag syntax: ---c".to_owned())
+            Stop::Error("bad option: ---c".to_owned())
         );
         assert_eq!(
             parse(FLAGS, &args(&["-=c"])).unwrap_err(),
-            Stop::Error("bad flag syntax: -=c".to_owned())
+            Stop::Error("bad option: -=c".to_owned())
         );
         assert_eq!(
             parse(FLAGS, &args(&["-print-config=yes"])).unwrap_err(),
-            Stop::Error("invalid boolean value \"yes\" for -print-config: parse error".to_owned())
+            Stop::Error("the option -print-config takes true or false, not \"yes\"".to_owned())
         );
-    }
-
-    #[test]
-    fn the_help_lists_the_flags_in_the_order_of_their_names() {
-        assert_eq!(
-            usage("stowr", FLAGS),
-            "Usage of stowr:\n  -c string\n    \tpath to the HCL configuration file (default \"config.hcl\")\n  -config string\n    \tpath to the HCL configuration file (default \"config.hcl\")\n  -print-config\n    \tcheck the configuration, write the value and the source of each key, and exit\n"
-        );
-        let short = [Flag {
-            name: "v",
-            kind: FlagKind::Bool,
-            usage: "verbose",
-        }];
-        assert_eq!(usage("x", &short), "Usage of x:\n  -v\tverbose\n");
     }
 }
