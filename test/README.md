@@ -128,31 +128,28 @@ the banner of a full volume.
 [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md#fuse-test-of-the-volumes).
 
 - The service `seaweedfs` is the SeaweedFS 4.41 of the browser tests, with its configuration.
-- The service `mount` (`volume-fuse/Dockerfile`) has the same pinned `weed` binary, FUSE 3, the Go toolchain and
-  Stowr. Only this container has `/dev/fuse`, `SYS_ADMIN` and `apparmor:unconfined`. Its entrypoint runs `weed
-  mount -filer=seaweedfs:8888 -filer.path=/ -dir=/mnt/sw -volumeServerAccess=filerProxy`. The volume servers of the
-  service `seaweedfs` listen on their own address only, so the data goes through the filer. Stowr then starts
-  with the volume `sw` on `/mnt/sw/stowr` (`volume-fuse/config.hcl`).
-- `run.sh` runs the Go tests of the volumes on the mount (`go test -run TestVolume -args -volume-dir=/mnt/sw/stowr-go`),
-  then `volume-fuse/smoke.js` in the Playwright container: the list, a folder, an upload with SHA-256, a rename, a
-  copy, a range read, a resumed upload of 40 MiB, and the copy, the move and the delete of a folder.
+- The service `mount` (`volume-fuse/Dockerfile`) has the same pinned `weed` binary, FUSE 3, the pinned Rust image,
+  the source of Stowr with its compiled tests, and Stowr. Only this container has `/dev/fuse`, `SYS_ADMIN` and
+  `apparmor:unconfined`. Its entrypoint runs `weed mount -filer=seaweedfs:8888 -filer.path=/ -dir=/mnt/sw
+  -volumeServerAccess=filerProxy`. The volume servers of the service `seaweedfs` listen on their own address only, so
+  the data goes through the filer. Stowr then starts with the volume `sw` on `/mnt/sw/stowr` (`volume-fuse/config.hcl`).
+- `run.sh` runs the unit tests of the volumes on the mount: `cargo test --locked --offline volume::`, with
+  `STOWR_TEST_VOLUME_DIR=/mnt/sw/stowr-tests`. Each test makes its own folder in this folder. Then `run.sh` runs
+  `volume-fuse/smoke.js` in the Playwright container: the list, a folder, an upload with SHA-256, a rename, a copy, a
+  range read, a resumed upload of 40 MiB, and the copy, the move and the delete of a folder.
 
-These facts come from the run of 2026-10-21 on a Debian 13 host (Linux 6.12, Docker 29.9, `/dev/fuse` present):
+These facts come from the runs on a Debian 13 host (Linux 6.12, Docker 29.9, `/dev/fuse` present):
 
 - FUSE works in Docker on this host with these three options. The mount is `fuse.seaweedfs` with `allow_other`.
-- The 22 Go tests of the volumes pass on the mount, also the symbolic links, the rename that keeps the inode, the
-  dates of the files (`os.Chtimes`), `O_EXCL`, `fsync` and the hard links. The test of a folder that the process cannot
-  write is skipped, because the process is root.
-- The six steps of the browser smoke test pass. The writes of Stowr are visible at once through the mount.
-- The count of the folder of the volume works on the mount: after the smoke uploads, the volume holds 41943084 bytes
-  in 3 files, as the browser smoke test expects. The page showed "40 MB, 3 files" and the storage with `~`.
+- The 44 unit tests of the volumes pass on the mount. They include the symbolic links, the atomic replacement of a
+  file, the copy and the move of files and folders, the temporary files of the resumable uploads, the incomplete
+  uploads with their date and size, the count of a folder and `statfs`. The writes of Stowr are visible at once through
+  the mount.
 - `statfs` of the mount gives the capacity of the volume servers: 30 volumes of 64 MiB (2013265920 bytes). One run
   gave a size of 0 after the delete of a folder: the server then gives `storageError` ("a size of 0") and keeps what the
-  volume holds. The used
-  bytes follow with a delay: two runs gave 0 bytes after the first writes, and 0 or 256512 bytes after an upload of
-  40 MiB and its delete. The
-  server finds the type FUSE in the answer of `statfs`: the usage of the volume is approximate, and the page shows it
-  with `~` and the reason.
+  volume holds. The used bytes follow with a delay: the runs gave 0 bytes after the first writes, and 0 or 256512 bytes
+  after an upload of 40 MiB and its delete. The server finds the type FUSE in the answer of `statfs`: the usage of the
+  volume is approximate, and the page shows it with `~` and the reason.
 
 When a host refuses FUSE in Docker (no `/dev/fuse`, or a security profile that refuses the mount), `run.sh` stops with
 the log of `weed mount` and a message. The tests of the browser test stack then cover a volume on a plain Docker volume.
