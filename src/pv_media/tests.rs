@@ -462,7 +462,6 @@ async fn media_info_uses_the_listed_media_type_for_an_image_without_extension() 
 }
 
 #[tokio::test]
-#[ignore = "the container of a text comes from the document readers"]
 async fn text_details_use_one_head_and_leave_the_line_count_explicit() {
     let backend = memory();
     backend.insert("tenant/file.txt", "hello\nworld", "text/plain");

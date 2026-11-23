@@ -18,7 +18,7 @@ use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::PERMISSION_READ;
 use crate::common::ctx::OpCtx;
-use crate::common::error::{CODE_NOT_SERVED, Error, Result};
+use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, answer, api_error, empty, json, method_not_allowed};
 use crate::common::misc::clean_relative_key;
 use crate::common::time::Timestamp;
@@ -301,15 +301,16 @@ async fn document_details(
     content_type: &str,
     listed: &MediaSourceMetadata,
 ) -> Result<Option<MediaInfoResponse>> {
-    let details =
-        match crate::pv_data::inspect_document_details(ctx, instance, key, extension, content_type, listed).await {
-            Ok(details) => details,
-            Err(error) if error.has_code(CODE_NOT_SERVED) => return Ok(None),
-            Err(error) => return Err(error),
-        };
+    let details = crate::pv_data::inspect_document_details(ctx, instance, key, extension, content_type, listed).await?;
     // The pattern names each member of the details: a new member must get its place in the answer here.
-    let crate::pv_data::DocumentDetails { container, properties } = details;
-    if container.is_empty() {
+    let crate::pv_data::DocumentDetails {
+        container,
+        properties,
+        handled,
+        headers,
+        size,
+    } = details;
+    if !handled {
         return Ok(None);
     }
     let mut response = MediaInfoResponse {
@@ -317,8 +318,7 @@ async fn document_details(
         key: key.to_owned(),
         ..MediaInfoResponse::default()
     };
-    let head = instance.head(ctx, &instance.full_key(key)).await?;
-    populate_media_storage_fields(&mut response, &head.headers, listed.size);
+    populate_media_storage_fields(&mut response, &headers, size);
     response.container = container;
     response.properties = properties;
     Ok(Some(response))
