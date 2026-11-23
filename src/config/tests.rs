@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The tests of the reader of the configuration: the `server`, `auth` and `bucket` blocks, the strict values, the
-//! sizes of the files, the reference and the encryption key.
+//! The tests of the reader of the configuration. They cover the `server`, `auth` and `bucket` blocks, the strict
+//! values and the sizes of the files. They also cover the reference, the encryption key, and the defaults and ranges
+//! of the key table.
 
 use crate::common::config::{AccessMode, Encryption, PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE, Provider};
 
-use super::support_tests::{TEST_OPEN_ACCESS, TempDir, decode_in, load_in, message, minimal_test_config, test_hooks};
-use super::{MAX_CONFIGURATION_BYTES, MAX_SECRET_FILE_BYTES, format_effective, load_runtime_with, reference};
+use super::keys::{KEYS, Key};
+use super::quote::quote;
+use super::support_tests::{
+    TEST_OPEN_ACCESS, TempDir, decode_in, ed_jwk, key_set, load_in, message, minimal_test_config, test_hooks,
+};
+use super::{
+    MAX_CONFIGURATION_BYTES, MAX_SECRET_FILE_BYTES, effective, format_effective, load_runtime_with, reference,
+};
 
 /// docs/configuration-reference.md is the output of `stowr config-reference`: the program makes it from the table of
 /// the keys.
@@ -1016,4 +1023,217 @@ fn identifiers_of_a_text_without_utf8_are_quoted_byte_by_byte() {
         message(&result),
         "line 2:3: unknown attribute \"ê\\xc3\" in server block"
     );
+}
+
+/// The auth blocks and the bucket of the key table tests. The block `s3` is an S3 auth with no mode and no
+/// credentials. The block `gcs` is a GCS auth with no mode. The block `minio` is an S3 auth with credentials and a
+/// MinIO usage block. The bucket `b` uses `minio`. `bucket_lines` are more lines of the bucket.
+fn table_storage(bucket_lines: &str) -> String {
+    format!(
+        "auth \"s3\" {{\n  provider = \"s3\"\n  endpoint = \"http://localhost:9000\"\n  region   = \"test\"\n}}\n\nauth \"gcs\" {{\n  provider = \"gcs\"\n}}\n\nauth \"minio\" {{\n  provider               = \"s3\"\n  endpoint               = \"http://minio.local:9000\"\n  region                 = \"test\"\n  access_key_id          = \"key\"\n  secret_access_key_file = \"s3-secret\"\n  usage {{\n    source = \"minio\"\n  }}\n}}\n\nbucket \"b\" {{\n  auth   = \"minio\"\n  bucket = \"bucket\"\n{bucket_lines}}}\n"
+    )
+}
+
+/// An access block with mode `authzen` and only the required keys. `pdp_lines` are more lines of the pdp block.
+fn table_authzen(pdp_lines: &str) -> String {
+    format!(
+        "access {{\n  mode = \"authzen\"\n  identity {{\n    issuer           = \"https://edge.example\"\n    audience         = \"stowr\"\n    public_keys_file = \"jwks.json\"\n  }}\n  pdp {{\n    url        = \"https://pdp.example:4182\"\n    token_file = \"pdp-token\"\n{pdp_lines}  }}\n}}\n"
+    )
+}
+
+/// A volume block `v` on the folder `volume` of `dir`. `lines` are more lines of the block.
+fn table_volume(dir: &TempDir, lines: &str) -> String {
+    format!("volume \"v\" {{\n  path = \"{}\"\n{lines}}}\n", dir.join("volume"))
+}
+
+/// A folder with the files that the configurations of the tests of the key table name.
+fn table_dir() -> TempDir {
+    let dir = TempDir::new();
+    dir.write("s3-secret", "s3-secret-value\n");
+    dir.write("jwks.json", key_set(&[ed_jwk("")]));
+    dir.write("pdp-token", "pdp-test-token-0123456789\n");
+    dir.mkdir("volume");
+    dir
+}
+
+/// The key of a line of the effective configuration: its path without the label of the block. The labels of these
+/// tests have no quote and no dot.
+fn key_of_setting(name: &str) -> &'static Key {
+    let path = match (name.find(" \""), name.rfind('"')) {
+        (Some(start), Some(end)) => format!("{}{}", &name[..start], &name[end + 1..]),
+        _ => name.to_owned(),
+    };
+    let (block, key) = path.rsplit_once('.').unwrap_or_else(|| panic!("{name} has no key"));
+    KEYS.iter()
+        .find(|candidate| candidate.block == block && candidate.name == key)
+        .unwrap_or_else(|| panic!("{name}: no key {block}.{key} in the key table"))
+}
+
+/// The print-config value of the default of a key, when the key table gives the default as a value. That value is a
+/// quoted text, an integer, a boolean or a text that starts with `(none`. `None`: the table gives a rule in words.
+fn printed_default(key: &Key) -> Option<String> {
+    let default = key.default;
+    if let Some(text) = default.strip_prefix('"').and_then(|rest| rest.strip_suffix('"')) {
+        return Some(quote(text));
+    }
+    if default == "true" || default == "false" || default.parse::<i64>().is_ok() {
+        return Some(default.to_owned());
+    }
+    if default.starts_with("(none") {
+        return Some("<none>".to_owned());
+    }
+    None
+}
+
+/// Each line of print-config with the source `default` shows the default of the key table. A default that the table
+/// gives as a rule in words has its expected value in the list of this test.
+#[test]
+fn each_default_of_print_config_is_the_default_of_the_key_table() {
+    let dir = table_dir();
+    let rules = std::collections::BTreeMap::from([
+        ("auth \"s3\".mode", "\"anonymous\""),
+        ("auth \"gcs\".mode", "\"anonymous\""),
+        ("auth \"minio\".mode", "\"access_key\""),
+        ("auth \"gcs\".endpoint", "\"https://storage.googleapis.com\""),
+        ("auth \"gcs\".region", "<none>"),
+        ("auth \"minio\".usage.endpoint", "\"http://minio.local:9000\""),
+        ("auth \"minio\".usage.filer_endpoint", "<none>"),
+        ("auth \"minio\".usage.token", "<none>"),
+        ("bucket \"b\".name", "\"b\""),
+        ("volume \"v\".name", "\"v\""),
+    ]);
+    let storage = format!("{}{}", table_storage(""), table_volume(&dir, ""));
+    let mut checked = std::collections::BTreeSet::new();
+    for text in [
+        format!("{storage}{TEST_OPEN_ACCESS}"),
+        format!("{storage}{}", table_authzen("")),
+    ] {
+        let config = decode_in(&dir, &text).unwrap_or_else(|error| panic!("{error}\n{text}"));
+        for setting in effective(&config) {
+            if setting.source != "default" {
+                continue;
+            }
+            let key = key_of_setting(&setting.name);
+            assert_ne!(
+                key.default, "(required)",
+                "{}: a required key has the source default",
+                setting.name
+            );
+            let want = printed_default(key)
+                .or_else(|| rules.get(setting.name.as_str()).map(|value| (*value).to_owned()))
+                .unwrap_or_else(|| {
+                    panic!(
+                        "{}: the default {:?} is a rule in words; add the expected value to the list of this test",
+                        setting.name, key.default
+                    )
+                });
+            assert_eq!(
+                setting.value, want,
+                "{}: print-config and the key table (default {:?}) do not agree",
+                setting.name, key.default
+            );
+            checked.insert((key.block, key.name));
+        }
+    }
+    for key in KEYS.iter().filter(|key| key.default != "(required)") {
+        assert!(
+            checked.contains(&(key.block, key.name)),
+            "{}.{}: no configuration of this test shows its default",
+            key.block,
+            key.name
+        );
+    }
+}
+
+/// The bounds of the range of an integer key: the numbers before and after the word `to`.
+fn integer_bounds(range: &str) -> Option<(i64, i64)> {
+    let words: Vec<&str> = range.split_whitespace().collect();
+    let index = words.iter().position(|word| *word == "to")?;
+    let number = |word: &str| word.trim_end_matches(['.', ',']).parse::<i64>().ok();
+    Some((number(words[index.checked_sub(1)?])?, number(words.get(index + 1)?)?))
+}
+
+/// A configuration that gives `value` to an integer key, and the path of the block of the key in print-config.
+fn integer_config(dir: &TempDir, key: &Key, value: i64) -> (String, &'static str) {
+    let line = format!("  {} = {value}\n", key.name);
+    let open = format!("{}{TEST_OPEN_ACCESS}", table_storage(""));
+    match key.block {
+        "server" => {
+            // max_concurrent_requests_per_storage must not exceed max_concurrent_storage_requests.
+            let other = match key.name {
+                "max_concurrent_storage_requests" => "  max_concurrent_requests_per_storage = 1\n",
+                "max_concurrent_requests_per_storage" => "  max_concurrent_storage_requests = 1024\n",
+                _ => "",
+            };
+            (format!("server {{\n{line}{other}}}\n{open}"), "server")
+        }
+        "access.pdp" => (
+            format!("{}{}", table_storage(""), table_authzen(&format!("  {line}"))),
+            "access.pdp",
+        ),
+        "bucket" => (format!("{}{TEST_OPEN_ACCESS}", table_storage(&line)), "bucket \"b\""),
+        "volume" => (
+            format!("{}{TEST_OPEN_ACCESS}", table_volume(dir, &line)),
+            "volume \"v\"",
+        ),
+        block => panic!("the integer key {block}.{} has no configuration in this test", key.name),
+    }
+}
+
+/// Each integer key accepts the minimum and the maximum of its range in the key table. It refuses the minimum minus
+/// one and the maximum plus one. The error of a refused value gives the bounds of the key table. The server keeps an
+/// accepted value as it is.
+#[test]
+fn each_integer_range_of_the_key_table_is_the_range_of_the_reader() {
+    let dir = table_dir();
+    let accept = |key: &Key, value: i64| {
+        let (text, path) = integer_config(&dir, key, value);
+        let config = decode_in(&dir, &text)
+            .unwrap_or_else(|error| panic!("{}.{} = {value} must be accepted: {error}", key.block, key.name));
+        let name = format!("{path}.{}", key.name);
+        let setting = effective(&config)
+            .into_iter()
+            .find(|setting| setting.name == name)
+            .unwrap_or_else(|| panic!("print-config has no line {name}"));
+        assert_eq!(
+            (setting.value.as_str(), setting.source.as_str()),
+            (value.to_string().as_str(), "file"),
+            "{name}"
+        );
+    };
+    let refuse = |key: &Key, value: i64| {
+        let (text, _) = integer_config(&dir, key, value);
+        let result = decode_in(&dir, &text);
+        assert!(result.is_err(), "{}.{} = {value} must be refused", key.block, key.name);
+        // A negative number is an error of the syntax: the message names the character, not the key.
+        if value >= 0 {
+            // The range error, not another error that names the key, such as the rule between
+            // max_concurrent_requests_per_storage and max_concurrent_storage_requests.
+            let (minimum, maximum) = integer_bounds(key.range).unwrap();
+            let want = format!("{} must be between {minimum} and {maximum}, got {value}", key.name);
+            assert!(
+                message(&result).contains(&want),
+                "{}.{} = {value}: {:?} does not contain {want:?}",
+                key.block,
+                key.name,
+                message(&result)
+            );
+        }
+    };
+    let mut count = 0;
+    for key in KEYS.iter().filter(|key| key.kind == "integer") {
+        let (minimum, maximum) = integer_bounds(key.range)
+            .unwrap_or_else(|| panic!("{}.{}: the range {:?} has no bounds", key.block, key.name, key.range));
+        accept(key, minimum);
+        accept(key, maximum);
+        refuse(key, minimum - 1);
+        refuse(key, maximum + 1);
+        // "0, or A to B": 0 is a value of the range too, and 1 is not.
+        if key.range.starts_with("0, or ") {
+            accept(key, 0);
+            refuse(key, 1);
+        }
+        count += 1;
+    }
+    assert!(count >= 16, "the key table has {count} integer keys");
 }

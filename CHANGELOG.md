@@ -6,7 +6,27 @@ The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- The command `check-config` checks the configuration and writes the `config.warning` lines on the standard error. An
+  error gives the status 1.
+- The command `help` writes the help. `-V` writes the version, as `version` does.
+- The release also has the file `SHA256SUMS`, with the same content as `checksums.txt`.
+- The Content-Security-Policy of the pages has `form-action 'self'`.
+- In the mode `open`, a `server.listen` on each network interface gives a warning at start.
+
+### Changed
+
+- An error of the command line gives the status 2, as the help says. An unexpected argument gave the status 1.
+- A command refuses an argument after its options with the status 2. Before, `version`, `config-reference`,
+  `print-config` and `healthcheck` ignored it.
+- `-h`, `--help` and `help` write the help on the standard output.
+- `access.identity.max_age` must be a whole number of seconds, as `clock_skew` is. A value such as `"1500ms"` stops
+  the start.
+- `access.identity.header` must not be `Proxy-Authorization`.
+- A mutation from a browser with `Origin: null` gets `403` with `origin_mismatch`. Before, the server ignored that header.
+- A `_file` form loses only its last line end: one `\n`, or one `\r\n`. A `\r` at the end without `\n` stays in the
+  value.
 
 ## 0.3.0 (2026-11-23)
 

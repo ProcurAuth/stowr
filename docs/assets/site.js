@@ -1,9 +1,11 @@
-// SPDX-License-Identifier: MIT OR Apache-2.0
-/* Stowr site, in the grammar of the ProcurAuth sites. Vanilla JavaScript. The pages work without it. */
+/* ProcurAuth family site script. Source: ProcurAuth/procurauth docs/assets/site.js. The pages work without it. */
+/* Vanilla JavaScript. Do not edit a copy. */
 (function () {
   "use strict";
   var root = document.documentElement;
   var KEY = "procurauth-theme";
+  /* The browser bar colour of each theme: the --bg token of site.css. */
+  var BAR = { light: "#fafafd", dark: "#0c0e15" };
 
   function readTheme() {
     try { return window.localStorage.getItem(KEY); } catch (e) { return null; }
@@ -17,15 +19,40 @@
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 
+  /* Make each meta[name=theme-color] agree with the theme of the page.
+     A theme that the reader chose: one colour, no media query.
+     No choice (the system theme): the media and content of the HTML file. */
+  function syncThemeColor() {
+    var set = root.getAttribute("data-theme");
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    Array.prototype.forEach.call(metas, function (meta) {
+      if (!meta.hasAttribute("data-system-content")) {
+        meta.setAttribute("data-system-content", meta.getAttribute("content") || "");
+        if (meta.hasAttribute("media")) { meta.setAttribute("data-system-media", meta.getAttribute("media")); }
+      }
+      if (set === "light" || set === "dark") {
+        meta.removeAttribute("media");
+        meta.setAttribute("content", BAR[set]);
+      } else {
+        meta.setAttribute("content", meta.getAttribute("data-system-content"));
+        if (meta.hasAttribute("data-system-media")) { meta.setAttribute("media", meta.getAttribute("data-system-media")); }
+      }
+    });
+  }
+
   var stored = readTheme();
   if (stored === "light" || stored === "dark") { root.setAttribute("data-theme", stored); }
   root.classList.add("js");
+  syncThemeColor();
 
   function ready(fn) {
     if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", fn); } else { fn(); }
   }
 
   ready(function () {
+    /* The meta tags can come after this script in the head. */
+    syncThemeColor();
+
     /* Theme toggle */
     var themeBtn = document.getElementById("theme-btn");
     if (themeBtn) {
@@ -39,6 +66,7 @@
         var next = currentTheme() === "dark" ? "light" : "dark";
         root.setAttribute("data-theme", next);
         saveTheme(next);
+        syncThemeColor();
         label();
       });
     }
@@ -50,6 +78,14 @@
       menuBtn.addEventListener("click", function () {
         var open = nav.classList.toggle("open");
         menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+      /* Escape closes the open menu and gives the focus back to the menu button. */
+      document.addEventListener("keydown", function (event) {
+        if (event.key !== "Escape" && event.key !== "Esc") { return; }
+        if (!nav.classList.contains("open")) { return; }
+        nav.classList.remove("open");
+        menuBtn.setAttribute("aria-expanded", "false");
+        menuBtn.focus();
       });
     }
 

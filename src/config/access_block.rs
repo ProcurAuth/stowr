@@ -147,11 +147,28 @@ fn validate_identity_header(value: &str) -> Result<(), String> {
         return Err("must have only letters, digits and \"-\"".to_owned());
     }
     match canonical_header_key(value).as_str() {
-        "Cookie" | "Authorization" | "Host" | "Content-Type" | "Content-Length" => {
-            Err("must not be Cookie, Authorization, Host, Content-Type or Content-Length".to_owned())
-        }
+        "Cookie" | "Authorization" | "Proxy-Authorization" | "Host" | "Content-Type" | "Content-Length" => Err(
+            "must not be Cookie, Authorization, Proxy-Authorization, Host, Content-Type or Content-Length".to_owned(),
+        ),
         _ => Ok(()),
     }
+}
+
+/// Refuse a duration with a part of a second. The claims of the identity token count whole seconds (P 9.3), so the
+/// server never cuts a part of the value. The error gives the text of the file.
+fn require_whole_seconds(block: &Block, draft: &Draft, path: &str, name: &str, value: Duration) -> Result<(), String> {
+    if value.subsec_nanos() == 0 {
+        return Ok(());
+    }
+    let text = draft
+        .duration_texts
+        .get(&format!("{path}.{name}"))
+        .cloned()
+        .unwrap_or_default();
+    Err(block.error(format!(
+        "{path}.{name} must be a whole number of seconds, got {}",
+        quote(&text)
+    )))
 }
 
 /// Check the base URL of the PDP: http or https, a host, no credentials, no query, no fragment, and no `/` at the
@@ -330,6 +347,7 @@ fn decode_identity_block(
         Duration::from_secs(1),
         Duration::from_secs(24 * 60 * 60),
     )?;
+    require_whole_seconds(block, draft, PATH, "max_age", max_age)?;
     let clock_skew = decode_duration(
         block,
         draft,
@@ -339,17 +357,7 @@ fn decode_identity_block(
         Duration::ZERO,
         Duration::from_secs(5 * 60),
     )?;
-    if clock_skew.subsec_nanos() != 0 {
-        let text = draft
-            .duration_texts
-            .get(&format!("{PATH}.clock_skew"))
-            .cloned()
-            .unwrap_or_default();
-        return Err(block.error(format!(
-            "{PATH}.clock_skew must be a whole number of seconds, got {}",
-            quote(&text)
-        )));
-    }
+    require_whole_seconds(block, draft, PATH, "clock_skew", clock_skew)?;
     Ok(IdentityConfig {
         header,
         issuer: issuer.to_owned(),
@@ -514,12 +522,18 @@ pub fn warnings(config: &Config) -> Vec<String> {
             "access.pdp.plain_http = true: the server sends the PDP token and the questions without TLS".to_owned(),
         );
     }
-    if config.access.enforced()
-        && let Ok((host, _)) = split_host_port(&config.listen)
+    if let Ok((host, _)) = split_host_port(&config.listen)
         && (host.is_empty() || host == "0.0.0.0" || host == "::")
     {
+        // Mode authzen: a client without the edge skips the checks of the edge (P 9.4). Mode open: the server checks
+        // nothing, so each client of the network has the access of the server.
+        let rule = if config.access.enforced() {
+            "the service must accept requests only through the edge, so limit the network"
+        } else {
+            "a proxy that authenticates the users must be the only client, so limit the network"
+        };
         out.push(format!(
-            "server.listen = {} accepts requests on each network interface: the service must accept requests only through the edge, so limit the network",
+            "server.listen = {} accepts requests on each network interface: {rule}",
             quote(&config.listen)
         ));
     }
@@ -586,10 +600,12 @@ mod tests {
     fn the_header_has_letters_digits_and_dashes_and_is_not_a_reserved_header() {
         assert!(validate_identity_header("X-Edge-Token").is_ok());
         assert!(validate_identity_header("A").is_ok());
-        assert_eq!(
-            validate_identity_header("content-TYPE"),
-            Err("must not be Cookie, Authorization, Host, Content-Type or Content-Length".to_owned())
+        let reserved = Err(
+            "must not be Cookie, Authorization, Proxy-Authorization, Host, Content-Type or Content-Length".to_owned(),
         );
+        assert_eq!(validate_identity_header("content-TYPE"), reserved);
+        assert_eq!(validate_identity_header("proxy-AUTHORIZATION"), reserved);
+        assert!(validate_identity_header("X-Proxy-Authorization").is_ok());
         assert_eq!(
             validate_identity_header("X_Y"),
             Err("must have only letters, digits and \"-\"".to_owned())
@@ -625,7 +641,7 @@ mod tests {
             access: access.clone(),
             ..Config::default()
         };
-        let cases: [(&str, Config, &[&str]); 9] = [
+        let cases: [(&str, Config, &[&str]); 11] = [
             (
                 "open",
                 config("127.0.0.1:8080", &open),
@@ -634,7 +650,20 @@ mod tests {
             (
                 "open on all interfaces",
                 config(":8080", &open),
-                &["checks no identity token"],
+                &[
+                    "checks no identity token",
+                    "server.listen = \":8080\" accepts requests on each network interface: a proxy that authenticates the users must be the only client",
+                ],
+            ),
+            (
+                "open on 0.0.0.0",
+                config("0.0.0.0:8080", &open),
+                &["checks no identity token", "server.listen = \"0.0.0.0:8080\""],
+            ),
+            (
+                "open on ::",
+                config("[::]:8080", &open),
+                &["checks no identity token", "server.listen = \"[::]:8080\""],
             ),
             ("authzen on a loopback address", config("127.0.0.1:8080", &authzen), &[]),
             ("authzen on a private address", config("10.0.0.5:8080", &authzen), &[]),

@@ -54,17 +54,17 @@
     return button;
   }
 
-  function createTextPager(view, mode) {
+  function createTextPanel(view, mode) {
     const panel = document.createElement('section');
     panel.className = `json-panel json-${mode}-panel`;
 
-    const pager = document.createElement('div');
-    pager.className = 'json-toolbar json-inline-pager';
+    const pageNav = document.createElement('div');
+    pageNav.className = 'json-toolbar json-inline-page-nav';
     const range = document.createElement('span');
     range.className = 'json-range-label';
     const previous = makeButton('chevron-left', 'Previous page');
     const next = makeButton('chevron-right', 'Next page');
-    pager.append(range, previous, next);
+    pageNav.append(range, previous, next);
 
     const host = document.createElement('div');
     host.className = 'json-text-host';
@@ -153,7 +153,7 @@
       }
     });
 
-    panel.pager = pager;
+    panel.pageNav = pageNav;
     panel.refreshSummary = updateRangeLabel;
     panel.isComplete = () => complete !== null;
     panel.load = () => loadPage(pageIndex);
@@ -385,12 +385,12 @@
     }
     mobile.append(mobileLabel, select);
     const countButton = makeButton('counter', 'Count lines and pages', 'json-tool-button json-count-button');
-    const pagerHost = document.createElement('div');
-    pagerHost.className = 'json-active-pager';
-    controls.append(tabs, mobile, countButton, pagerHost);
+    const pageNavHost = document.createElement('div');
+    pageNavHost.className = 'json-active-page-nav';
+    controls.append(tabs, mobile, countButton, pageNavHost);
 
-    const rawPanel = createTextPager(view, 'raw');
-    const beautifyPanel = createTextPager(view, 'beautify');
+    const rawPanel = createTextPanel(view, 'raw');
+    const beautifyPanel = createTextPanel(view, 'beautify');
     const treePanel = createTreePanel(view);
     beautifyPanel.hidden = true;
     treePanel.hidden = true;
@@ -459,8 +459,8 @@
         panels[name].hidden = !active;
       }
       select.value = selected;
-      pagerHost.replaceChildren();
-      if (panels[selected]?.pager) pagerHost.appendChild(panels[selected].pager);
+      pageNavHost.replaceChildren();
+      if (panels[selected]?.pageNav) pageNavHost.appendChild(panels[selected].pageNav);
       if (!loaded.has(selected)) {
         loaded.add(selected);
         void panels[selected].load?.();

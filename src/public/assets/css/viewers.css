@@ -1426,18 +1426,18 @@ body.preview-page {
   margin-bottom: -1px;
   border-bottom: 1px solid var(--border-color);
 }
-.json-active-pager {
+.json-active-page-nav {
   display: flex;
   flex: 0 1 auto;
   min-width: 0;
   align-items: center;
   padding: 0 .15rem .18rem 0;
 }
-.json-inline-pager {
+.json-inline-page-nav {
   margin: 0;
   white-space: nowrap;
 }
-.json-inline-pager .json-range-label {
+.json-inline-page-nav .json-range-label {
   margin-right: .2rem;
 }
 .json-mode-select {
@@ -1493,7 +1493,7 @@ body.preview-page {
 .json-mode-controls .spreadsheet-sheet-select {
   display: flex;
 }
-.json-active-pager {
+.json-active-page-nav {
   flex: 1 1 100%;
   justify-content: flex-end;
   padding: 0 0 .35rem;

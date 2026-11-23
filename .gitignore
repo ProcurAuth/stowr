@@ -2,3 +2,18 @@
 /target/
 # Release archives that a local run of the release steps makes.
 /dist/
+
+# Local configuration and credentials. The files under test/ (config.hcl, secrets/) stay in the repository: they are
+# test values that protect nothing.
+/config.hcl
+/secrets/
+.env
+.env.*
+*.pem
+*.key
+service-account*.json
+
+# Files of Python, of editors and of the operating system.
+__pycache__/
+*.swp
+.DS_Store

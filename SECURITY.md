@@ -21,8 +21,8 @@ These times are targets for a project that has no paid staff.
 
 | Step | Target |
 | --- | --- |
-| We acknowledge your report. | 5 working days |
-| We tell you if we accept it as a vulnerability. | 15 working days |
+| We acknowledge your report. | 5 business days |
+| We tell you if we accept it as a vulnerability. | 15 business days |
 | We publish a fix and an advisory. | 90 days after the report, or sooner |
 
 We ask you to wait for the fix before you publish details. We give credit in the advisory, unless you ask us not to.
@@ -53,6 +53,25 @@ We ask you to wait for the fix before you publish details. We give credit in the
 
 ## Test values
 
-The directory `test/` holds fixed credentials, such as the key in `test/secrets/` and the key id in `test/frontend/config.hcl`.
-They belong to the isolated test services. They are public on purpose and they protect nothing. A report about one of them is
-not a vulnerability.
+The repository holds fixed keys and credentials for the tests. They belong to the isolated test services or to the unit
+tests. They are public on purpose and they protect nothing. A report about one of them is not a vulnerability.
+
+| Path | Test value |
+| --- | --- |
+| `test/secrets/s3_secret_access_key` | The S3 secret key of the test stack. |
+| `test/secrets/garage_admin_token` | The admin token of the Garage test service. |
+| `test/config.hcl`, `test/frontend/config.hcl`, `test/frontend/s3.js` | The S3 access key id of the test stack. |
+| `src/provider/test_server.rs` | A test root certificate, a server certificate that this root signs, and the P-256 private key of the server certificate, for the TLS tests of the provider client. |
+| `src/access/keys_tests.rs` | The public keys of RFC 8037 (appendix A.3) and RFC 7515 (appendix A.3). |
+| `src/access/fake.rs`, `src/access/pep_guard_tests.rs` | Ed25519 and ES256 keys from fixed seeds. They sign the identity tokens of the tests. |
+| `src/provider/s3/sigv4.rs`, `src/bucket/tests/support.rs` | The example access key of the AWS Signature Version 4 documentation. |
+| `src/provider/testing.rs` | The S3 secret key `test-secret` of the fake provider. |
+| `src/bucket/tests/usage.rs` | A dummy admin token of Garage, and a dummy access key id and secret key of MinIO, for the usage tests. |
+| `src/config/fixtures/`, `src/config/fixture_tests.rs` | Dummy access key ids, secret keys and PDP tokens of the configuration tests. |
+| `src/pv_structured/certificate_tests.rs`, `src/pv_structured/metadata_tests.rs`, `src/pv_structured/routes_tests.rs`, `src/pv_data/tests.rs`, `src/server/preview_route_tests.rs` | PEM blocks with a short body that is not a real key, for the preview tests. |
+
+The table names the main test values. Other unit tests hold short placeholder values, for example `good-token`,
+`fake-pdp-token` or `secret-of-the-test`. These values also protect nothing.
+
+The conformance test (`test/conformance/run.sh`) copies the test keys of the ProcurAuth specification at run time. The
+repository does not hold them.

@@ -259,3 +259,19 @@
 .mdi-git-compare { --icon: url("../icons/tabler/git-compare.svg"); }
 .mdi-layout-columns { --icon: url("../icons/tabler/layout-columns.svg"); }
 .mdi-layout-rows { --icon: url("../icons/tabler/layout-rows.svg"); }
+
+/* Forced colors (Windows high contrast): the browser draws every background in Canvas, so a mask icon in
+   currentColor disappears. With forced-color-adjust: none, each icon keeps its own colour: the system text
+   colour, or GrayText in a disabled button. */
+@media (forced-colors: active) {
+  .mdi,
+  .ic {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+
+  button:disabled .mdi,
+  button:disabled .ic {
+    background-color: GrayText;
+  }
+}

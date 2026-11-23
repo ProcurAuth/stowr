@@ -139,17 +139,38 @@ pub(super) fn resolve_value_source(
             quote(&cleaned)
         )));
     };
-    let value = text.strip_suffix('\n').unwrap_or(&text);
-    let value = value.strip_suffix('\r').unwrap_or(value);
+    let value = strip_last_line_end(&text);
     if value.is_empty() {
         return Err(block.error(format!("{path}.{name}_file: the file {} is empty", quote(&cleaned))));
     }
     Ok(Some(value.to_owned()))
 }
 
+/// The text of a `_file` form without its last line end: one `\n`, or one `\r\n`. A `\r` without a `\n` after it
+/// is part of the value.
+fn strip_last_line_end(text: &str) -> &str {
+    match text.strip_suffix('\n') {
+        Some(value) => value.strip_suffix('\r').unwrap_or(value),
+        None => text,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_file_value_loses_only_its_last_line_end() {
+        assert_eq!(strip_last_line_end("abc\n"), "abc");
+        assert_eq!(strip_last_line_end("abc\r\n"), "abc");
+        assert_eq!(strip_last_line_end("abc\r"), "abc\r");
+        assert_eq!(strip_last_line_end("abc"), "abc");
+        assert_eq!(strip_last_line_end("abc\n\n"), "abc\n");
+        assert_eq!(strip_last_line_end("abc\r\n\r\n"), "abc\r\n");
+        assert_eq!(strip_last_line_end("abc\n\r"), "abc\n\r");
+        assert_eq!(strip_last_line_end("\n"), "");
+        assert_eq!(strip_last_line_end("\r"), "\r");
+    }
 
     #[test]
     fn a_name_with_an_equal_sign_or_a_nul_names_no_variable() {

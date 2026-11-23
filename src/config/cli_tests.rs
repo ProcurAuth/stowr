@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-//! The tests of the command line: the commands, the flags, the exit statuses, print-config and the health check.
+//! The tests of the command line: the commands, the flags, the exit statuses, check-config, print-config and the health
+//! check.
 
 use std::io::{Read as _, Write as _};
 use std::net::TcpListener;
 
 use super::cli::{HELP, Next, execute};
 use super::support_tests::{TempDir, minimal_test_config, test_hooks};
-use super::{format_effective, reference};
+use super::{format_effective, reference, warnings};
 
 struct Outcome {
     status: Option<u8>,
@@ -35,11 +36,22 @@ fn log_text(line: &str) -> &str {
 
 #[test]
 fn version_writes_the_identity_of_the_build() {
-    for command in ["version", "--version", "-version"] {
+    for command in ["version", "-V", "--version", "-version"] {
         let outcome = run(&[command]);
         assert_eq!(outcome.status, Some(0));
         assert_eq!(outcome.out, format!("stowr {}\n", super::build_info::current().display));
+        assert_eq!(outcome.err, "");
+        let outcome = run(&[command, "junk"]);
+        assert_eq!(outcome.status, Some(2));
+        assert_eq!(outcome.out, "");
+        assert_eq!(
+            outcome.err,
+            format!("unexpected argument \"junk\" after {command}\n{HELP}")
+        );
     }
+    let outcome = run(&["version", "-c", "config.hcl"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.err, format!("unknown option: -c\n{HELP}"));
 }
 
 #[test]
@@ -47,6 +59,77 @@ fn config_reference_writes_the_reference() {
     let outcome = run(&["config-reference"]);
     assert_eq!(outcome.status, Some(0));
     assert_eq!(outcome.out, reference());
+    let outcome = run(&["config-reference", "docs/configuration-reference.md"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.out, "");
+    assert_eq!(
+        outcome.err,
+        format!("unexpected argument \"docs/configuration-reference.md\" after config-reference\n{HELP}")
+    );
+}
+
+#[test]
+fn check_config_writes_only_the_warnings() {
+    let dir = TempDir::new();
+    dir.write("config.hcl", minimal_test_config("b"));
+    let config = super::load_with(&dir.path().join("config.hcl"), &test_hooks()).unwrap();
+    let want: Vec<String> = warnings(&config)
+        .iter()
+        .map(|warning| format!("config.warning {warning}"))
+        .collect();
+    assert!(!want.is_empty());
+    let path = dir.join("config.hcl");
+    for arguments in [
+        vec!["check-config", "-c", path.as_str()],
+        vec!["check-config", "--config", path.as_str()],
+    ] {
+        let outcome = run(&arguments);
+        assert_eq!(outcome.status, Some(0), "{arguments:?}: {}", outcome.err);
+        assert_eq!(outcome.out, "");
+        let got: Vec<&str> = outcome.err.lines().map(log_text).collect();
+        assert_eq!(got, want);
+    }
+    dir.write(
+        "loopback.hcl",
+        format!("server {{ listen = \"127.0.0.1:8080\" }}\n{}", minimal_test_config("b")),
+    );
+    let outcome = run(&["check-config", "-c", &dir.join("loopback.hcl")]);
+    assert_eq!(outcome.status, Some(0), "{}", outcome.err);
+    assert_eq!(outcome.out, "");
+    let got: Vec<&str> = outcome.err.lines().map(log_text).collect();
+    assert_eq!(got.len(), 1, "{}", outcome.err);
+    assert!(
+        got[0].starts_with("config.warning access.mode = \"open\""),
+        "{}",
+        got[0]
+    );
+}
+
+#[test]
+fn check_config_errors() {
+    let dir = TempDir::new();
+    let path = dir.join("missing.hcl");
+    let outcome = run(&["check-config", "-c", &path]);
+    assert_eq!(outcome.status, Some(1));
+    assert_eq!(outcome.out, "");
+    assert_eq!(
+        outcome.err,
+        format!("configuration error: read configuration \"{path}\": open {path}: no such file or directory\n")
+    );
+    let outcome = run(&["check-config", "-c", &path, "junk"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.out, "");
+    assert_eq!(
+        outcome.err,
+        format!("unexpected argument \"junk\" after check-config\n{HELP}")
+    );
+    let outcome = run(&["check-config", "--url", "http://127.0.0.1/"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.err, format!("unknown option: -url\n{HELP}"));
+    let outcome = run(&["check-config", "-h"]);
+    assert_eq!(outcome.status, Some(0));
+    assert_eq!(outcome.out, HELP);
+    assert_eq!(outcome.err, "");
 }
 
 #[test]
@@ -88,6 +171,13 @@ fn print_config_errors_exit_with_status_1() {
     let outcome = run(&["print-config", "-x"]);
     assert_eq!(outcome.status, Some(2));
     assert_eq!(outcome.err, format!("unknown option: -x\n{HELP}"));
+    let outcome = run(&["print-config", "-c", &path, "junk"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.out, "");
+    assert_eq!(
+        outcome.err,
+        format!("unexpected argument \"junk\" after print-config\n{HELP}")
+    );
 }
 
 #[test]
@@ -103,23 +193,36 @@ fn the_server_starts_without_print_config() {
 
 #[test]
 fn errors_of_the_main_command() {
-    let outcome = run(&["serve"]);
-    assert_eq!(outcome.status, Some(1));
-    assert_eq!(
-        log_text(&outcome.err),
-        "unexpected argument \"serve\"; use -c <path>, --print-config, healthcheck, print-config, config-reference or version"
-    );
+    for arguments in [vec!["serve"], vec!["-c", "config.hcl", "serve"]] {
+        let outcome = run(&arguments);
+        assert_eq!(outcome.status, Some(2), "{arguments:?}");
+        assert_eq!(outcome.out, "");
+        assert_eq!(
+            outcome.err,
+            format!(
+                "unexpected argument \"serve\"; use -c <path>, --print-config, check-config, print-config, healthcheck, config-reference, version or help\n{HELP}"
+            )
+        );
+    }
     let outcome = run(&["-x"]);
     assert_eq!(outcome.status, Some(2));
     assert_eq!(outcome.err, format!("unknown option: -x\n{HELP}"));
     let outcome = run(&["-c"]);
     assert_eq!(outcome.status, Some(2));
     assert_eq!(outcome.err, format!("the option -c needs a value\n{HELP}"));
-    for help in ["-h", "--help", "-help"] {
+    for help in ["-h", "--help", "-help", "help"] {
         let outcome = run(&[help]);
         assert_eq!(outcome.status, Some(0));
-        assert_eq!(outcome.err, HELP);
+        assert_eq!(outcome.out, HELP);
+        assert_eq!(outcome.err, "");
     }
+    let outcome = run(&["help", "print-config"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(outcome.out, "");
+    assert_eq!(
+        outcome.err,
+        format!("unexpected argument \"print-config\" after help\n{HELP}")
+    );
     let dir = TempDir::new();
     let path = dir.join("config.hcl");
     let outcome = run(&["-c", &path]);
@@ -213,17 +316,26 @@ fn a_health_check_without_a_server_fails() {
     );
     let outcome = run(&["healthcheck", "-h"]);
     assert_eq!(outcome.status, Some(0));
-    assert_eq!(outcome.err, HELP);
+    assert_eq!(outcome.out, HELP);
+    assert_eq!(outcome.err, "");
+    let outcome = run(&["healthcheck", "-url", &url, "junk"]);
+    assert_eq!(outcome.status, Some(2));
+    assert_eq!(
+        outcome.err,
+        format!("unexpected argument \"junk\" after healthcheck\n{HELP}")
+    );
 }
 
 #[test]
 fn the_help_lists_each_command_and_each_option_on_one_line() {
     assert!(HELP.starts_with("Usage: stowr [command] [options]\n"));
     for line in [
+        "  check-config      ",
         "  print-config      ",
         "  healthcheck       ",
         "  config-reference  ",
         "  version           ",
+        "  help              ",
         "  -c, --config <path>  ",
         "  --print-config       ",
         "  --url <url>          ",

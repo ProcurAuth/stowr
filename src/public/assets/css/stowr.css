@@ -260,7 +260,7 @@
   --dur-base: 160ms;
   --dur-spin: 800ms;
   --dur-sweep: 1200ms;
-  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
   --ring: 0 0 0 2px var(--focus-ring-color);
   --z-sticky: 2;
   --z-header: 50;
@@ -2164,7 +2164,7 @@ button.versionCount:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.tableFoot__pager {
+.tableFoot__pageNav {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3013,7 +3013,7 @@ body > .appHeader {
     max-width: 58vw;
   }
 
-  .tableFoot__pager {
+  .tableFoot__pageNav {
     margin-left: 0;
   }
 

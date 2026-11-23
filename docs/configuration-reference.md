@@ -79,11 +79,11 @@ Syntax: `access { identity { ... } }`. One block with mode authzen. No block wit
 
 | Key | Type | Default | Range | Forms | Secret | Use |
 |---|---|---|---|---|---|---|
-| `header` | text | "X-Identity-Token" | 1 to 64 characters: letters, digits and "-". Not Cookie, Authorization, Host, Content-Type or Content-Length | value | no | The name of the HTTP header that holds the identity token. |
+| `header` | text | "X-Identity-Token" | 1 to 64 characters: letters, digits and "-". Not Cookie, Authorization, Proxy-Authorization, Host, Content-Type or Content-Length | value | no | The name of the HTTP header that holds the identity token. |
 | `issuer` | text | (required) | 1 to 1024 bytes of UTF-8, without a control character | value | no | The iss of the identity tokens that the server accepts. |
 | `audience` | text | (required) | 1 to 256 bytes of UTF-8, without a control character | value | no | The id of this service. It is the aud of the tokens, the server of the action document and the root of each chain of resources. |
 | `public_keys` | text | (required) | PEM (1 to 16 -----BEGIN PUBLIC KEY----- blocks) or a JWK Set (RFC 7517) with 1 to 16 keys. Each key is Ed25519 or P-256 | value, `_env`, `_file` | no | The public keys of the issuer. A text that starts with "{" is a JWK Set, other text is PEM. The server checks the signature of each identity token with them. It is not a secret: print-config shows the type and the kid of each key. |
-| `max_age` | duration | "5m" | 1s to 24h | value | no | The longest life (exp minus iat) of an identity token. |
+| `max_age` | duration | "5m" | 1s to 24h, whole seconds | value | no | The longest life (exp minus iat) of an identity token. |
 | `clock_skew` | duration | "60s" | 0s to 5m, whole seconds | value | no | The difference between the clock of the server and the clock of the issuer that the server accepts. |
 
 ## `access.pdp`
@@ -92,7 +92,7 @@ Syntax: `access { pdp { ... } }`. One block with mode authzen. No block with mod
 
 | Key | Type | Default | Range | Forms | Secret | Use |
 |---|---|---|---|---|---|---|
-| `url` | URL | (required) | http or https, with a host, without credentials, query or fragment, and without a "/" at the end | value, `_env`, `_file` | no | The base URL of the PDP. The client adds /access/v1/evaluation and /access/v1/evaluations to it. |
+| `url` | URL | (required) | http or https, with a host, without credentials, query or fragment, and without a "/" at the end | value, `_env`, `_file` | no | The base URL of the PDP. The server reads the endpoints from the metadata of the PDP: /.well-known/authzen-configuration after the host, then the path of the URL. For example, https://pdp.example/t gives https://pdp.example/.well-known/authzen-configuration/t. When the PDP has no metadata (status 404, 405, 410 or 501), the server adds /access/v1/evaluation and /access/v1/evaluations to the URL. |
 | `plain_http` | boolean | false | true with an http URL. false with an https URL | value | no | true accepts an http URL: the server then sends the token and the questions without TLS. Use it only on a trusted network. |
 | `token` | text | (required) | 1 to 4096 bytes, no space and no control character | `_env`, `_file` | yes | The bearer token that the server sends to the PDP. It is a secret: the form in clear text stops the start. |
 | `timeout` | duration | "500ms" | 10ms to 1m | value | no | The deadline of one request to the PDP, without context.usage. |

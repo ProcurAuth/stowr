@@ -55,7 +55,8 @@
     markAll();
   }
 
-  function setOpen(select, open, focusTrigger) {
+  // focusOption: the option that takes the focus on open. Without it, the selected option (or the first) takes it.
+  function setOpen(select, open, focusTrigger, focusOption) {
     var trigger = select.querySelector('[data-theme-trigger]');
     var menu = select.querySelector('[role="listbox"]');
     if (!trigger || !menu) return;
@@ -63,7 +64,7 @@
     select.classList.toggle('is-open', open);
     trigger.setAttribute('aria-expanded', String(open));
     if (open) {
-      var current = menu.querySelector('[aria-selected="true"]') || menu.querySelector('[data-theme-value]');
+      var current = focusOption || menu.querySelector('[aria-selected="true"]') || menu.querySelector('[data-theme-value]');
       if (current) current.focus();
     } else if (focusTrigger) {
       trigger.focus();
@@ -84,11 +85,27 @@
       choose(option.getAttribute('data-theme-value'));
       setOpen(select, false, true);
     });
+    // Keys: ArrowDown and ArrowUp on the closed trigger open the menu on the first or the last option. In the open
+    // menu, ArrowDown and ArrowUp move and wrap, Home and PageUp go to the first option, End and PageDown go to the
+    // last option, Escape closes the menu and gives the focus back to the trigger, Tab closes the menu.
     select.addEventListener('keydown', function (event) {
-      if (menu.hidden) return;
       var options = Array.prototype.slice.call(menu.querySelectorAll('[data-theme-value]'));
+      if (menu.hidden) {
+        if (event.target !== trigger || !options.length || event.altKey || event.ctrlKey || event.metaKey) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          setOpen(select, true, false, options[event.key === 'ArrowUp' ? options.length - 1 : 0]);
+        }
+        return;
+      }
       var index = options.indexOf(document.activeElement);
-      if (event.key === 'Escape') {
+      if (event.key === 'Home' || event.key === 'PageUp') {
+        event.preventDefault();
+        if (options.length) options[0].focus();
+      } else if (event.key === 'End' || event.key === 'PageDown') {
+        event.preventDefault();
+        if (options.length) options[options.length - 1].focus();
+      } else if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
         setOpen(select, false, true);

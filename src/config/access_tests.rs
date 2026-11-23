@@ -159,6 +159,11 @@ fn bounds_are_accepted() {
             GOOD_PDP.to_owned(),
         ),
         (
+            "max_age in whole seconds with ms",
+            format!("{GOOD_IDENTITY}max_age = \"90000ms\""),
+            GOOD_PDP.to_owned(),
+        ),
+        (
             "usage_timeout equal to timeout",
             GOOD_IDENTITY.to_owned(),
             format!("{GOOD_PDP}timeout = \"2s\""),
@@ -315,6 +320,16 @@ fn refusals() {
             "header authorization",
             with_identity("\n    header = \"authorization\""),
             "got \"authorization\"".to_owned(),
+        ),
+        (
+            "header Proxy-Authorization",
+            with_identity("\n    header = \"Proxy-Authorization\""),
+            "access.identity.header: must not be Cookie, Authorization, Proxy-Authorization, Host, Content-Type or Content-Length, got \"Proxy-Authorization\"".to_owned(),
+        ),
+        (
+            "header proxy-authorization in lower case",
+            with_identity("\n    header = \"proxy-authorization\""),
+            "got \"proxy-authorization\"".to_owned(),
         ),
         (
             "header Host",
@@ -528,6 +543,16 @@ fn refusals() {
             "max_age 25h",
             with_identity("\n    max_age = \"25h\""),
             "access.identity.max_age must be from 1s to 24h, got \"25h\"".to_owned(),
+        ),
+        (
+            "max_age 1500ms",
+            with_identity("\n    max_age = \"1500ms\""),
+            "access.identity.max_age must be a whole number of seconds, got \"1500ms\"".to_owned(),
+        ),
+        (
+            "max_age 300001ms",
+            with_identity("\n    max_age = \"300001ms\""),
+            "access.identity.max_age must be a whole number of seconds, got \"300001ms\"".to_owned(),
         ),
         (
             "clock_skew 6m",
@@ -1109,11 +1134,35 @@ fn print_config_of_a_duration_without_text() {
     }
 }
 
+/// A max_age in milliseconds that is a whole number of seconds keeps its value: the server never cuts a part of it.
+#[test]
+fn max_age_in_milliseconds_keeps_its_value() {
+    let (result, _dir) = decode_access(
+        &authzen_text(&format!("{GOOD_IDENTITY}max_age = \"90000ms\""), GOOD_PDP),
+        &[],
+    );
+    let config = result.unwrap();
+    assert_eq!(identity_of(&config).max_age, Duration::from_secs(90));
+    assert!(format_effective(&config).contains("access.identity.max_age = \"90000ms\""));
+}
+
 #[test]
 fn warnings_of_a_decoded_file() {
+    // The default server.listen ":8080" accepts requests on each network interface.
     let (result, _dir) = decode_access("access { mode = \"open\" }\n", &[]);
     let got = warnings(&result.unwrap());
-    assert_eq!(got.len(), 1);
+    assert_eq!(got.len(), 2, "{got:?}");
+    assert!(got[0].contains("access.mode = \"open\""));
+    assert_eq!(
+        got[1],
+        "server.listen = \":8080\" accepts requests on each network interface: a proxy that authenticates the users must be the only client, so limit the network"
+    );
+    let (result, _dir) = decode_access(
+        "server {\n  listen = \"127.0.0.1:8080\"\n}\naccess { mode = \"open\" }\n",
+        &[],
+    );
+    let got = warnings(&result.unwrap());
+    assert_eq!(got.len(), 1, "{got:?}");
     assert!(got[0].contains("access.mode = \"open\""));
     let (result, _dir) = decode_access(
         &authzen_text(
@@ -1144,6 +1193,11 @@ fn access_is_in_the_reference() {
         "| `token` | text | (required) |",
         "Exactly one block. Required.",
         "One block with mode authzen. No block with mode open.",
+        "| `max_age` | duration | \"5m\" | 1s to 24h, whole seconds |",
+        "Not Cookie, Authorization, Proxy-Authorization, Host, Content-Type or Content-Length",
+        "The server reads the endpoints from the metadata of the PDP: /.well-known/authzen-configuration after the host, then the path of the URL",
+        "https://pdp.example/t gives https://pdp.example/.well-known/authzen-configuration/t",
+        "When the PDP has no metadata (status 404, 405, 410 or 501), the server adds /access/v1/evaluation",
     ] {
         assert!(text.contains(want), "the configuration reference misses {want:?}");
     }

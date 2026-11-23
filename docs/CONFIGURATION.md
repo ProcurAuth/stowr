@@ -1,8 +1,19 @@
 # Configuration
 
-The application accepts one HCL file through `-c <path>` or `-config <path>`. Runtime settings and provider credentials come from this file only. An attribute with an `_env` form reads the environment variable that the file names, and no other variable.
+The application accepts one HCL file through `-c <path>` or `--config <path>`. The default path is `config.hcl` in the current folder. Runtime settings and provider credentials come from this file only. An attribute with an `_env` form reads the environment variable that the file names, and no other variable.
 
-[configuration-reference.md](configuration-reference.md) is the generated list of every key, with its default, its range and its forms. `stowr print-config -c <path>` (or `stowr -c <path> --print-config`) checks the file, writes the value and the source of each key, and exits. The server writes the same values in its log at start. Secrets are hidden.
+[configuration-reference.md](configuration-reference.md) is the generated list of every key, with its default, its range and its forms. [config.example.hcl](../config.example.hcl) is an example file with comments. Copy it, then change the values for your site.
+
+These commands write a text and exit. They do not start the server. Only `check-config` and `print-config` read the file.
+
+- `stowr check-config -c <path>` checks the file and writes each warning on the standard error.
+- `stowr print-config -c <path>` (or `stowr -c <path> --print-config`) checks the file, writes the value and the source of each key, and exits.
+- `stowr config-reference` writes the text of [configuration-reference.md](configuration-reference.md).
+- `stowr -V` (or `stowr version`) writes the version of the program.
+
+An error of the configuration gives the exit status 1. An error of the command line gives the status 2.
+
+The server writes the effective values in its log at start. The log hides each secret. [OPERATIONS.md](OPERATIONS.md), section "Effective configuration", gives the form of the lines.
 
 Supported top-level blocks:
 

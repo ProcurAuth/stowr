@@ -108,8 +108,8 @@ header. The operator must give this caller a network path to Stowr.
 
 ## The identity token
 
-The token is a JWT that the edge signs. Stowr checks each request that is not exempt (refer to "Routes with no PDP
-question"). The rules:
+The token is a JWT that the edge signs. Stowr checks each request that is not exempt (refer to "Routes without data of
+a bucket"). The rules:
 
 - The header `alg` is exactly `Ed25519` or `ES256`. Stowr refuses `EdDSA`, `none`, `HS256` and each other name.
 - The header `typ` is exactly `JWT`. Stowr refuses another value (for example `at+jwt`) and a token without `typ`.
@@ -172,12 +172,13 @@ The PDP token is a secret of Stowr. Keep the network of the PDP closed.
 
 ## Routes without data of a bucket
 
-These routes follow P 10.1c. Two routes need no identity token and ask the PDP nothing:
+These routes follow P 10.1c. Two routes skip the identity token. They give no data of a bucket and ask the PDP nothing.
+Stowr does not read the token header on these routes, so a bad token does not change the answer.
 
 | Route | Reason |
 |---|---|
-| `GET`, `HEAD /healthz` | The health probe: the health check of the container calls it. It gives no data. |
-| `GET`, `HEAD /.well-known/procurauth/actions` | P 5.1: the reader of the document has no token. It asks the PDP nothing. |
+| `GET`, `HEAD /healthz` | The health probe. The health check of the container and `stowr healthcheck` call it. The answer has only the number of instances and the status `ok`. |
+| `GET`, `HEAD /.well-known/procurauth/actions` | The action document (P 5.1). Its reader has no token. In the mode `open`, the route gives 404. |
 
 These routes need the identity token and hold no data of a bucket. Each request asks the action `access` on the service
 node: `{"type":"service","id":"<audience>"}`, with no ancestors, no usage and the match `node`.
@@ -631,16 +632,16 @@ Each line starts with the date and the time in UTC, in the form `YYYY/MM/DD hh:m
 | Event | When |
 |---|---|
 | `access.unauthenticated` | A token is refused. Fields: `request_id`, `method`, `path`, `reason`. |
-| `access.no_rule` | A route has no access rule. |
+| `access.no_rule` | A route has no access rule. Fields: `request_id`, `method`, `path`. |
 | `access.decision` | One question. Fields: `request_id`, `subject`, `action`, `resource`, `match`, `usage`, `decision`, `units`, `retry_after`, `reason`, `source` (`pdp`, `cache` or `error`), `failed`. |
 | `access.pdp_failed` | A request to the PDP failed, or the read of the metadata at start (`request_id` is `-`). Fields: `request_id`, `evaluations`, `error`. |
 | `access.pdp_metadata` | The metadata of the PDP at start. Fields: `usage_max_seconds`, `usage_wait_ms` (the wait of a usage question), `idle_max_seconds`, `evaluations_max_items`, `evaluations_max_bytes`. |
-| `access.pdp_credential_refused` | The PDP answered 401 or 403. |
+| `access.pdp_credential_refused` | The PDP answered 401 or 403. Fields: `request_id`, `status`. |
 | `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits` (field `limit`). Or the answer to an other permission, or to the action `access`, has a reason of P 17.1 (field `reason`). |
-| `access.ceiling_unenforceable` | A `true` answer has a ceiling that the action does not list. |
+| `access.ceiling_unenforceable` | A `true` answer has a ceiling that the action does not list. Fields: `request_id`, `action`, `ceiling`. |
 | `access.ceiling_refused` | A size is over `max_object_size`. Fields: `request_id`, `action`, `ceiling`, `limit`, `size`. |
 | `access.options` | A request to the options route. Fields: `request_id`, `subject`, `type`, `parent`, `items`, `questions`. |
-| `config.warning` | A warning at start. |
+| `config.warning` | A warning at start. [OPERATIONS.md](OPERATIONS.md), section "Events", lists all the events. |
 
 The line `access.decision` shows the subject and the node. With `server.log_mode = "anonymous"`, it shows `-` in place of
 the folder ids and the subfolder ids, because they are parts of object keys. The mode `detailed` shows them.
@@ -664,7 +665,7 @@ race the check.
 
 ## Rotate a key
 
-1. Add the new public key to the text of `public_keys`: a new PEM block, or a new key of the JWK Set with its `kid`.
+1. Add the new public key to the text of `public_keys`. Use a new PEM block, or a new JWK with its `kid`.
    Keep the old key. Restart Stowr.
 2. Make the edge sign with the new key.
 3. Wait for `max_age` plus `clock_skew`: then each token that the old key signed is expired.

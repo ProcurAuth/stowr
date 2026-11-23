@@ -161,7 +161,7 @@ The menu is as wide as its longest line needs, with a limit of 300 px and of the
 
 A saved choice wins over the default. The page ignores a stored value with another `version`.
 
-The listing has no totals at its foot. The foot has the range of the page, the rows of each page and the pager.
+The listing has no totals at its foot. The foot has the range of the page, the rows of each page and the buttons for the previous and the next page.
 
 ## Information page of a bucket
 
@@ -171,7 +171,7 @@ Only the bucket selector opens the page:
 
 - The seven state icons of the trigger are one link to the page of the current bucket. The link is above the trigger and in its grid cell, after the name, before the usage. The trigger keeps a place for it. The rest of the trigger opens the list of the buckets.
 - A host with one bucket or one volume has no row to open in the list: its only entry is always shown. In the list of the buckets, the seven icons of each entry are one link to the page of that bucket. The link is next to the button of the entry, not in it: a button cannot hold a link.
-- Enter and Space open the link. Tab goes from the trigger to the link. In the list, the arrow Right goes from an entry to its link, and the arrow Left goes back.
+- Enter and Space open the link. Tab goes from the trigger to the link. In the list, the arrow Right goes from an entry to its link, and the arrow Left returns to the entry.
 - The accessible name of the link is "Information and permissions of this bucket". In the list, it has the name of the bucket, then the state of each icon. The link has no tooltip, because the accessible name and the information page give each state.
 
 The page has the header of the listing in one row, with the same parts. The brand is at the left edge. The bucket selector and the theme are at the right edge. The link "Browse" is in the header, after the brand, with no chevron. It opens the files of the bucket.
@@ -436,10 +436,10 @@ The part "Lifecycle rules" of the information page (`#info-lifecycle`) has the e
 
 - At the left, one form (`[data-lifecycle-form]`): "New rule", or "Edit <id>" for a rule of the list. It has the name, the prefix and the tag filter side by side. Then it has one line for each action, with a short label and a number of days. The lines are "Delete objects after 30 d", "Delete noncurrent versions after 30 d", "Abort incomplete uploads after 7 d" and "Remove expired delete markers". The title of each line gives the whole sentence.
 
-  The form shows only the fields that the provider keeps. One line "Not offered" names the other fields, with their reasons in its title. "Add" puts a new rule in the list. For a rule of the list, "Update" changes it and "Cancel" goes back to a new rule. The form checks the rule before it goes in the list.
+  The form shows only the fields that the provider keeps. One line "Not offered" names the other fields, with their reasons in its title. "Add" puts a new rule in the list. For a rule of the list, "Update" changes it and "Cancel" returns to a new rule. The form checks the rule before it goes in the list.
 - At the right, the rules of the bucket, one compact row each. A row has "Enabled", the ID, a short summary (the prefix, each action with its days, the tag), "Edit" and "Delete". "Delete" asks "Delete?" in the row, with "Delete" and "Cancel". A rule that the editor does not know has a read-only row. The row has "On" or "Off" and the badge "Kept as is", with its reason in the title.
 
-Over the list, "Save" sends the whole list. "Revert" puts back the rules of the server. "Reload" reads them again after a conflict. A change that is not saved gives the line "Not saved yet".
+Over the list, "Save" sends the whole list. "Revert" replaces the list with the rules of the server. "Reload" reads them again after a conflict. A change that is not saved gives the line "Not saved yet".
 
 Before the save, a confirmation in the page names each action that deletes data and that is new or changed. It gives the prefix and the days. An example is "Objects under logs/ older than 30 days will be deleted."
 
@@ -770,7 +770,7 @@ A bucket is full when the part that sets the stronger limit is at 90 % or more: 
 
   A volume: "This volume is on a file system that is 91 % full: 910 GB of 1000 GB, 90 GB left. New uploads can fail."
 
-  An approximate number has a `~` and the reason in a second sentence. The banner has `role="alert"`, so a screen reader reads it. It has no close button. It goes when the number goes down.
+  An approximate number has a `~` and the reason in a second sentence. The banner has `role="alert"`, so a screen reader reads it. It has no close button. Stowr removes the banner when the percent is less than 90 %.
 - The trigger of the selector gets a border in the colour of an error and the alert icon after the name. The bar of the usage is red from 90 %.
 - In the list, a full bucket gets the alert icon after its name and a red bar.
 - When a bucket other than the current one is full, the trigger gets a small alert icon in the colour of a warning. The tooltip says "Another bucket is almost full: <name>".
@@ -937,7 +937,7 @@ The subtitle of the window gives the path, the count of objects, the total size 
 
 ## Version capability and version access
 
-At start, each bucket gets one bounded probe for the list of versions. A successful answer of the provider turns on the version controls. These cases turn them off for that bucket: HTTP 501, a denial, a time-out, a malformed answer and any other error. The start of the application never fails because of the probe.
+At start, each bucket gets one bounded probe for the list of versions. A successful answer of the provider makes the version controls available. In these cases, the version controls are not available for that bucket: HTTP 501, a denial, a time-out, a malformed answer and any other error. The start of the application never fails because of the probe.
 
 When available:
 

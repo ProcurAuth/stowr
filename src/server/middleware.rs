@@ -31,7 +31,7 @@ pub const ELAPSED_TRAILER: &str = "X-Stowr-Elapsed-Ms";
 /// The longest time that an upload body or a download may make no progress.
 pub const STREAM_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
-const CONTENT_SECURITY_POLICY: &str = "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; frame-ancestors 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:";
+const CONTENT_SECURITY_POLICY: &str = "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:";
 
 /// The security headers of an answer, for the path of the request. The API and the object gateway also get
 /// `Cache-Control: private, no-store`.
@@ -90,7 +90,12 @@ fn refusal(code: &'static str, message: &'static str) -> Response {
 }
 
 /// The refusal of a cross-site mutation from a browser, or `None`. A client without the Fetch Metadata and `Origin`
-/// headers passes. The host of the request is the `Host` header: the server never reads `X-Forwarded-Host`.
+/// headers passes. A header value that is not visible ASCII counts as absent: a browser never sends one. The host
+/// of the request is the authority of the request target (HTTP/2 `:authority`), else the `Host` header: the server
+/// never reads `X-Forwarded-Host`.
+///
+/// `Origin: null` is an opaque origin: a sandboxed frame, a `data:` or `file:` page, or a redirect from another
+/// origin. It is not the origin of this application, so a mutation with it gets `origin_mismatch`.
 pub fn same_origin_refusal(method: &Method, headers: &HeaderMap, host: &str) -> Option<Response> {
     if is_safe_method(method) {
         return None;
@@ -103,12 +108,13 @@ pub fn same_origin_refusal(method: &Method, headers: &HeaderMap, host: &str) -> 
         ));
     }
     let origin = header_first(headers, "origin").trim();
-    if !origin.is_empty() && origin != "null" {
-        let matches = parse_origin(origin).is_some_and(|(scheme, origin_host)| {
-            origin_host.to_lowercase() == host.to_lowercase()
-                && (scheme == "http" || scheme == "https")
-                && !origin_host.is_empty()
-        });
+    if !origin.is_empty() {
+        let matches = !origin.eq_ignore_ascii_case("null")
+            && parse_origin(origin).is_some_and(|(scheme, origin_host)| {
+                origin_host.to_lowercase() == host.to_lowercase()
+                    && (scheme == "http" || scheme == "https")
+                    && !origin_host.is_empty()
+            });
         if !matches {
             return Some(refusal(
                 "origin_mismatch",
@@ -550,6 +556,65 @@ mod tests {
             parse_origin("https://%C3%A9.example"),
             Some(("https".to_owned(), "é.example".to_owned()))
         );
+    }
+
+    fn origin_headers(pairs: &[(&'static str, &'static str)]) -> HeaderMap {
+        let mut headers = HeaderMap::new();
+        for (name, value) in pairs {
+            headers.insert(*name, HeaderValue::from_static(value));
+        }
+        headers
+    }
+
+    async fn refusal_code(response: Option<Response>) -> Option<String> {
+        let answer = crate::server::testing::collect(response?).await;
+        assert_eq!(answer.status, 403, "{}", answer.text());
+        Some(answer.json()["error"]["code"].as_str().unwrap_or_default().to_owned())
+    }
+
+    #[tokio::test]
+    async fn a_mutation_with_the_opaque_origin_null_is_refused() {
+        for origin in ["null", " null ", "NULL"] {
+            let refusal = same_origin_refusal(&Method::POST, &origin_headers(&[("origin", origin)]), "browser.example");
+            assert_eq!(
+                refusal_code(refusal).await.as_deref(),
+                Some("origin_mismatch"),
+                "{origin:?}"
+            );
+        }
+        // The Fetch Metadata does not make an opaque origin the origin of the application.
+        let same_origin = origin_headers(&[("sec-fetch-site", "same-origin"), ("origin", "null")]);
+        let refusal = same_origin_refusal(&Method::DELETE, &same_origin, "browser.example");
+        assert_eq!(refusal_code(refusal).await.as_deref(), Some("origin_mismatch"));
+    }
+
+    #[tokio::test]
+    async fn the_origin_rule_keeps_safe_methods_and_clients_without_origin() {
+        let null = origin_headers(&[("origin", "null")]);
+        for method in [Method::GET, Method::HEAD, Method::OPTIONS] {
+            assert!(
+                same_origin_refusal(&method, &null, "browser.example").is_none(),
+                "{method}"
+            );
+        }
+        assert!(same_origin_refusal(&Method::PUT, &HeaderMap::new(), "browser.example").is_none());
+        let matching = origin_headers(&[("origin", "https://Browser.example")]);
+        assert!(same_origin_refusal(&Method::POST, &matching, "browser.example").is_none());
+    }
+
+    #[test]
+    fn the_policy_of_the_pages_limits_the_targets_of_a_form() {
+        let headers = security_headers("/");
+        let policy = headers
+            .iter()
+            .find(|(name, _)| *name == http::header::CONTENT_SECURITY_POLICY)
+            .map(|(_, value)| *value)
+            .expect("a content security policy");
+        assert_eq!(policy, CONTENT_SECURITY_POLICY);
+        let directives: Vec<&str> = policy.split("; ").collect();
+        assert!(directives.contains(&"form-action 'self'"), "{policy}");
+        assert!(directives.contains(&"frame-ancestors 'self'"), "{policy}");
+        assert!(directives.contains(&"object-src 'none'"), "{policy}");
     }
 
     #[test]

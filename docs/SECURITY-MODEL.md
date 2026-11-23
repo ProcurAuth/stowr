@@ -112,6 +112,46 @@ Each route that returns object bytes carries the sandbox CSP. These routes are `
 neutral content type. Such members are HTML, SVG, XML, JavaScript and WebAssembly. Thus a ZIP member never runs as a page or
 a script of the same origin. Stowr delivers an SVG member only as an image to an `<img>` request.
 
+### Browser headers
+
+Stowr adds these headers to each answer of the router, when the handler did not set the same header. The values come from
+`src/server/middleware.rs`. A request that the HTTP reader of Stowr refuses gets `400` with none of these headers.
+Examples are two `Host` headers, no `Host` header in HTTP/1.1, and a path with a bad escape.
+
+| Header | Value | Reason |
+| --- | --- | --- |
+| `Content-Security-Policy` | `default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'self'; img-src 'self' data: blob:; media-src 'self' blob:; object-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; worker-src 'self' blob:` | The page runs only the scripts of Stowr. A form sends its data only to Stowr. Only a page of the same origin can show Stowr in a frame. |
+| `X-Content-Type-Options` | `nosniff` | The browser uses the declared content type. It does not guess a type from the bytes. |
+| `Referrer-Policy` | `same-origin` | A URL of Stowr can hold a bucket name and a key. The browser does not send it to another origin. |
+| `X-Frame-Options` | `SAMEORIGIN` | An old browser that ignores `frame-ancestors` applies the same frame rule. |
+| `Cross-Origin-Opener-Policy` | `same-origin` | A page of another origin that opens Stowr gets no reference to its window. |
+| `Cross-Origin-Resource-Policy` | `same-origin` | A page of another origin cannot embed an answer of Stowr. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=()` | The interface uses none of these features. A preview cannot use them. |
+| `Cache-Control` | `private, no-store` | Only on the paths under `/api/` and on `/s3`. No cache keeps an answer of the API or of the object gateway. An answer of `/s3` can also hold the `Cache-Control` value of the provider. An answer of `/open/` holds only the value of the provider, or no value. |
+
+A route that returns object bytes sets its own `Content-Security-Policy`, so the value above does not apply to it. Its value
+is `sandbox; default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline'`. The sandbox has no
+flag, so the object runs with an opaque origin. It cannot run a script, send a form or read the page of Stowr. This
+handler also sets `Cross-Origin-Resource-Policy: same-origin` and `X-Content-Type-Options: nosniff`.
+
+### Origin of a request that changes data
+
+Stowr checks the origin of each request after the check of the identity token and before the router. The methods `GET`,
+`HEAD` and `OPTIONS` have no check. Each other method has these rules, in this order:
+
+1. `Sec-Fetch-Site: cross-site` gives `403 cross_site_request_blocked`.
+2. `Origin: null` gives `403 origin_mismatch`. A browser sends this opaque origin from a sandboxed frame, from a `data:` or
+   `file:` page, or after a redirect from another origin.
+3. Another `Origin` value must have the scheme `http` or `https` and the host of the request. The host part includes the
+   port. The comparison ignores the case. A different value gives `403 origin_mismatch`.
+4. A request with no `Origin` header and no `Sec-Fetch-Site: cross-site` passes. A command-line client sends neither header.
+   Stowr treats an `Origin` or `Sec-Fetch-Site` value with a byte other than visible ASCII, space or tab as absent. A
+   browser never sends such a value.
+
+Stowr reads the host of the request from one source. This source is the authority of the request target, else the `Host`
+header. HTTP/2 puts the authority in `:authority`. Stowr never reads `X-Forwarded-Host` or `Forwarded`. A request with two
+`Host` headers gets `400`. Thus a reverse proxy must send the public host name in `Host`.
+
 ## Raw private-key preview
 
 The preview of a raw key is a deliberate function. It needs the read permission. Its content stays in the application, on the
@@ -162,3 +202,23 @@ write-only target.
 The anonymous mode is the default. It keeps object keys out of the log, also the keys in the `/-/` URLs of the browser. Stowr
 quotes each logged path, so a control character cannot forge a log line. Use the detailed mode only in a controlled
 environment. The technical inspection never shows authorization headers, cookies, tokens or credential headers.
+
+## What Stowr does not protect
+
+Stowr does not protect against these things. The deployment must control these risks.
+
+- **A client that reaches Stowr without the edge or the proxy.** It skips the checks of the edge. Use a network rule.
+  Do not publish the port of Stowr.
+- **A client that is not a browser.** It sends no `Origin` and no Fetch Metadata, so the origin check does not apply. The
+  access policy and the permissions still apply.
+- **Another application on the same origin.** It shares the origin of the interface, so the browser isolation cannot stop
+  it. Give Stowr its own host name.
+- **A browser, a device or a host that an attacker controls.**
+- **An edge, a PDP or a provider that an attacker controls.** Stowr trusts the identity token of the edge, the decisions of
+  the PDP and the bytes of the provider.
+- **A person with a valid grant.** Stowr checks the right to do an operation. It does not check the reason for it.
+- **The content of the objects.** Stowr does not scan a file for malware. A file that a person downloads and opens in
+  another application can be dangerous.
+- **Plain HTTP on a network that you do not trust.** Stowr has no TLS server. Put TLS on the reverse proxy.
+- **A token that leaks.** Stowr cannot tell a stolen identity token or upload resume token from the original one.
+- **The audit log of a provider.** It can record each request of Stowr.

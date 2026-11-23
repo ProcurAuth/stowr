@@ -1,0 +1,11 @@
+# Git stores each text file with LF line ends, and writes LF in the working tree on all systems.
+* text=auto eol=lf
+
+# Git never changes the bytes of these files.
+*.png binary
+*.webp binary
+*.ico binary
+*.gz binary
+*.zip binary
+*.woff2 binary
+*.pdf binary

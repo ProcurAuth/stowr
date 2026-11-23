@@ -302,9 +302,9 @@ def check_online(report: Report, public: dict[str, list[str]]) -> None:
 
 # ------------------------------------------------------------------ site
 
-NAV_PAGES = ["index.html", "getting-started.html", "configuration.html", "architecture.html", "access.html",
+NAV_PAGES = ["index.html", "getting-started.html", "configuration.html", "architecture.html",
              "security.html", "operations.html", "reference.html", "changelog.html"]
-EXTRA_PAGES = ["previews.html", "conformance.html", "development.html"]
+EXTRA_PAGES = ["access.html", "previews.html", "conformance.html", "development.html"]
 
 
 def check_site(report: Report) -> None:

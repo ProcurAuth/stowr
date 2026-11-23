@@ -10,9 +10,9 @@
 #   --log        Write the log of Stowr to this file at the end.
 #
 # The variable PROCURAUTH_DIR gives the checkout of the ProcurAuth repository. The default is the directory
-# procurauth next to the checkout of Stowr. The checkout must be at the commit of ProcurAuth 1.1 below. The script
-# does not change the checkout: the runner goes to the directory stowr-conformance of the target volume of that
-# checkout.
+# procurauth next to the checkout of Stowr. The checkout must be at the commit of the dependency procurauth-pep: the
+# script reads this commit (the `rev`) from Cargo.toml. The script does not change the checkout: the runner goes to the
+# directory stowr-conformance of the target volume of that checkout.
 #
 # The script builds the runner access-conformance with the scripts of ProcurAuth, and Stowr as a static binary with
 # scripts/static.sh. Then it starts Stowr in a container with no network (--network none) and a read-only root. The
@@ -23,14 +23,13 @@
 # Exit codes:
 #   0  The failed cases and the skipped cases are equal to expected.txt.
 #   1  The failed cases or the skipped cases are not equal to expected.txt.
-#   2  A problem of the set-up: a bad profile, a target that is not reachable, a missing tool, another commit.
+#   2  A problem of the set-up: a bad profile, a target that is not reachable, a missing tool, another commit, no
+#      `rev` of procurauth-pep in Cargo.toml.
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 procurauth="${PROCURAUTH_DIR:-$(cd "$repo/.." && pwd)/procurauth}"
-# ProcurAuth 1.1 (tag v1.1). The cases and the runner come from this commit only.
-procurauth_commit="c820b4ac0e37c4769394876105fd549a6c8b38cc"
 stowr_image="alpine:3.22"
 runner_target="/cargo-target/stowr-conformance"
 expected_file="$here/expected.txt"
@@ -39,6 +38,12 @@ die() {
     echo "ERROR: $*" >&2
     exit 2
 }
+
+# The commit of ProcurAuth: the first `rev` of the dependency procurauth-pep in Cargo.toml.
+# The cases and the runner come from this commit only. Thus the library and the runner always come from one commit.
+procurauth_commit="$(sed -n 's/^ *procurauth-pep *= *{.*rev *= *"\([0-9a-f]\{40\}\)".*/\1/p' "$repo/Cargo.toml" 2>/dev/null |
+    head -n 1 || true)"
+[ -n "$procurauth_commit" ] || die "The file $repo/Cargo.toml has no procurauth-pep dependency with a rev of 40 hex digits."
 
 build=1
 cases=""
@@ -79,9 +84,9 @@ done
 if [ ! -f "$procurauth/scripts/docker-env.sh" ]; then
     die "The file $procurauth/scripts/docker-env.sh is missing. Set PROCURAUTH_DIR to the ProcurAuth checkout."
 fi
-found_commit="$(git -C "$procurauth" rev-parse HEAD 2>/dev/null || true)"
+found_commit="$(git -C "$procurauth" rev-parse --verify --quiet HEAD 2>/dev/null || true)"
 if [ "$found_commit" != "$procurauth_commit" ]; then
-    die "The checkout $procurauth is at the commit ${found_commit:-unknown}. Check out $procurauth_commit (ProcurAuth 1.1)."
+    die "The checkout $procurauth is at the commit ${found_commit:-unknown}. Check out $procurauth_commit (the rev of procurauth-pep in Cargo.toml)."
 fi
 # This sets image, target_volume, uid and gid, as the scripts of ProcurAuth do.
 # shellcheck source=/dev/null

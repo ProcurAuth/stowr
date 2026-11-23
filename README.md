@@ -5,18 +5,18 @@
 <p align="center">
   <a href="https://github.com/ProcurAuth/stowr/actions/workflows/ci.yaml"><img src="https://github.com/ProcurAuth/stowr/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
   <a href="https://github.com/ProcurAuth/stowr/releases/latest"><img src="https://img.shields.io/github/v/release/ProcurAuth/stowr?color=4338ca&label=release" alt="Latest release"></a>
-  <img src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-lightgrey" alt="Licence: MIT OR Apache-2.0">
-  <img src="https://img.shields.io/badge/binary-linux%20amd64%20%7C%20arm64-4338ca" alt="Static binary for Linux amd64 and arm64">
-  <img src="https://img.shields.io/badge/config-HCL%2C%20closed%20schema-0ea5e9" alt="Configuration: one HCL file with a closed schema">
-  <img src="https://img.shields.io/badge/access-ProcurAuth%201.1-34d399" alt="Access policy: ProcurAuth 1.1">
+  <a href="#licence"><img src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-lightgrey" alt="Licence: MIT OR Apache-2.0"></a>
+  <a href="https://procurauth.github.io/procurauth/implementations.html"><img src="https://img.shields.io/badge/ProcurAuth-1.1-4338ca" alt="ProcurAuth 1.1"></a>
+  <img src="https://img.shields.io/badge/binary-static%2C%20linux%20amd64%20%7C%20arm64-34d399" alt="Static binary for Linux amd64 and arm64">
+  <img src="https://img.shields.io/badge/config-HCL%2C%20closed%20schema-818cf8" alt="Configuration: one HCL file with a closed schema">
 </p>
 
 <p align="center">
   <a href="https://procurauth.github.io/stowr/"><b>Website</b></a> ·
-  <a href="https://procurauth.github.io/stowr/getting-started.html">Getting started</a> ·
-  <a href="https://procurauth.github.io/stowr/configuration.html">Configuration</a> ·
+  <a href="#documentation">Docs</a> ·
   <a href="https://procurauth.github.io/stowr/access.html">Access</a> ·
-  <a href="https://procurauth.github.io/stowr/security.html">Security</a> ·
+  <a href="https://procurauth.github.io/stowr/configuration.html">Configuration</a> ·
+  <a href="SECURITY.md">Security</a> ·
   <a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a>
 </p>
 
@@ -26,8 +26,8 @@ Stowr is a web application that browses S3-compatible storage, Google Cloud Stor
 the objects, previews them, and works on them: upload, download, copy, move, rename, delete, tags, versions and more.
 
 It is for operators and teams who run their own storage. They need one page for many buckets, on a host with little
-memory, and for objects of hundreds of gigabytes. **Stowr reads only the bytes that it shows, and it keeps no state on
-disk.**
+memory, and for objects of hundreds of gigabytes. **Stowr reads only the bytes that it shows, and it keeps no database
+and no cache on disk.**
 
 <p align="center">
   <img src="docs/assets/img/hero.webp" alt="The Stowr interface: a bucket with folders, and the menu of buckets and hosts with the state icons of each bucket" width="100%">
@@ -78,18 +78,7 @@ object is read with exact byte ranges. An upload goes in chunks, with a token th
 | Bucket functions | Lifecycle rules, Object Lock, SSE-S3 encryption, incomplete multipart uploads, and the usage and quota of a bucket. |
 | Access | The mode `authzen` checks an identity token and asks a PDP. The mode `open` needs a proxy that signs users in. |
 | Configuration | One HCL file. A closed schema. A mistake stops the start. `print-config` shows each value and its source. |
-| Runtime | No database, no cache folder, no temporary file. A read-only root file system is enough. No request to another origin. |
-
-## See it
-
-| | |
-| --- | --- |
-| <img src="docs/assets/img/browser-dark.webp" alt="The folder list in the dark theme" width="100%"> | <img src="docs/assets/img/preview-large.webp" alt="The preview of a Parquet file of 979 MB: the schema, read with two storage requests" width="100%"> |
-| The dark theme. The interface has a light theme and a dark theme. | A large Parquet file. Stowr reads the footer only: 2 storage requests. |
-| <img src="docs/assets/img/uploads.webp" alt="The upload panel at 35 percent, with the rate and the time left" width="100%"> | <img src="docs/assets/img/access-refused.webp" alt="A folder that the access policy refuses: no folder to open" width="100%"> |
-| An upload of 229 MB, with the rate and the time left. | A folder that the PDP refuses. |
-
-The [website](https://procurauth.github.io/stowr/) has more pictures. They show previews of images, JSON, CSV and archives, the inspection of a large object, Insights, and the information page of a bucket.
+| Runtime | No database, no cache folder. Only a write to a volume uses a temporary file, in the folder of the target. A read-only root file system is enough. No request to another origin. |
 
 ## Example
 
@@ -132,6 +121,17 @@ Alice opens `reports/2026/q1.csv` in the bucket `finance`. Stowr checks her toke
 
 The PDP answers `{"decision": true, "context": {"limits": {"max_object_size": 104857600}}}`. Stowr reads the object and
 refuses a size over 100 MiB. An answer of `false` gives `403`. A spent budget gives `429` with `Retry-After`. A PDP that does not answer gives `503`, never a grant. [docs/ACCESS.md](docs/ACCESS.md) has the rules.
+
+## See it
+
+| | |
+| --- | --- |
+| <img src="docs/assets/img/browser-dark.webp" alt="The folder list in the dark theme" width="100%"> | <img src="docs/assets/img/preview-large.webp" alt="The preview of a Parquet file of 979 MB: the schema, read with two storage requests" width="100%"> |
+| The dark theme. The interface has a light theme and a dark theme. | A large Parquet file. Stowr reads the footer only: 2 storage requests. |
+| <img src="docs/assets/img/uploads.webp" alt="The upload panel at 35 percent, with the rate and the time left" width="100%"> | <img src="docs/assets/img/access-refused.webp" alt="A folder that the access policy refuses: no folder to open" width="100%"> |
+| An upload of 229 MB, with the rate and the time left. | A folder that the PDP refuses. |
+
+The [website](https://procurauth.github.io/stowr/) has more pictures. They show previews of images, JSON, CSV and archives, the inspection of a large object, Insights, and the information page of a bucket.
 
 ## Quick start
 
@@ -181,6 +181,20 @@ Open `http://127.0.0.1:8080/`. Press Ctrl+C to stop Stowr, then run `docker stop
 
 Stowr is a program of the [ProcurAuth](https://github.com/ProcurAuth) organisation. The organisation holds the open specification and the programs that follow it. The [implementations page](https://procurauth.github.io/procurauth/implementations.html) lists them, with the results of the conformance runs.
 
+<p align="center">
+  <img src="docs/assets/family.svg" alt="The specification defines the protocol, the schemas and the conformance cases. The reference tools read them and test the programs. The portal is a backend, an edge and a PDP. Stowr, Hune and ClickHouse Dash are services that ask the portal." width="90%">
+</p>
+
+| Part | Role | Repository | Site |
+| --- | --- | --- | --- |
+| **procurauth** | The specification and the reference tools | [ProcurAuth/procurauth](https://github.com/ProcurAuth/procurauth) | [procurauth.github.io/procurauth](https://procurauth.github.io/procurauth/) |
+| **portal** | Backend, edge and PDP | [ProcurAuth/portal](https://github.com/ProcurAuth/portal) | [procurauth.github.io/portal](https://procurauth.github.io/portal/) |
+| **Stowr** | PEP: a browser for S3, Google Cloud Storage and folders | [ProcurAuth/stowr](https://github.com/ProcurAuth/stowr) | [procurauth.github.io/stowr](https://procurauth.github.io/stowr/) |
+| **Hune** | PEP: dashboards over ClickHouse, PostgreSQL and MongoDB | [ProcurAuth/hune](https://github.com/ProcurAuth/hune) | No public site yet |
+| **ClickHouse Dash** | PEP and MCP server: a query console for ClickHouse | Outside this organisation | [Implementations page](https://procurauth.github.io/procurauth/implementations.html#programs) |
+
+To add a program to this list, open an issue in the [specification repository](https://github.com/ProcurAuth/procurauth/issues).
+
 ## Documentation
 
 | Page | Content |
@@ -212,7 +226,7 @@ python3 -I scripts/check-docs.py
 ## Security
 
 Do not open a public issue for a vulnerability. Use the [private report](https://github.com/ProcurAuth/stowr/security/advisories/new).
-[SECURITY.md](SECURITY.md) tells the supported versions and the response times.
+[SECURITY.md](SECURITY.md) tells the supported versions and the response times. The [security model](docs/SECURITY-MODEL.md) tells what Stowr protects.
 
 ## Contribute
 

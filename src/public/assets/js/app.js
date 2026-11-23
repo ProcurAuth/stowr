@@ -713,12 +713,12 @@ BB.cfg = config;
     }, [50, 100, 500].map(size => h('option', { value: size }, size)));
     const previous = h('button', { type: 'button', class: 'button button--small button--icon', 'aria-label': 'Previous page', title: 'Previous page', onclick: () => previousPage() }, ic('chevron-left'));
     const next = h('button', { type: 'button', class: 'button button--small button--icon', 'aria-label': 'Next page', title: 'Next page', onclick: () => nextPage() }, ic('chevron-right'));
-    const pager = h('div', { class: 'tableFoot__pager' }, previous, next);
+    const pageNav = h('div', { class: 'tableFoot__pageNav' }, previous, next);
     const foot = h('div', { class: 'tableFoot' },
       range,
       h('label', {}, 'Rows', h('span', { class: 'select' }, pageSize)),
-      pager);
-    ui.table = { sorts, timeToggle, tbody, box, range, pageSize, previous, next, pager, foot };
+      pageNav);
+    ui.table = { sorts, timeToggle, tbody, box, range, pageSize, previous, next, pageNav, foot };
     return h('div', { class: 'listing' }, box, foot);
   }
 
@@ -761,7 +761,7 @@ BB.cfg = config;
     t.pageSize.disabled = state.isRefreshing;
     t.previous.disabled = !hasPreviousPage() || state.isRefreshing;
     t.next.disabled = !hasNextPage() || state.isRefreshing;
-    t.pager.hidden = !hasPreviousPage() && !hasNextPage();
+    t.pageNav.hidden = !hasPreviousPage() && !hasNextPage();
   }
 
   function menuItem(label, iconName, onclick, { danger = false } = {}) {

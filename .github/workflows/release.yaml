@@ -2,10 +2,11 @@ name: Release
 
 # A tag vX.Y.Z (or vX.Y.Z-suffix) starts the release. The tag must be equal to the version of Cargo.toml, and
 # CHANGELOG.md must have a section "## X.Y.Z (date)".
-# The release has three files:
+# The release has four files:
 #   stowr_<version>_linux_amd64.tar.gz   the static binary `stowr` for Linux x86-64
 #   stowr_<version>_linux_arm64.tar.gz   the static binary `stowr` for Linux AArch64
 #   checksums.txt                        the SHA-256 of each archive (the format of sha256sum)
+#   SHA256SUMS                           the same content as checksums.txt (the name of the other ProcurAuth releases)
 # The notes of the release are the section of the version in CHANGELOG.md.
 # No job builds an image for a registry, logs in to a registry or publishes an image.
 on:
@@ -189,6 +190,9 @@ jobs:
         run: |
           cd dist
           sha256sum "stowr_${VERSION}_linux_amd64.tar.gz" "stowr_${VERSION}_linux_arm64.tar.gz" > checksums.txt
+          # The other ProcurAuth releases use the name SHA256SUMS. Stowr keeps checksums.txt for the current users.
+          cp checksums.txt SHA256SUMS
+          sha256sum --check SHA256SUMS
           cat checksums.txt
       - name: Create the release
         env:
@@ -198,4 +202,5 @@ jobs:
           if [ "$PRERELEASE" = true ]; then options=(--prerelease); fi
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
             --notes-file notes/notes.md "${options[@]}" \
-            "dist/stowr_${VERSION}_linux_amd64.tar.gz" "dist/stowr_${VERSION}_linux_arm64.tar.gz" dist/checksums.txt
+            "dist/stowr_${VERSION}_linux_amd64.tar.gz" "dist/stowr_${VERSION}_linux_arm64.tar.gz" dist/checksums.txt \
+            dist/SHA256SUMS
