@@ -835,7 +835,6 @@ async fn the_object_routes_of_this_folder_refuse_a_write_only_instance() {
 }
 
 #[tokio::test]
-#[ignore = "needs the routes of the job manager and of the previews"]
 async fn each_object_read_route_refuses_a_write_only_instance() {
     let backend = FakeBackend::with_objects(&[("a.txt", "secret")]);
     let app = app_of(vec![
