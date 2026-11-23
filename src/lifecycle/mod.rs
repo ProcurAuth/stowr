@@ -22,7 +22,7 @@ mod tags;
 pub mod xml;
 
 #[cfg(test)]
-mod fakes;
+pub(crate) mod fakes;
 #[cfg(test)]
 mod lifecycle_tests;
 #[cfg(test)]

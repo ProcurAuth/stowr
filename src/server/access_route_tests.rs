@@ -83,6 +83,21 @@ impl Env {
     }
 
     fn with_extra(extra: Vec<(BucketConfig, Arc<MemoryBackend>)>) -> Self {
+        Self::build(None, extra)
+    }
+
+    /// An environment whose instance `rw` has a back end with object tags and the same objects.
+    fn with_tags() -> Self {
+        let tagging = crate::lifecycle::fakes::TaggingMemory::new(&[
+            ("tenant/folder/direct.txt", "direct"),
+            ("tenant/folder/nested/deep.txt", "deep"),
+            ("tenant/a/x.txt", "a"),
+        ]);
+        Self::build(Some(Arc::new(tagging)), Vec::new())
+    }
+
+    /// An environment with a back end of `rw` (by default the memory back end of [`Env::rw`]) and more instances.
+    fn build(rw_backend: Option<Arc<dyn Backend>>, extra: Vec<(BucketConfig, Arc<MemoryBackend>)>) -> Self {
         let readonly = bucket("readonly", "Read only", Some(&["read"]));
         let mut rw = bucket("rw", "Read write", None);
         rw.root_prefix = "tenant/".to_owned();
@@ -94,13 +109,13 @@ impl Env {
         fake.accept_token(TOKEN, SUBJECT, "");
         fake.accept_token(OTHER_TOKEN, "user-2", "");
         let access = AccessLayer::with_guard(&config, fake.clone()).unwrap();
-        let rw_backend = memory(&[
+        let rw_memory = memory(&[
             ("tenant/folder/direct.txt", "direct"),
             ("tenant/folder/nested/deep.txt", "deep"),
             ("tenant/a/x.txt", "a"),
         ]);
         let readonly_backend: Arc<dyn Backend> = memory(&[("ro.txt", "ro")]);
-        let rw_dyn: Arc<dyn Backend> = rw_backend.clone();
+        let rw_dyn: Arc<dyn Backend> = rw_backend.unwrap_or_else(|| rw_memory.clone());
         let mut instances = vec![instance_over(readonly, readonly_backend), instance_over(rw, rw_dyn)];
         for (cfg, backend) in extra {
             let backend: Arc<dyn Backend> = backend;
@@ -112,7 +127,7 @@ impl Env {
         Self {
             app,
             fake,
-            rw: rw_backend,
+            rw: rw_memory,
         }
     }
 
@@ -686,6 +701,8 @@ struct ChangeRoute {
     strict: bool,
     others: Vec<(&'static str, String)>,
     use_ask: (&'static str, String),
+    /// True when the instance `rw` needs a back end with object tags.
+    tags: bool,
 }
 
 fn change_routes() -> Vec<ChangeRoute> {
@@ -699,6 +716,7 @@ fn change_routes() -> Vec<ChangeRoute> {
         strict,
         others,
         use_ask,
+        tags: false,
     };
     vec![
         route(
@@ -841,6 +859,32 @@ fn change_routes() -> Vec<ChangeRoute> {
             vec![(ACTION_READ, FOLDER.to_owned()), (ACTION_READ, folder("extracted"))],
             (ACTION_WRITE, folder("extracted")),
         ),
+        ChangeRoute {
+            tags: true,
+            ..route(
+                "tags put",
+                "PUT",
+                "/api/tags",
+                r#"{"instance":"rw","key":"folder/direct.txt","tags":[{"key":"a","value":"1"}]}"#,
+                false,
+                true,
+                vec![],
+                (ACTION_WRITE, FOLDER.to_owned()),
+            )
+        },
+        ChangeRoute {
+            tags: true,
+            ..route(
+                "tags bulk",
+                "POST",
+                "/api/tags/bulk",
+                r#"{"instance":"rw","prefix":"folder/","add":[{"key":"a","value":"1"}]}"#,
+                false,
+                true,
+                vec![(ACTION_READ, FOLDER.to_owned())],
+                (ACTION_WRITE, FOLDER.to_owned()),
+            )
+        },
     ]
 }
 
@@ -864,7 +908,7 @@ impl ChangeRoute {
 
     /// Send the request in a new environment with an answer function.
     async fn send(&self, answer: impl Fn(&FakeQuestion) -> Value + Send + Sync + 'static) -> (Env, TestResponse) {
-        let env = Env::new();
+        let env = if self.tags { Env::with_tags() } else { Env::new() };
         env.fake.set_answer(answer);
         let response = env.send(self.method, self.target, self.body()).await;
         (env, response)
