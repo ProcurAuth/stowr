@@ -64,7 +64,7 @@ access {
     url             = "https://pdp.example:4182"
     token_file      = "/run/secrets/pdp-token"
     timeout         = "500ms"
-    usage_timeout   = "2s"
+    usage_timeout   = "6s"
     cache_ttl       = "30s"
     max_evaluations = 64
   }
@@ -116,18 +116,21 @@ question"). The rules:
 - The header `alg` is exactly `Ed25519` or `ES256`. Stowr refuses `EdDSA`, `none`, `HS256` and each other name.
 - The header `typ` is exactly `JWT`. Stowr refuses another value (for example `at+jwt`) and a token without `typ`.
 - The header `kid` selects the key. Stowr refuses an unknown `kid`, and a `kid` that belongs to a key of
-  another algorithm. A token without `kid` is checked with each key of its algorithm.
+  another algorithm. When the text of `public_keys` holds more than one key, Stowr refuses a token without `kid`.
+  When it holds one key, a token without `kid` is checked with this key. Stowr never tries each key.
 - Stowr refuses a header `crit`, a duplicate member in the header or in the claims, and a token of more than 16384 bytes.
 - The claims `iss`, `sub`, `aud`, `iat` and `exp` are mandatory. `iss` must be the configured issuer. `aud` must be the id of
   the service, or an array that holds it.
 - `sub` has 1 to 256 bytes of UTF-8, without a control character. Stowr uses it as opaque text. It sends it to the PDP as
   the subject with the type `user`, and sends no other claim.
-- `iat` and `exp` are numbers of seconds (RFC 7519 NumericDate). Stowr accepts a fraction, an exponent and a sign, as
-  ClickHouse Dash does, and rounds the value down to a whole second. The absolute value must be 9e15 or less.
-  Stowr applies the clock skew to both: it refuses a token when its clock is later than `exp` plus the skew, and when
-  `iat` is later than its clock plus the skew.
+- `iat`, `exp` and `nbf` are whole numbers of seconds since the Unix epoch (P 9.3). Each one is a JSON integer with
+  digits only. Stowr refuses a fraction, an exponent and a sign, for example `1792569600.0`, `1.7925696e9` and `-1`.
+  It never rounds or converts such a value.
+- Stowr applies the clock skew to `iat`, `exp` and `nbf`. It refuses a token when its clock is later than `exp` plus
+  the skew, and when `iat` is later than its clock plus the skew. The claim `nbf` is optional. When the token has
+  `nbf`, Stowr refuses the token when `nbf` is later than its clock plus the skew.
 - Stowr refuses a token when `exp` is less than `iat`, or when `exp` minus `iat` is more than `max_age`.
-- Stowr ignores `nbf` and each unknown claim. It reads `owner` for the log only. It never uses `owner` for a decision.
+- Stowr ignores each unknown claim. It reads `owner` for the log only. It never uses `owner` for a decision.
 - Stowr reads the token only from the configured header. It never reads `Authorization`, a cookie or a query parameter.
   The header name must not be `Cookie`, `Authorization`, `Host`, `Content-Type` or `Content-Length`.
 - Two copies of the header are a refusal. The edge must replace the header (P 9.1).
@@ -163,31 +166,34 @@ without `kid`, gets the RFC 7638 thumbprint of the key as `kid`. Two keys of a J
 
 Stowr must accept requests only through the edge (P 9.4). A client that reaches Stowr without the edge can use an identity
 token that it got, until the `exp` of the token. It then skips the other checks of the edge, for example the decision for the
-action `access`. The network rule stops this. Use a firewall, a network policy or a private network. Do not publish the port of
-Stowr.
+action `access`. The network rule stops this. Use a firewall, a network policy or a private network. Do not publish the listen address
+of Stowr.
 
 The PDP token is a secret of Stowr. Keep the network of the PDP closed.
 
-## Routes with no PDP question
+## Routes without data of a bucket
 
-Two routes need no identity token:
+These routes follow P 10.1c. Two routes need no identity token and ask the PDP nothing:
 
 | Route | Reason |
 |---|---|
-| `GET`, `HEAD /healthz` | The health check of the container calls it. It gives no data. |
+| `GET`, `HEAD /healthz` | The health probe: the health check of the container calls it. It gives no data. |
 | `GET`, `HEAD /.well-known/procurauth/actions` | P 5.1: the reader of the document has no token. It asks the PDP nothing. |
 
-These routes need the identity token but ask no PDP question:
+These routes need the identity token and hold no data of a bucket. Each request asks the action `access` on the service
+node: `{"type":"service","id":"<audience>"}`, with no ancestors, no usage and the match `node`.
 
-| Route | Reason |
+| Route | Content |
 |---|---|
-| The static files (`/`) and the pages (`/-/...`) | They hold no data of a bucket. |
-| `GET /api/build` | It gives the version of the program. |
-| `OPTIONS /s3` | It gives a fixed `Allow` header. |
-| `/api/jobs` (without an id) | It always gives 404. |
+| The static files (`/`) and the pages (`/-/...`) | The interface. |
+| `GET /api/build` | The version of the program. |
+| `OPTIONS /s3` | A fixed `Allow` header. |
+| `/api/jobs` (without an id) | Always 404. |
 
-These routes are a deviation from P 10.0 step 2 (the route `/healthz`), and from P 10.1 and P 15 item 6 (the other
-routes). The deviation has one reason for each route, in the tables above. Each other route asks the PDP.
+A `false` answer gives `403 forbidden` with the action `access`. A PDP that gives no valid answer gives
+`503 pdp_unavailable`. The action `access` never needs an approval (P 17.8): an answer with a reason of P 17.1 is not
+valid and gives `503 pdp_unavailable` (P 10.1c). The action document never lists the action `access`. Each other route
+asks the actions of the document (refer to "The routes").
 
 A route that has no access rule answers `403 forbidden` with the action `unknown`, and Stowr writes the line `access.no_rule`.
 
@@ -244,7 +250,8 @@ use this form.
 
 ## The actions
 
-The service publishes five actions. No action is named `access`: the edge decides it.
+The service publishes five actions. The document lists no action named `access`: this action opens the service to a
+subject (P 8.3). Stowr asks it only for the routes without data of a bucket.
 
 | Action | Types | What it lets a person do |
 |---|---|---|
@@ -272,7 +279,10 @@ The document declares two limits:
 | Limit | Kind | Unit | Range | Listed on |
 |---|---|---|---|---|
 | `writes` | budget | `operation` | no range | `object.write`, `object.delete`, `object.lock`, `bucket.admin` |
-| `max_object_size` | ceiling | `byte` | 1 to 5497558138880 | `object.read`, `object.write` |
+| `max_object_size` | ceiling | `bytes` | 1 to 5497558138880 | `object.read`, `object.write` |
+
+The unit of a budget is a singular noun: the thing that one unit counts. The unit of a ceiling is a plural noun: the
+things that the value counts.
 
 The PDP counts a budget. Stowr applies a ceiling. A grant gives a budget value only on the grant of the action `access`,
 which the edge decides. A grant gives a ceiling value on the grant of the action.
@@ -280,8 +290,8 @@ which the edge decides. A grant gives a ceiling value on the grant of the action
 ### The action document
 
 `GET /.well-known/procurauth/actions` gives the document. Stowr builds it one time at start, and gives the same bytes at each
-read. It needs no token and asks the PDP nothing. A bad token does not change the answer. The old path
-`/.well-known/access-actions` has no alias and gives 404.
+read. It needs no token and asks the PDP nothing. A bad token does not change the answer. The path
+`/.well-known/access-actions` has no alias: it needs the token and gives 404.
 
 The document has the `server` (the id of the service), the types of the tree, the actions with their limits, the limits, and
 one resource for each `bucket` block and each `volume` block. A resource has the path `bucket:<id>` and the label (the name of
@@ -305,9 +315,13 @@ The decision of the PDP comes before the first byte of a body that Stowr reads, 
 ## The routes
 
 Notation: `N(key)` and `N(prefix)` are the nodes of "From a key to a node". `B` is the bucket node. "Others" are the
-other permissions of the operation. "Use" is the permission that the operation uses (P 5.5). A use with `(usage)` is an
-action that lists the budget `writes`: Stowr asks it with usage (refer to "Budget writes"). A permission that is not a use
-or an other is not asked.
+other permissions of the operation (P 5.5a). "Use" is the permission that the operation uses (P 5.5). A use with
+`(usage)` is an action that lists the budget `writes`: Stowr asks it with usage (refer to "Budget writes"). A permission
+that is not a use or an other is not asked.
+
+Stowr asks the others first, in one request, with `"context":{"permission_only":true}` and without usage. Then it asks
+the use, in a separate request, without `permission_only`. The PDP ignores `confirm` for an other (P 17.8). Thus only
+the action of the use can need an approval.
 
 ### Read routes
 
@@ -324,7 +338,7 @@ The use of each read route is `object.read`. It lists no budget, so no question 
 | `/api/structured-preview`, `/api/archive-preview`, `GET /api/archive-entry`, `/api/image-preview`, `/api/inspect` | `N(key)` |
 | `GET /api/versions`, `GET /api/tags`, `GET /api/metadata`, `GET /api/object-lock` | `N(key)` |
 | `POST /api/integrity`, `POST /api/archive-entry/integrity` (both start a job) | `N(key)` |
-| `POST /api/version-counts` | One permission for each key. The first key is the use. All go in one batch. |
+| `POST /api/version-counts` | One permission for each key. The first key is the use. The other keys are others. |
 | `POST /api/sqlite/sessions` | `N(key)` |
 | `GET /api/usage`, `GET /api/encryption`, `GET /api/lifecycle`, `POST /api/permissions/refresh` | `B` |
 
@@ -361,8 +375,8 @@ job is a copy or a move of a prefix, a delete of a prefix, bulk tags, an abort b
 
 ### Continuations
 
-A continuation continues a use that already took its unit. It asks its permissions again, in one batch, without usage. This
-rule applies also when the action lists a budget.
+A continuation continues a use that already took its unit. It asks its permissions again, without usage: the others
+with `permission_only`, then the use. This rule applies also when the action lists a budget.
 
 | Route | Permissions |
 |---|---|
@@ -372,7 +386,8 @@ rule applies also when the action lists a budget.
 
 A job keeps no subject. The permissions of the person who asks decide, at each request. A job whose permissions the PDP
 refuses answers `404 unknown_job`, as a job that does not exist. A SQLite session whose permissions the PDP refuses answers
-`404 sqlite_session_not_found`. A refusal of an upload continuation gives 403 or 429, and a PDP failure gives 503.
+`404 sqlite_session_not_found`. A refusal of an upload continuation gives 403 or 429, and a PDP failure gives 503. An
+answer with a reason of P 17.1 gives the `403` of "Approval of an effect", also for a job and a session.
 
 A request for `/api/stats` asks its permission each time, also when it reuses a job.
 
@@ -383,8 +398,8 @@ for each use.
 
 - The use of an action that lists `writes` is one Access Evaluation with `"context":{"usage":{"units":1}}`. The context holds
   nothing else. The question is never part of a batch and never has the match `subtree`.
-- Stowr asks the Others first, without usage, in one batch when there are two or more. A refused Other gives 403 and no usage
-  question. Then Stowr asks the use.
+- Stowr asks the Others first, with `permission_only` and without usage, in one batch when there are two or more. A
+  refused Other gives 403 and no usage question. Then Stowr asks the use.
 - Stowr removes each repeated Other, and each Other that equals the use. Thus the same question without usage never comes
   before the question with usage (P 10.1).
 - The PDP takes the unit when it answers the question. Stowr takes the unit before the effect. A request that fails later
@@ -400,12 +415,29 @@ The answers:
 | `true` with `context.usage.units` 0 or 1 | The operation runs. |
 | `true` without `context.usage.units` | Stowr reads it as `false` (P 6.12): `403 forbidden`. |
 | `false` with `budget_exceeded` and a `retry_after` of 1 or more | `429 too_many_requests` with `Retry-After` |
+| `false` with `approval_required`, `approval_pending`, `approval_denied` or `approval_expired` (P 17.1) | `403` with the body `{"error":"approval_cannot_wait"}` |
 | `false` with another reason, or no reason | `403 forbidden`. Stowr never sends the reason to the client. |
 | No answer, an HTTP error, or an answer that is not valid | `503 pdp_unavailable` |
 | `false` with `budget_exceeded` and a `retry_after` that is not a whole number of 1 or more | `503 pdp_unavailable` |
 
 Stowr never sends a usage question again, also after a timeout or a lost answer (P 10.6). The PDP can have counted the unit.
-Stowr answers 503.
+Stowr answers 503. The one exception: the connection failed before Stowr wrote the request.
+
+## Approval of an effect
+
+No route of Stowr can wait for the approval of an owner (P 17.7a). Stowr sends no `context.approval` and submits no
+approval request. When the answer to the question of a use has a reason of P 17.1 (`approval_required`,
+`approval_pending`, `approval_denied` or `approval_expired`), Stowr answers HTTP 403 with exactly this body:
+
+```json
+{"error":"approval_cannot_wait"}
+```
+
+- This rule applies on each route that asks an action of the document, also on `/s3` and `/open/`.
+- The operation has no effect, and Stowr keeps no such answer.
+- An other permission and the action `access` never get such a reason (P 5.5a, P 10.1c). Stowr reads such an answer
+  as an answer that is not valid: `503 pdp_unavailable`, and the line `access.pdp_invalid_answer` with the reason.
+- The read of the node of a listing (`GET /api/list`) is the use of the route: a reason of P 17.1 also gives this body.
 
 ## The ceiling max_object_size
 
@@ -492,6 +524,8 @@ to "The routes").
 - When the person cannot read the node but can read a deeper folder, `GET /api/list` gives a navigation list. It holds only the
   folders on the path to a folder that the person can read. Stowr removes the objects.
 - At the deepest level (a subfolder), such a request gets 403.
+- When the answer to `object.read` at the node has a reason of P 17.1, the request gets `403` with the body
+  `{"error":"approval_cannot_wait"}`.
 
 A match `subtree` never lets an operation run (P 4.4). The document publishes every bucket label. Thus a hidden bucket is not a
 secret.
@@ -499,13 +533,15 @@ secret.
 ## Errors
 
 The body of an error is `{"error":{"code":"...","message":"..."}}`. An access error also has `action`. The routes `/s3` and
-`/open/` answer the message as plain text with the same status.
+`/open/` answer the message as plain text with the same status. The one exception is `approval_cannot_wait`: its body is
+`{"error":"approval_cannot_wait"}` on each route.
 
 | Status | Code | Cause |
 |---|---|---|
 | 401 | `unauthenticated` | No token, a token that is not valid, or two copies of the header. |
 | 403 | `forbidden` | The PDP answered `false` without `budget_exceeded`. Or an unpublished action, a ceiling that the action does not list, a route with no rule (action `unknown`). The body has `action`. |
 | 403 | `ceiling_exceeded` | A size over `max_object_size`. The body has `action`, `ceiling` and `limit`. |
+| 403 | `approval_cannot_wait` | The action of the use needs the approval of its owner. The body is exactly `{"error":"approval_cannot_wait"}`, also on `/s3` and `/open/`. |
 | 403 | `permission_denied` | The `permissions` of the bucket or the volume, or `server.access_mode`, refuse the operation. No PDP question. |
 | 404 | `unknown_instance` | The instance id does not exist. No PDP question. |
 | 404 | `unknown_job` | The job does not exist, or its permissions are refused. |
@@ -526,19 +562,29 @@ A PDP failure gives 503, never 403. The route fails closed. For the code `pdp_un
 
 Stowr sends each question to the PDP with the AuthZEN Authorization API 1.0.
 
-- The default paths are `/access/v1/evaluation` and `/access/v1/evaluations`. Stowr reads no metadata of the PDP.
+- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` before its first question, and again after
+  one hour. It uses the endpoints of the metadata, or the default paths `/access/v1/evaluation` and
+  `/access/v1/evaluations` when the PDP has no metadata. An endpoint on another origin makes the metadata not valid.
+- Stowr reads the four members of the metadata: `procurauth_usage_max_seconds`, `procurauth_idle_max_seconds`,
+  `procurauth_evaluations_max_bytes` and `procurauth_evaluations_max_items`.
 - Stowr sends the PDP token in `Authorization: Bearer`. It sends `Content-Type`, `Accept` and `X-Request-ID`. The request id
   is the `X-Request-ID` of the client when it has 1 to 128 safe characters. Else Stowr makes one.
 - One question is one Access Evaluation. Two or more questions without usage are one Access Evaluations request, with the
-  subject at the top. A request has `max_evaluations` items at most. Stowr splits a longer batch. Stowr asks a repeated
-  question one time.
-- `timeout` is the deadline of a call without usage. One deadline covers all the requests of the call. `usage_timeout` is the
-  deadline of a question with usage. The default of `timeout` is `500ms`. The default of `usage_timeout` is `2s`.
-- Stowr never sends a question again. When a request fails, Stowr sends no other request of the call. Each question without
-  an answer is a failure.
+  subject at the top. A request has `max_evaluations` items at most, and no more than the maxima of the metadata. Stowr
+  splits a longer batch. Stowr asks a repeated question one time.
+- The questions of the others of an operation have `context.permission_only` equal to `true`. A question with
+  `permission_only` never has usage.
+- `timeout` is the deadline of a call without usage. One deadline covers all the requests of the call. The default of
+  `timeout` is `500ms`.
+- `usage_timeout` is the shortest wait for a question with usage. Stowr waits for the longer of `usage_timeout` and
+  `procurauth_usage_max_seconds` plus 1 second. Thus Stowr always waits longer than the time that the PDP publishes
+  (P 10.6). The default of `usage_timeout` is `6s`.
+- Stowr never sends a question again, except when the connection failed before Stowr wrote the request. When a request
+  fails, Stowr sends no other request of the call. Each question without an answer is a failure.
 - The client follows no redirect, uses no proxy, and uses TLS 1.2 or newer. It reads at most 256 KiB of an answer. The
   dial timeout is 5 s.
-- The client keeps at most 4 idle connections. It closes an idle connection after 5 s, before the PDP does.
+- The client keeps at most 4 connections. It closes an idle connection after 5 s, or after half of
+  `procurauth_idle_max_seconds` when this value is lower.
 - `plain_http = true` accepts an `http` URL. Use it only on a trusted network.
 - A failure is: no answer before the deadline, an HTTP status other than 200, a body that is not valid, or a wrong number
   of items. A status 401 or 403 of the PDP writes the line `access.pdp_credential_refused`.
@@ -548,13 +594,16 @@ Stowr sends each question to the PDP with the AuthZEN Authorization API 1.0.
 `cache_ttl` is the longest life of a kept answer. The default is `30s`. `0s` keeps no answer. A revoked grant can stay active
 for `cache_ttl` at most.
 
-- The key is the subject, the action, the resource with its chain, and the match.
+- The key is the subject, the action, the resource with its chain, the match, and the mark `permission_only`. Thus the
+  answer to an other permission never serves the question of a use.
 - Stowr keeps the answers of the usage questions apart from the others.
 - Stowr keeps a `true` answer of a usage question only when `units` is 0. It keeps it for `cache_ttl`. A kept answer of this
   kind lets the use run without a question. Stowr never keeps a `true` answer with `units` of 1.
 - Stowr keeps a `budget_exceeded` answer for the lower of `retry_after` and `cache_ttl`. A hit gives the seconds that remain,
   at least 1.
-- Stowr never keeps a failure. It keeps no other answer of a usage question.
+- Stowr never keeps a failure, and never keeps an answer with a reason of P 17.1. A `false` answer to a usage question
+  without `budget_exceeded` counted nothing: Stowr can keep it as the answer to the same question without usage.
+- A kept `false` answer to the same question without usage can refuse a use with no question (P 10.1).
 - The two tables hold 16384 entries and 8 MiB at most. When they are full, Stowr drops the expired entries. When they are
   still full, Stowr keeps no new answer.
 - A cache hit writes no `access.decision` line, unless `server.log_mode` is `detailed`.
@@ -570,7 +619,7 @@ Each line is `key=value`. A request with a valid token also gives `subject` and 
 | `access.decision` | One question. Fields: `request_id`, `subject`, `action`, `resource`, `match`, `usage`, `decision`, `units`, `retry_after`, `reason`, `source` (`pdp`, `cache` or `error`), `failed`. |
 | `access.pdp_failed` | A request to the PDP failed. Fields: `request_id`, `evaluations`, `error`. |
 | `access.pdp_credential_refused` | The PDP answered 401 or 403. |
-| `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits`. |
+| `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits` (field `limit`), or the answer to an other permission or to the action `access` has a reason of P 17.1 (field `reason`). |
 | `access.ceiling_unenforceable` | A `true` answer has a ceiling that the action does not list. |
 | `access.ceiling_refused` | A size is over `max_object_size`. Fields: `request_id`, `action`, `ceiling`, `limit`, `size`. |
 | `access.options` | A request to the options route. Fields: `request_id`, `subject`, `type`, `parent`, `items`, `questions`. |
@@ -592,7 +641,7 @@ a place inside the volume.
 - Stowr opens the last part of a file for a read or a copy with `O_NOFOLLOW`.
 - Stowr resolves `path` and `root_prefix` one time at start. A link in them is not a link of a key.
 
-With `mode = "open"`, the old rule stays: Stowr follows a link to a place inside the root, and refuses a link that leaves it.
+With `mode = "open"`, Stowr follows a link to a place inside the root, and refuses a link that leaves it.
 Stowr never makes a symbolic link. A process outside Stowr that changes a link between the check and the use of a path can
 race the check.
 
@@ -616,7 +665,8 @@ Stowr reads the keys one time at start. A restart clears the cache of tokens.
 | Base64 text of one PEM block | 4096 bytes |
 | Answer cache of the PDP | 16384 entries and 8 MiB |
 | Body of a PDP answer | 256 KiB |
-| Idle connections to the PDP | 4, closed after 5 s |
+| Connections to the PDP | 4; an idle connection closes after 5 s |
+| Wait of a usage question | The longer of `usage_timeout` and `procurauth_usage_max_seconds` plus 1 s |
 | Dial timeout to the PDP | 5 s |
 | Questions of one options request | 200 |
 | Items of one options page | 50 |
@@ -629,10 +679,7 @@ Stowr reads the keys one time at start. A restart clears the cache of tokens.
 
 | Deviation | Reason |
 |---|---|
-| `/healthz` needs no token (P 10.0 step 2). | The health check of the container calls it. It gives no data. |
-| The static files, the pages, `/api/build` and `OPTIONS /s3` need the token but ask no question (P 10.1, P 15 item 6). | They hold no data of a bucket. The protocol has no rule for them yet. |
 | `plain_http = true` accepts an `http` URL for the PDP (P 10.0 step 4). | A trusted network can be enough. Stowr writes a warning at start. |
-| Stowr reads no `/.well-known/authzen-configuration` of the PDP. | P 10.0 step 4 accepts the default paths. |
 | A continuation asks without usage, also when the action lists a budget. | The use already took its unit. The protocol has no rule for a continuation. |
 | A move uses `object.delete`. | It is the most destructive action of the move. One operation takes one unit. |
 | The options route searches a substring for the buckets and a prefix for the folders. | P 5.6 lets the service choose its search rules. The storage can search only by prefix. |
