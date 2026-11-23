@@ -153,11 +153,11 @@ impl WebUrl {
     /// Parse a URL or a relative reference. The text of the error tells the reason.
     pub fn parse(raw: &str) -> Result<Self, String> {
         if raw.bytes().any(|byte| byte < 0x20 || byte == 0x7f) {
-            return Err("invalid control character in URL".to_owned());
+            return Err("the URL has a control character".to_owned());
         }
         let (rest, fragment) = match raw.split_once('#') {
             Some((rest, fragment)) => {
-                let decoded = unescape(fragment, false).ok_or_else(|| "invalid URL escape".to_owned())?;
+                let decoded = unescape(fragment, false).ok_or_else(|| "invalid percent escape".to_owned())?;
                 (rest, decoded)
             }
             None => (raw, String::new()),
@@ -195,9 +195,9 @@ impl WebUrl {
             url.authority = host.to_owned();
             rest = path;
         } else if url.scheme.is_empty() && rest.split('/').next().is_some_and(|first| first.contains(':')) {
-            return Err("first path segment in URL cannot contain colon".to_owned());
+            return Err("the first segment of the path has a colon".to_owned());
         }
-        let decoded = unescape(rest, false).ok_or_else(|| "invalid URL escape".to_owned())?;
+        let decoded = unescape(rest, false).ok_or_else(|| "invalid percent escape".to_owned())?;
         url.escaped_path = if valid_encoded(rest) {
             rest.to_owned()
         } else {
@@ -266,7 +266,7 @@ fn split_scheme(raw: &str) -> Result<Option<(&str, &str)>, String> {
         match byte {
             b'a'..=b'z' | b'A'..=b'Z' => {}
             b'0'..=b'9' | b'+' | b'-' | b'.' if index > 0 => {}
-            b':' if index == 0 => return Err("missing protocol scheme".to_owned()),
+            b':' if index == 0 => return Err("no scheme".to_owned()),
             b':' => return Ok(Some((&raw[..index], &raw[index + 1..]))),
             _ => return Ok(None),
         }
@@ -278,15 +278,11 @@ fn split_scheme(raw: &str) -> Result<Option<(&str, &str)>, String> {
 fn check_host(host: &str) -> Result<(), String> {
     let port = if let Some(rest) = host.strip_prefix('[') {
         let Some((_, after)) = rest.split_once(']') else {
-            return Err("missing ']' in host".to_owned());
+            return Err("no closing ']' in the host".to_owned());
         };
         match after {
             "" => None,
-            _ => Some(
-                after
-                    .strip_prefix(':')
-                    .ok_or_else(|| "invalid port after host".to_owned())?,
-            ),
+            _ => Some(after.strip_prefix(':').ok_or_else(|| "invalid port".to_owned())?),
         }
     } else {
         host.rsplit_once(':').map(|(_, port)| port)
@@ -294,10 +290,10 @@ fn check_host(host: &str) -> Result<(), String> {
     if let Some(port) = port
         && !port.bytes().all(|byte| byte.is_ascii_digit())
     {
-        return Err(format!("invalid port {port:?} after host"));
+        return Err(format!("invalid port {port:?}"));
     }
     if unescape(host, false).is_none() {
-        return Err("invalid URL escape in host".to_owned());
+        return Err("invalid percent escape in the host".to_owned());
     }
     Ok(())
 }

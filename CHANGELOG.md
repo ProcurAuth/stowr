@@ -43,6 +43,8 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
   exponent form, for example `1e-7` or `1e21`. An attribute of a certificate name with no value shows as an empty text.
 - `stowr -h` writes one help with a table of the commands and the options. The names and the forms of the options do
   not change. An error of an option has a new text, for example `unknown option: -x`. The exit statuses do not change.
+- Some error texts are new: the errors of a URL in the configuration, the errors of `stowr healthcheck`, and the
+  errors of a CSV or XML preview. The error codes and the HTTP statuses do not change.
 - `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
   accepts the value and shows it.
 

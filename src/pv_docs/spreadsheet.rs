@@ -492,7 +492,7 @@ fn read_paths<R: Read>(
             XmlEvent::Text(_) => {}
         }
     }
-    Err(XmlFault::Syntax("unexpected EOF".to_owned()))
+    Err(XmlFault::Syntax("unexpected end of the data".to_owned()))
 }
 
 fn decode_workbook<R: Read>(reader: R) -> std::result::Result<WorkbookXml, XmlFault> {
@@ -678,7 +678,7 @@ fn read_rich_text<R: Read>(xml: &mut XmlReader<R>) -> std::result::Result<String
     let mut depth = 1usize;
     while depth > 0 {
         match xml.next_event()? {
-            None => return Err(XmlFault::Syntax("unexpected EOF".to_owned())),
+            None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned())),
             Some(XmlEvent::Start { name, .. }) => {
                 depth += 1;
                 if name == "t" {
@@ -803,7 +803,7 @@ fn read_cell_value<R: Read>(
     let mut depth = 1usize;
     while depth > 0 {
         match xml.next_event()? {
-            None => return Err(XmlFault::Syntax("unexpected EOF".to_owned()).into()),
+            None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned()).into()),
             Some(XmlEvent::Start { name, .. }) => {
                 depth += 1;
                 match name.as_str() {
@@ -898,7 +898,7 @@ fn read_row<R: Read>(
     let mut depth = 1usize;
     while depth > 0 {
         match xml.next_event()? {
-            None => return Err(XmlFault::Syntax("unexpected EOF".to_owned()).into()),
+            None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned()).into()),
             Some(XmlEvent::Start {
                 name,
                 attrs: cell_attrs,

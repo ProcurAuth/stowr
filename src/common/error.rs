@@ -357,8 +357,8 @@ impl fmt::Display for Error {
             }
             Self::Interrupted(Interrupt::Paused) => f.write_str("job paused"),
             Self::Interrupted(Interrupt::Canceled) => f.write_str("job canceled"),
-            Self::Timeout => f.write_str("deadline exceeded"),
-            Self::Canceled => f.write_str("canceled"),
+            Self::Timeout => f.write_str("the operation timed out"),
+            Self::Canceled => f.write_str("the operation was canceled"),
             Self::Connect(text) | Self::Internal(text) => f.write_str(text),
         }
     }

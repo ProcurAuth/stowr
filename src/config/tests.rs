@@ -532,7 +532,7 @@ fn listen_addresses_are_checked_without_a_change() {
     );
     assert_eq!(
         listen("8080"),
-        Err("line 1:1: server.listen: must be a valid host:port address: address 8080: missing port in address, got \"8080\"".to_owned())
+        Err("line 1:1: server.listen: must be a valid host:port address: address 8080: no port in the address, got \"8080\"".to_owned())
     );
     assert_eq!(
         listen(":0"),
@@ -767,7 +767,7 @@ fn auth_rules_of_each_provider() {
     );
     assert_eq!(
         run("provider = \"s3\"\nendpoint = \"http://h:port\"\nregion = \"r\""),
-        "line 1:1: auth \"a\".endpoint: parse s3 endpoint: parse \"http://h:port\": invalid port \":port\" after host, got \"http://h:port\""
+        "line 1:1: auth \"a\".endpoint: invalid s3 endpoint: invalid URL \"http://h:port\": invalid port \":port\", got \"http://h:port\""
     );
     assert_eq!(
         run("provider = \"s3\"\nendpoint = \"ftp://h\"\nregion = \"r\""),

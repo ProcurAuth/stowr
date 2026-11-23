@@ -39,7 +39,7 @@ impl Endpoint {
 /// Check an endpoint: `http` or `https`, a host, no user information, no query, no fragment. `provider` names the
 /// endpoint in the message, for example `s3 endpoint scheme must be http or https`.
 pub fn parse_endpoint(provider: &str, raw: &str) -> Result<Endpoint> {
-    let url = parse(raw).map_err(|error| Error::internal(format!("parse {provider} endpoint: {error}")))?;
+    let url = parse(raw).map_err(|error| Error::internal(format!("invalid {provider} endpoint: {error}")))?;
     if url.scheme != "http" && url.scheme != "https" {
         return Err(Error::internal(format!(
             "{provider} endpoint scheme must be http or https"
@@ -231,7 +231,7 @@ fn unescape(text: &str, mode: Mode) -> std::result::Result<String, String> {
                 if !valid {
                     let end = (index + 3).min(bytes.len());
                     return Err(format!(
-                        "invalid URL escape {}",
+                        "invalid percent escape {}",
                         super::quote::quote_bytes(&bytes[index..end])
                     ));
                 }
@@ -239,12 +239,12 @@ fn unescape(text: &str, mode: Mode) -> std::result::Result<String, String> {
                 let high = hex_digit(bytes[index + 1]).unwrap_or(0);
                 let low = hex_digit(bytes[index + 2]).unwrap_or(0);
                 if mode == Mode::Host && high < 8 && escaped != b"%25" {
-                    return Err(format!("invalid URL escape {}", super::quote::quote_bytes(escaped)));
+                    return Err(format!("invalid percent escape {}", super::quote::quote_bytes(escaped)));
                 }
                 if mode == Mode::Zone {
                     let value = (high << 4) | low;
                     if escaped != b"%25" && value != b' ' && should_escape(value, Mode::Host) {
-                        return Err(format!("invalid URL escape {}", super::quote::quote_bytes(escaped)));
+                        return Err(format!("invalid percent escape {}", super::quote::quote_bytes(escaped)));
                     }
                 }
                 index += 3;
@@ -252,7 +252,7 @@ fn unescape(text: &str, mode: Mode) -> std::result::Result<String, String> {
             byte => {
                 if (mode == Mode::Host || mode == Mode::Zone) && byte < 0x80 && should_escape(byte, mode) {
                     return Err(format!(
-                        "invalid character {} in host name",
+                        "the host name has the character {}",
                         super::quote::quote_bytes(&[byte])
                     ));
                 }
@@ -361,7 +361,7 @@ fn get_scheme(raw: &str) -> std::result::Result<(&str, &str), String> {
             }
             b':' => {
                 if index == 0 {
-                    return Err("missing protocol scheme".to_owned());
+                    return Err("no scheme".to_owned());
                 }
                 return Ok((&raw[..index], &raw[index + 1..]));
             }
@@ -374,11 +374,11 @@ fn get_scheme(raw: &str) -> std::result::Result<(&str, &str), String> {
 fn parse_host(host: &str) -> std::result::Result<String, String> {
     if host.starts_with('[') {
         let Some(close) = host.rfind(']') else {
-            return Err("missing ']' in host".to_owned());
+            return Err("no closing ']' in the host".to_owned());
         };
         let colon_port = &host[close + 1..];
         if !valid_optional_port(colon_port) {
-            return Err(format!("invalid port {} after host", quote(colon_port)));
+            return Err(format!("invalid port {}", quote(colon_port)));
         }
         if let Some(zone) = host[..close].find("%25") {
             let first = unescape(&host[..zone], Mode::Host)?;
@@ -389,7 +389,7 @@ fn parse_host(host: &str) -> std::result::Result<String, String> {
     } else if let Some(colon) = host.rfind(':') {
         let colon_port = &host[colon..];
         if !valid_optional_port(colon_port) {
-            return Err(format!("invalid port {} after host", quote(colon_port)));
+            return Err(format!("invalid port {}", quote(colon_port)));
         }
     }
     unescape(host, Mode::Host)
@@ -406,7 +406,7 @@ fn parse_authority(authority: &str) -> std::result::Result<(Option<UserInfo>, St
     };
     let userinfo = &authority[..index];
     if !valid_userinfo(userinfo) {
-        return Err("invalid userinfo".to_owned());
+        return Err("invalid user information".to_owned());
     }
     let user = match userinfo.split_once(':') {
         None => UserInfo {
@@ -423,7 +423,7 @@ fn parse_authority(authority: &str) -> std::result::Result<(Option<UserInfo>, St
 
 fn parse_without_fragment(raw: &str) -> std::result::Result<Url, String> {
     if raw.bytes().any(|byte| byte < 0x20 || byte == 0x7f) {
-        return Err("invalid control character in URL".to_owned());
+        return Err("the URL has a control character".to_owned());
     }
     let mut url = Url::default();
     if raw == "*" {
@@ -447,7 +447,7 @@ fn parse_without_fragment(raw: &str) -> std::result::Result<Url, String> {
         }
         let segment = rest.split('/').next().unwrap_or_default();
         if segment.contains(':') {
-            return Err("first path segment in URL cannot contain colon".to_owned());
+            return Err("the first segment of the path has a colon".to_owned());
         }
     }
     let mut path = rest;
@@ -469,18 +469,19 @@ fn parse_without_fragment(raw: &str) -> std::result::Result<Url, String> {
     Ok(url)
 }
 
-/// Read a URL. The error is `parse "<raw>": <cause>`.
+/// Read a URL. The error is `invalid URL "<raw>": <cause>`.
 pub fn parse(raw: &str) -> std::result::Result<Url, String> {
     let (without_fragment, fragment) = match raw.split_once('#') {
         Some((before, after)) => (before, Some(after)),
         None => (raw, None),
     };
     let mut url = parse_without_fragment(without_fragment)
-        .map_err(|cause| format!("parse {}: {cause}", quote(without_fragment)))?;
+        .map_err(|cause| format!("invalid URL {}: {cause}", quote(without_fragment)))?;
     if let Some(fragment) = fragment
         && !fragment.is_empty()
     {
-        url.fragment = unescape(fragment, Mode::Fragment).map_err(|cause| format!("parse {}: {cause}", quote(raw)))?;
+        url.fragment =
+            unescape(fragment, Mode::Fragment).map_err(|cause| format!("invalid URL {}: {cause}", quote(raw)))?;
     }
     Ok(url)
 }
@@ -489,20 +490,20 @@ pub fn parse(raw: &str) -> std::result::Result<Url, String> {
 pub fn split_host_port(host_port: &str) -> std::result::Result<(&str, &str), String> {
     let error = |cause: &str| format!("address {host_port}: {cause}");
     let Some(last_colon) = host_port.rfind(':') else {
-        return Err(error("missing port in address"));
+        return Err(error("no port in the address"));
     };
     let (host, open_from, close_from);
     if host_port.starts_with('[') {
         let Some(end) = host_port.find(']') else {
-            return Err(error("missing ']' in address"));
+            return Err(error("no closing ']' in the address"));
         };
         if end + 1 == host_port.len() {
-            return Err(error("missing port in address"));
+            return Err(error("no port in the address"));
         } else if end + 1 != last_colon {
             if host_port.as_bytes().get(end + 1) == Some(&b':') {
-                return Err(error("too many colons in address"));
+                return Err(error("too many colons in the address"));
             }
-            return Err(error("missing port in address"));
+            return Err(error("no port in the address"));
         }
         host = &host_port[1..end];
         open_from = 1;
@@ -510,13 +511,13 @@ pub fn split_host_port(host_port: &str) -> std::result::Result<(&str, &str), Str
     } else {
         host = &host_port[..last_colon];
         if host.contains(':') {
-            return Err(error("too many colons in address"));
+            return Err(error("too many colons in the address"));
         }
         open_from = 0;
         close_from = 0;
     }
     if host_port[open_from..].contains('[') {
-        return Err(error("unexpected '[' in address"));
+        return Err(error("an unexpected '[' in the address"));
     }
     if host_port[close_from..].contains(']') {
         return Err(error("unexpected ']' in address"));
@@ -578,11 +579,11 @@ mod tests {
         );
         assert_eq!(
             message("s3", "http://h:port"),
-            "parse s3 endpoint: parse \"http://h:port\": invalid port \":port\" after host"
+            "invalid s3 endpoint: invalid URL \"http://h:port\": invalid port \":port\""
         );
         assert_eq!(
             message("s3", "1host:9000"),
-            "parse s3 endpoint: parse \"1host:9000\": first path segment in URL cannot contain colon"
+            "invalid s3 endpoint: invalid URL \"1host:9000\": the first segment of the path has a colon"
         );
         assert_eq!(
             message("s3", "localhost:9000"),
@@ -591,15 +592,15 @@ mod tests {
         assert_eq!(message("s3", "localhost"), "s3 endpoint scheme must be http or https");
         assert_eq!(
             message("s3", "http://h\n"),
-            "parse s3 endpoint: parse \"http://h\\n\": invalid control character in URL"
+            "invalid s3 endpoint: invalid URL \"http://h\\n\": the URL has a control character"
         );
         assert_eq!(
             message("s3", "http://h h"),
-            "parse s3 endpoint: parse \"http://h h\": invalid character \" \" in host name"
+            "invalid s3 endpoint: invalid URL \"http://h h\": the host name has the character \" \""
         );
         assert_eq!(
             message("s3", "http://h/%zz"),
-            "parse s3 endpoint: parse \"http://h/%zz\": invalid URL escape \"%zz\""
+            "invalid s3 endpoint: invalid URL \"http://h/%zz\": invalid percent escape \"%zz\""
         );
     }
 
@@ -639,21 +640,21 @@ mod tests {
         assert!(parse("https://h?").unwrap().force_query);
         assert_eq!(
             parse("1pdp.example:4182").unwrap_err(),
-            "parse \"1pdp.example:4182\": first path segment in URL cannot contain colon"
+            "invalid URL \"1pdp.example:4182\": the first segment of the path has a colon"
         );
         let opaque = parse("pdp.example:4182").unwrap();
         assert_eq!(
             (opaque.scheme.as_str(), opaque.opaque.as_str()),
             ("pdp.example", "4182")
         );
-        assert_eq!(parse(":x").unwrap_err(), "parse \":x\": missing protocol scheme");
+        assert_eq!(parse(":x").unwrap_err(), "invalid URL \":x\": no scheme");
         assert_eq!(
             parse("http://[::1").unwrap_err(),
-            "parse \"http://[::1\": missing ']' in host"
+            "invalid URL \"http://[::1\": no closing ']' in the host"
         );
         assert_eq!(
             parse("http://a b@h").unwrap_err(),
-            "parse \"http://a b@h\": invalid userinfo"
+            "invalid URL \"http://a b@h\": invalid user information"
         );
     }
 
@@ -664,27 +665,27 @@ mod tests {
         assert_eq!(split_host_port("[::]:8080"), Ok(("::", "8080")));
         assert_eq!(
             split_host_port("localhost"),
-            Err("address localhost: missing port in address".to_owned())
+            Err("address localhost: no port in the address".to_owned())
         );
         assert_eq!(
             split_host_port("a:b:c"),
-            Err("address a:b:c: too many colons in address".to_owned())
+            Err("address a:b:c: too many colons in the address".to_owned())
         );
         assert_eq!(
             split_host_port("[::1]"),
-            Err("address [::1]: missing port in address".to_owned())
+            Err("address [::1]: no port in the address".to_owned())
         );
         assert_eq!(
             split_host_port("[::1]x:80"),
-            Err("address [::1]x:80: missing port in address".to_owned())
+            Err("address [::1]x:80: no port in the address".to_owned())
         );
         assert_eq!(
             split_host_port("[::1]:8:80"),
-            Err("address [::1]:8:80: too many colons in address".to_owned())
+            Err("address [::1]:8:80: too many colons in the address".to_owned())
         );
         assert_eq!(
             split_host_port("[a:80"),
-            Err("address [a:80: missing ']' in address".to_owned())
+            Err("address [a:80: no closing ']' in the address".to_owned())
         );
         assert_eq!(
             split_host_port("a]:80"),
@@ -692,7 +693,7 @@ mod tests {
         );
         assert_eq!(
             split_host_port("a[:80"),
-            Err("address a[:80: unexpected '[' in address".to_owned())
+            Err("address a[:80: an unexpected '[' in the address".to_owned())
         );
         assert_eq!(join_host_port("::1", "80"), "[::1]:80");
         assert_eq!(join_host_port("127.0.0.1", "80"), "127.0.0.1:80");

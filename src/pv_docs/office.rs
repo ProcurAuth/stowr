@@ -304,7 +304,7 @@ fn read_custom_values<R: Read>(reader: R) -> std::result::Result<Vec<(String, St
         let mut value = String::new();
         loop {
             match xml.next_event()? {
-                None => return Err(XmlFault::Syntax("unexpected EOF".to_owned())),
+                None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned())),
                 Some(XmlEvent::Start { .. }) => {
                     let text = xml.element_text()?;
                     let text = text.trim();

@@ -628,7 +628,8 @@ async fn a_prefix_destination_cannot_contain_the_source() {
 #[tokio::test]
 async fn storage_errors_of_the_api_do_not_show_the_request_url() {
     let error = Error::Connect(
-        "s3 request failed: Get \"https://internal.example.test/private?credential=secret\": dial failed".to_owned(),
+        "s3 request failed: cannot get \"https://internal.example.test/private?credential=secret\": connection failed"
+            .to_owned(),
     );
     let answer = super::testing::collect(crate::common::http::api_error(&error)).await;
     assert!(!answer.text().contains("internal.example.test"), "{}", answer.text());

@@ -203,12 +203,12 @@ fn a_health_check_without_a_server_fails() {
     assert_eq!(outcome.status, Some(1));
     assert_eq!(
         outcome.err,
-        format!("healthcheck failed: Get \"{url}\": cannot connect to {address}: connection refused\n")
+        format!("healthcheck failed: cannot get \"{url}\": cannot connect to {address}: connection refused\n")
     );
     let outcome = run(&["healthcheck", "-url", "http://127.0.0.1:x/"]);
     assert_eq!(
         outcome.err,
-        "healthcheck request: parse \"http://127.0.0.1:x/\": invalid port \":x\" after host\n"
+        "healthcheck request: invalid URL \"http://127.0.0.1:x/\": invalid port \":x\"\n"
     );
     let outcome = run(&["healthcheck", "-h"]);
     assert_eq!(outcome.status, Some(0));

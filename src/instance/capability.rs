@@ -264,7 +264,8 @@ mod tests {
     #[test]
     fn the_errors_of_a_discovery_are_public_safe() {
         let error = Error::Connect(
-            "gcs request failed: Get https://internal.example.test/storage/v1/b/private: connection refused".to_owned(),
+            "gcs request failed: cannot get https://internal.example.test/storage/v1/b/private: connection refused"
+                .to_owned(),
         );
         let caps = merge_capabilities(
             &config(&[PERMISSION_READ]),

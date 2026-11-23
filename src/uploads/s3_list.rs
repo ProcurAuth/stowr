@@ -90,18 +90,18 @@ fn each_leaf(body: &[u8], what: &str, mut leaf: impl FnMut(&[String], &str)) -> 
                 } else {
                     return Err(decode_error(
                         what,
-                        &format!("invalid character entity &{};", &*reference),
+                        &format!("unknown character entity &{};", &*reference),
                     ));
                 }
             }
             Event::Eof => {
                 if !started {
-                    return Err(decode_error(what, "EOF"));
+                    return Err(decode_error(what, "the document is empty"));
                 }
                 if path.is_empty() {
                     return Ok(());
                 }
-                return Err(decode_error(what, "unexpected EOF"));
+                return Err(decode_error(what, "unexpected end of the data"));
             }
             _ => {}
         }

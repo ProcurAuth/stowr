@@ -28,9 +28,7 @@ pub fn walk(bytes: &[u8], mut visit: impl FnMut(Node<'_>)) -> Result<String, Str
     let mut path: Vec<String> = Vec::new();
     let mut texts: Vec<String> = Vec::new();
     loop {
-        let event = reader
-            .read_event()
-            .map_err(|error| format!("XML syntax error: {error}"))?;
+        let event = reader.read_event().map_err(|error| format!("invalid XML: {error}"))?;
         match event {
             Event::Start(start) => {
                 let name = start.local_name().as_ref().to_owned();
@@ -62,7 +60,7 @@ pub fn walk(bytes: &[u8], mut visit: impl FnMut(Node<'_>)) -> Result<String, Str
                 let character = if reference.is_char_ref() {
                     reference
                         .resolve_char_ref()
-                        .map_err(|error| format!("XML syntax error: {error}"))?
+                        .map_err(|error| format!("invalid XML: {error}"))?
                 } else {
                     match reference.as_ref() {
                         "lt" => Some('<'),
@@ -75,7 +73,7 @@ pub fn walk(bytes: &[u8], mut visit: impl FnMut(Node<'_>)) -> Result<String, Str
                 };
                 let Some(character) = character else {
                     return Err(format!(
-                        "XML syntax error: invalid character entity &{};",
+                        "invalid XML: unknown character entity &{};",
                         reference.as_ref()
                     ));
                 };
@@ -83,7 +81,7 @@ pub fn walk(bytes: &[u8], mut visit: impl FnMut(Node<'_>)) -> Result<String, Str
                     current.push(character);
                 }
             }
-            Event::Eof => return Err("XML syntax error: unexpected EOF".to_owned()),
+            Event::Eof => return Err("invalid XML: unexpected end of the data".to_owned()),
             Event::Comment(_) | Event::Decl(_) | Event::PI(_) | Event::DocType(_) => {}
         }
     }
@@ -100,7 +98,7 @@ fn open(
         *root = Some(name);
     } else {
         if path.len() >= MAX_DEPTH {
-            return Err("XML syntax error: the elements are nested too deep".to_owned());
+            return Err("invalid XML: the elements are nested too deep".to_owned());
         }
         path.push(name);
         visit(Node::Start(path));

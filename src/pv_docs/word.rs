@@ -157,7 +157,7 @@ fn word_attribute(attrs: &[(String, String)], local: &str) -> String {
 }
 
 fn unexpected_end() -> Fault {
-    Fault::Syntax("unexpected EOF".to_owned())
+    Fault::Syntax("unexpected end of the data".to_owned())
 }
 
 fn read_paragraph<R: Read>(xml: &mut XmlReader<R>, limits: &mut Limits) -> std::result::Result<WordBlock, Fault> {

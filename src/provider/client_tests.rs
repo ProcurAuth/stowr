@@ -136,7 +136,7 @@ async fn a_broken_gzip_answer_is_an_error_and_an_asked_encoding_stays() {
         .fetch(&OpCtx::default(), get(&format!("{}/broken", server.url)), 1024)
         .await
         .unwrap_err();
-    assert!(error.to_string().starts_with("gzip:"), "{error}");
+    assert!(error.to_string().starts_with("gzip error:"), "{error}");
     let mut headers = HeaderMap::new();
     headers.insert("accept-encoding", HeaderValue::from_static("identity"));
     let request = build_request(Method::GET, &format!("{}/identity", server.url), headers, None).unwrap();

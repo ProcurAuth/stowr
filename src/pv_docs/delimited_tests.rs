@@ -208,7 +208,7 @@ async fn an_empty_object_gives_one_empty_page_and_a_bad_quote_gives_422() {
     assert_eq!((called.status, called.code().as_str()), (422, "invalid_delimited_file"));
     assert_eq!(
         called.message(),
-        "parse error on line 2, column 4: bare \" in non-quoted field"
+        "CSV error on line 2, column 4: a quote in a field that does not start with a quote"
     );
 
     put_text(&backend, "open.csv", b"a,b\n1,\"x\ny\n", "text/csv");
@@ -216,7 +216,7 @@ async fn an_empty_object_gives_one_empty_page_and_a_bad_quote_gives_422() {
     assert_eq!(called.status, 422);
     assert_eq!(
         called.message(),
-        "record on line 2; parse error on line 3, column 3: extraneous or missing \" in quoted-field"
+        "CSV error on line 3, column 3, in the record that starts on line 2: a quote is missing or extra in a quoted field"
     );
 }
 
@@ -291,13 +291,13 @@ async fn the_reader_of_records_follows_its_rules() {
         records(b"a\n\"b\"c\n", b',').await,
         [
             ok(&["a"]),
-            Err("parse error on line 2, column 3: extraneous or missing \" in quoted-field".to_owned())
+            Err("CSV error on line 2, column 3: a quote is missing or extra in a quoted field".to_owned())
         ]
     );
     assert_eq!(
         records(b"a,\"b", b',').await,
         [Err(
-            "parse error on line 1, column 5: extraneous or missing \" in quoted-field".to_owned()
+            "CSV error on line 1, column 5: a quote is missing or extra in a quoted field".to_owned()
         )]
     );
 }

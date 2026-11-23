@@ -54,7 +54,7 @@ impl ThriftError {
 
     /// The end of the bytes before the end of a value.
     pub(crate) fn unexpected_end() -> Self {
-        Self::new("unexpected EOF")
+        Self::new("unexpected end of the data")
     }
 }
 

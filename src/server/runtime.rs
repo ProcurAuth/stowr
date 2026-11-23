@@ -398,7 +398,7 @@ impl TimedStream {
                     self.write_sleep.as_mut().reset(deadline);
                 }
                 if self.write_sleep.as_mut().poll(cx).is_ready() {
-                    return Poll::Ready(Err(io::Error::new(io::ErrorKind::TimedOut, "i/o timeout")));
+                    return Poll::Ready(Err(io::Error::new(io::ErrorKind::TimedOut, "the connection timed out")));
                 }
                 Poll::Pending
             }
@@ -428,7 +428,7 @@ impl AsyncRead for TimedStream {
                     this.read_armed = Some(deadline);
                 }
                 if this.read_sleep.as_mut().poll(cx).is_ready() {
-                    return Poll::Ready(Err(io::Error::new(io::ErrorKind::TimedOut, "i/o timeout")));
+                    return Poll::Ready(Err(io::Error::new(io::ErrorKind::TimedOut, "the connection timed out")));
                 }
                 Poll::Pending
             }
@@ -596,7 +596,7 @@ pub async fn bind(listen: &str) -> Result<TcpListener> {
     let fail = |error: io::Error| Error::internal(format!("listen tcp {listen}: bind: {}", system_error_text(&error)));
     let (host, port) = match listen.rfind(':') {
         Some(index) => (&listen[..index], &listen[index + 1..]),
-        None => return Err(Error::internal(format!("listen tcp {listen}: missing port in address"))),
+        None => return Err(Error::internal(format!("listen tcp {listen}: no port in the address"))),
     };
     let host = host.trim_start_matches('[').trim_end_matches(']');
     let port: u16 = port
@@ -647,7 +647,7 @@ pub async fn run_listener(app: Arc<App>, listener: TcpListener, stop: impl Futur
                     connections.spawn(serve_connection(app.clone(), stream, shutdown.clone()));
                 }
                 Err(error) => {
-                    crate::log!("http: Accept error: {error}; retrying in {}", super::logfmt::duration_ms(backoff));
+                    crate::log!("cannot accept a connection: {error}; next try in {}", super::logfmt::duration_ms(backoff));
                     tokio::time::sleep(backoff).await;
                     backoff = (backoff * 2).min(Duration::from_secs(1));
                 }
@@ -662,7 +662,7 @@ pub async fn run_listener(app: Arc<App>, listener: TcpListener, stop: impl Futur
     })
     .await;
     if drained.is_err() {
-        crate::log!("graceful shutdown failed: context deadline exceeded");
+        crate::log!("the open connections did not end in time: the server closes them");
         connections.abort_all();
         while connections.join_next().await.is_some() {}
     }
