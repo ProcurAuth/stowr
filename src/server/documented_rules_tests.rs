@@ -42,7 +42,10 @@ bucket "archive" {
     assert_eq!(runtime.max_background_storage_bytes, 256 << 30);
     assert_eq!(runtime.max_background_storage_requests, 100_000);
     let bucket = &config.buckets[0];
-    assert_eq!(bucket.name, "archive", "the name of a bucket is its block id by default");
+    assert_eq!(
+        bucket.name, "archive",
+        "the name of a bucket is its block id by default"
+    );
     assert_eq!(bucket.max_scan_pages, 1);
     assert_eq!(bucket.root_prefix, "");
 }
@@ -68,6 +71,14 @@ fn the_limits_of_the_transfers_are_the_documented_values() {
     assert_eq!(crate::archive::stream::STREAM_IDLE_TIMEOUT, Duration::from_secs(30));
     assert_eq!(crate::instance::gate::GATE_WAIT, Duration::from_secs(30));
     assert_eq!(crate::uploads::UPLOAD_IDLE_TTL, Duration::from_secs(30 * 60));
+}
+
+/// ARCHITECTURE.md, "Upload resume protocol" and "Object tags and lifecycle": the active upload sessions of the
+/// process and the tags of an object.
+#[test]
+fn the_limits_of_the_uploads_and_of_the_tags_are_the_documented_values() {
+    assert_eq!(crate::uploads::MAX_IN_MEMORY_UPLOAD_SESSIONS, 4);
+    assert_eq!(crate::lifecycle::MAX_OBJECT_TAGS, 10);
 }
 
 /// ARCHITECTURE.md, "Copy in parts": the threshold, the part size, the parallel parts and the time of the abort.

@@ -81,7 +81,9 @@ fn direct_page_count(data: &[u8]) -> i64 {
         }
         let end = after + 6;
         if data[after..].starts_with(b"/Pages")
-            && data.get(end).is_none_or(|byte| !(byte.is_ascii_alphanumeric() || *byte == b'_'))
+            && data
+                .get(end)
+                .is_none_or(|byte| !(byte.is_ascii_alphanumeric() || *byte == b'_'))
         {
             markers.push((start, end));
             from = end;
@@ -118,7 +120,9 @@ fn direct_page_count(data: &[u8]) -> i64 {
                 digits_end += 1;
             }
             if digits_start > at + 6 && digits_end > digits_start {
-                if let Ok(value) = std::str::from_utf8(&part[digits_start..digits_end]).unwrap().parse::<i64>()
+                if let Ok(value) = std::str::from_utf8(&part[digits_start..digits_end])
+                    .unwrap()
+                    .parse::<i64>()
                     && value > 0
                 {
                     counts.push(value);
@@ -164,7 +168,9 @@ fn the_page_count_of_the_index_is_the_count_of_a_direct_search() {
     for _ in 0..200 {
         let mut data = Vec::new();
         for _ in 0..40 {
-            seed = seed.wrapping_mul(6_364_136_223_846_793_005).wrapping_add(1_442_695_040_888_963_407);
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
             let part: &[u8] = match (seed >> 33) % 9 {
                 0 => b"/Type /Pages ",
                 1 => b"/Count ",
@@ -177,7 +183,7 @@ fn the_page_count_of_the_index_is_the_count_of_a_direct_search() {
                 _ => b"filler text ",
             };
             data.extend_from_slice(part);
-            if (seed >> 40) % 5 == 0 {
+            if (seed >> 40).is_multiple_of(5) {
                 data.extend(std::iter::repeat_n(b'.', ((seed >> 20) % 3000) as usize));
             }
         }
