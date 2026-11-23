@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The ZIP of a folder: `GET /api/archive?instance=&prefix=&name=`.
 //!
 //! The route lists the prefix in pages of 1000 keys and streams one stored member for each object, in the order of

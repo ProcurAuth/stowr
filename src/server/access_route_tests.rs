@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route tests of the access policy in mode `authzen`, through the whole dispatch: the refusals of the identity
 //! check, the exempt paths, the kinds of the route table, the routes that need only the token, the read routes, the
 //! change routes, the uploads, the jobs, the SQLite sessions and the extraction to another instance.

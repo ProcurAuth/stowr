@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the writes, the copies, the moves, the deletes and the uploads of a volume.
 
 use std::fs;

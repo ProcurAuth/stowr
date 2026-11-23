@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The gzip of the answers: the check of `Accept-Encoding`, the media types of the interface that gzip makes smaller,
 //! and the gzip of the large JSON answers of the API.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Object Browser API client. All requests are scoped to the selected instance. */
 (function () {
   'use strict';

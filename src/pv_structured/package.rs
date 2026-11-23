@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The details of the ZIP-compatible packages. They give the archive properties and the manifests of Java
 //! archives, browser extensions and VSIX packages. They also give the contents of an APK and the book data of
 //! an EPUB.

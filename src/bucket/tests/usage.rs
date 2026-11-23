@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the usage. They check the readers of Garage, SeaweedFS and MinIO, and the limits and the failures of
 //! the admin requests. They also check the cache, the single read, the levels, the answers and the route.
 

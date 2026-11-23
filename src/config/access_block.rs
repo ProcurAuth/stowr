@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The `access` block (docs/ACCESS.md): mode `authzen` (the server checks the identity token and asks the PDP) or mode
 //! `open` (no check), the blocks `identity` and `pdp`, the strict durations, the checks against the bucket and volume
 //! blocks, and the warnings of the start.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The fakes of the tests: a target in memory that behaves like an S3 provider (with optional SHA-256 checksums) and
 //! like a resumable provider, a list of incomplete uploads with the paging of three providers, an instance over it,
 //! and an application for the route tests.

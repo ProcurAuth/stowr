@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes of the jobs: `/api/jobs/<id>` (`GET`), `/api/jobs/<id>/<pause|resume|cancel>` (`POST`), `/api/jobs`
 //! (always 404: no route lists the jobs), and `/api/stats` (Insights).
 //!

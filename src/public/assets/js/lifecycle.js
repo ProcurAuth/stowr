@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.lifecycle: the editor of the lifecycle rules, in the part "Lifecycle rules" of the information page (info.js).
  * It is a part of the page, not a window: mount(host, options) puts it in an element of the page. It has two columns:

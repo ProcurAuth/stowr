@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 /* The information page of a bucket or a volume (info.html), in the visual language of the System page of ClickHouse
    Dash: the panel colour from edge to edge, then parts with a heading (16 px), cards with a title (14 px) and a
    key-value list with a border and lines of two shades (12 px), gauges as the disk cards of Dash (the percent over a

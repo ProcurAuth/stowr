@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The per-object integrity (docs/PREVIEWS.md, "Per-object integrity"): a job reads the complete object in a stream,
 //! computes SHA-256, MD5, CRC-32 and CRC-32C, and compares them with the checksums of the provider. It keeps no
 //! byte of the object. A composite value of the provider is shown but not compared.

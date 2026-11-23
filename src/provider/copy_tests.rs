@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the copy in parts against a fake S3 server. The parts copy real bytes, so a test can compare the
 //! result with the source.
 

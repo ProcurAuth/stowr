@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A strict reader of DER: the elements, the integers, the object identifiers and the times of X.509.
 //!
 //! The reader follows the rules of a strict DER parser. It gives no value for these inputs:

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The metadata readers over byte ranges and their dispatch by extension and media type.
 //!
 //! Each reader makes the first range request of its format and then follows the lengths and the offsets that the

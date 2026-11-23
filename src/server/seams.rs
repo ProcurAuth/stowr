@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The points where the routes of this folder meet the access policy: the instances that a person sees, the display
 //! questions of a listing and the folders of a navigation listing.
 //!

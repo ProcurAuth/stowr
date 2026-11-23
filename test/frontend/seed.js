@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Puts the test objects in the buckets of the three providers through the API of Stowr (PUT /s3), and the test
 // files of the volume "files": through the API, and through the Docker volume for the links and the old temporary file.
 const { request } = require('playwright');

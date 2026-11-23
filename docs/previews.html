@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Each preview reads bounded byte ranges. This page gives the rules for each format.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Previews | Stowr">
+<meta property="og:description" content="Each preview reads bounded byte ranges. This page gives the rules for each format.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/previews.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Previews | Stowr">
+<meta name="twitter:description" content="Each preview reads bounded byte ranges. This page gives the rules for each format.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/previews.html">
+<title>Previews | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> The formats and the rules of the previews</p><h1>Previews</h1><p class="lede">Each preview reads bounded byte ranges. This page gives the rules for each format.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#general-rules">General rules</a></li><li><a href="#pdf">PDF</a></li><li><a href="#office-open-xml">Office Open XML</a></li><li><a href="#tabular-data">Tabular data</a></li><li><a href="#json">JSON</a></li><li><a href="#structured-text">Structured text</a></li><li><a href="#images-audio-and-video">Images, audio and video</a></li><li><a href="#zip-compatible-packages">ZIP-compatible packages</a></li><li><a href="#integrity-of-one-object">Integrity of one object</a></li><li><a href="#technical-inspection">Technical inspection</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/PREVIEWS.md"><code>docs/PREVIEWS.md</code></a> in the repository.</p><p>This document gives the rules of the previews and of the metadata that Stowr shows.</p>
+<h2 id="general-rules"><a class="self" href="#general-rules">General rules</a></h2>
+<p>A preview reads only deterministic, bounded structures of a format by default. An exact value that needs a complete scan does not appear until the person starts an explicit operation. A partial inventory never shows as a complete one.</p>
+<p>A preview never fetches a URL that it finds inside a document. Stowr sanitizes HTML-like content and blocks active SVG content. It shows external EPUB and email resources as text only.</p>
+<p>You can select an immutable version of an object. Then Preview, Details, Open original, Inspect and Verify integrity all use that exact version or generation of the provider.</p>
+<h2 id="pdf"><a class="self" href="#pdf">PDF</a></h2>
+<p>The PDF preview uses the local PDF.js module and its worker, a canvas that the application controls, a custom <code>PDFDataRangeTransport</code>, and strict same-origin Range requests.</p>
+<ul><li>It has no iframe, no embed, no object element and no fallback to the viewer of the browser.</li><li>It turns off the stream and the automatic fetch of the whole file.</li><li>The page count comes from the parsed PDF structure.</li><li>It keeps only the current page and a small cache of the next pages.</li><li>The controls of the page and of the zoom act on the PDF.js document.</li><li>The viewer fits the viewport, after the application header and the PDF controls.</li></ul>
+<p>The binary embeds these files. Stowr never gets them at run time.</p>
+<div class="code-wrap"><span class="label">text</span><pre data-copy tabindex="0" aria-label="Code example: text"><code>src/public/assets/vendor/pdfjs/4.10.38/pdf.min.mjs
+src/public/assets/vendor/pdfjs/4.10.38/pdf.worker.min.mjs</code></pre></div>
+<h2 id="office-open-xml"><a class="self" href="#office-open-xml">Office Open XML</a></h2>
+<p>The metadata of Word, Excel, PowerPoint and Visio files comes from the ZIP central directory. It also comes from a few small package members: <code>docProps/core.xml</code>, <code>docProps/app.xml</code> and <code>docProps/custom.xml</code>.</p>
+<p>The Word preview shows paragraphs, headings, lists, links and tables. The Excel preview uses the shared data grid. It loads the workbook structures and the selected worksheet data with range-backed ZIP access. The PowerPoint and Visio previews show deterministic metadata. They do not draw the pages.</p>
+<p>The row and column totals of a worksheet need a full scan of the active sheet. They appear only after the person runs the scan.</p>
+<h2 id="tabular-data"><a class="self" href="#tabular-data">Tabular data</a></h2>
+<p>Delimited text, Excel worksheets, SQLite, JSON lines (JSONL and NDJSON) and Parquet use one shared grid. The grid has these rules:</p>
+<ul><li>The filters, the sort, the pages, and the states for load, empty and error are the same for each format.</li><li>A number is right-aligned.</li><li>The size of a page is bounded.</li><li>The grid uses the full available width.</li><li>The initial display never loads a whole data set.</li></ul>
+<p>A SQLite preview reads the pages of the remote database with exact ranges. Stowr never shows an unknown row total as zero.</p>
+<h2 id="json"><a class="self" href="#json">JSON</a></h2>
+<p>The raw, beautified, summary and tree views are separate modes. An exact total of lines or pages appears only after the person runs a complete count. The tree mode has no count action. After a count, the page shows the exact totals and no other status label.</p>
+<h2 id="structured-text"><a class="self" href="#structured-text">Structured text</a></h2>
+<p>The structured viewer covers these formats: vCard (VCF), iCalendar (ICS and IFB), email (EML, MIME and MHTML), certificates, certificate requests, public keys and private keys. It also shows the related deterministic metadata.</p>
+<p>A certificate or key preview gives structured fields and a Raw tab. It shows binary content as Base64. The raw content of a private key is visible on purpose. It never goes to a third party.</p>
+<p>Stowr does not inject the HTML of an email as active content. It lists the attachments. It does not decode them and it does not fetch external resources automatically.</p>
+<h2 id="images-audio-and-video"><a class="self" href="#images-audio-and-video">Images, audio and video</a></h2>
+<p>The image preview uses the local image viewer for the formats that the browser supports. Stowr serves an SVG with strict security headers. Audio and video use the same-origin object gateway and <code>preload="metadata"</code>. The codecs that play depend on the browser.</p>
+<h2 id="zip-compatible-packages"><a class="self" href="#zip-compatible-packages">ZIP-compatible packages</a></h2>
+<p>ZIP, JAR, WAR, EAR, APK, AAR, XPI, CRX, VSIX and EPUB files use the exact central directory. The preview shows the deterministic package or publication information and the complete Contents table.</p>
+<p>The Contents table scrolls vertically with the page. It scrolls horizontally only when it needs to. You can open, download, verify or select each entry for extraction. Stowr follows no URL that an archive or an EPUB holds.</p>
+<p>Stowr makes no partial inventory of a format that has no deterministic central directory, such as TAR, RAR or 7z.</p>
+<h2 id="integrity-of-one-object"><a class="self" href="#integrity-of-one-object">Integrity of one object</a></h2>
+<p>Verify integrity streams a complete object when the person clicks the button. It reports the SHA-256 and the hashes of the provider for comparison. It keeps no object bytes. When the provider gives a composite value, Stowr shows it but does not compare it with a whole-object digest. The action is in the Advanced tab of Details. It starts only after an explicit click, and it shows its result in that tab.</p>
+<p>Stowr has no global checksum export and no global duplicate scan.</p>
+<h2 id="technical-inspection"><a class="self" href="#technical-inspection">Technical inspection</a></h2>
+<p>Inspect is in the Advanced tab of Details. It starts only after an explicit click, and it shows its result in that tab. It reads the deterministic metadata of the object, the first 64 KiB and, when useful, the last 64 KiB. It reports these things:</p>
+<ul><li>the declared and the detected MIME type;</li><li>the safe headers and the checksums of the provider;</li><li>the structural markers that it recognizes;</li><li>bounded hexadecimal and ASCII probes;</li><li>the exact count of provider requests and of bytes that it used.</li></ul>
+<p>Stowr removes the headers that carry credentials before the answer reaches the interface.</p></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

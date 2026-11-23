@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" role="img" aria-labelledby="t d">
+  <title id="t">The ProcurAuth family</title>
+  <desc id="d">The specification defines the protocol, the schemas and the conformance cases. The reference tools read them. The portal is a backend, an edge and a PDP. It gives identity tokens and AuthZEN decisions to three services, Stowr, Hune and ClickHouse Dash. Each service is a PEP.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#a5b4fc"/></marker>
+    <marker id="g" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#34d399"/></marker>
+  </defs>
+  <rect width="960" height="560" rx="20" fill="#12142a"/>
+  <g font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif">
+    <text x="40" y="52" font-size="24" font-weight="700" fill="#ffffff">The ProcurAuth family</text>
+    <text x="40" y="80" font-size="15" fill="#b4bbe6">One specification, the tools that test it and the programs that follow it.</text>
+
+    <rect x="40" y="104" width="420" height="116" rx="14" fill="#1c1f3d" stroke="#818cf8" stroke-width="2"/>
+    <text x="62" y="136" font-size="19" font-weight="700" fill="#ffffff">Specification: procurauth</text>
+    <text x="62" y="160" font-size="14" fill="#e0e7ff">Protocol 1.1, MCP binding, 19 JSON schemas</text>
+    <text x="62" y="182" font-size="14" fill="#e0e7ff">245 conformance cases</text>
+
+    <line x1="462" y1="162" x2="496" y2="162" stroke="#a5b4fc" stroke-width="2" marker-end="url(#a)"/>
+
+    <rect x="500" y="104" width="420" height="116" rx="14" fill="#1c1f3d" stroke="#2c3070" stroke-width="2"/>
+    <text x="522" y="136" font-size="19" font-weight="700" fill="#ffffff">Reference tools</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13" fill="#e0e7ff">
+      <text x="522" y="160">access-conformance, access-lint, access-token,</text>
+      <text x="522" y="180">keycheck, fake-pdp, reference-service,</text>
+      <text x="522" y="200">reference-edge, procurauth-pep (library)</text>
+    </g>
+
+    <line x1="710" y1="222" x2="710" y2="272" stroke="#34d399" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#g)"/>
+    <text x="722" y="252" font-size="14" fill="#6ee7b7">test the programs below</text>
+
+    <rect x="40" y="274" width="880" height="272" rx="16" fill="none" stroke="#2c3070" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="62" y="302" font-size="13" font-weight="700" fill="#a5b4fc" letter-spacing="1.2">IMPLEMENTATIONS</text>
+
+    <rect x="62" y="318" width="300" height="204" rx="14" fill="#1c1f3d" stroke="#38bdf8" stroke-width="2"/>
+    <text x="82" y="350" font-size="19" font-weight="700" fill="#ffffff">portal</text>
+    <text x="82" y="372" font-size="14" fill="#bae6fd">Backend, edge and PDP</text>
+    <g font-size="14" fill="#e0e7ff">
+      <rect x="82" y="390" width="260" height="30" rx="8" fill="#12142a" stroke="#2c3070"/>
+      <text x="96" y="410">Backend: users, rights and keys</text>
+      <rect x="82" y="430" width="260" height="30" rx="8" fill="#12142a" stroke="#2c3070"/>
+      <text x="96" y="450">Edge: swaps a key for a token</text>
+      <rect x="82" y="470" width="260" height="30" rx="8" fill="#12142a" stroke="#2c3070"/>
+      <text x="96" y="490">PDP: AuthZEN decisions</text>
+    </g>
+
+    <g stroke="#a5b4fc" stroke-width="2" fill="none">
+      <line x1="364" y1="420" x2="486" y2="356" marker-end="url(#a)"/>
+      <line x1="364" y1="420" x2="486" y2="420" marker-end="url(#a)"/>
+      <line x1="364" y1="420" x2="486" y2="510" marker-end="url(#a)"/>
+    </g>
+    <text x="374" y="330" font-size="13" fill="#b4bbe6">identity token</text>
+    <text x="374" y="348" font-size="13" fill="#b4bbe6">AuthZEN question</text>
+
+    <g>
+      <rect x="490" y="318" width="408" height="76" rx="14" fill="#1c1f3d" stroke="#818cf8" stroke-width="2"/>
+      <text x="510" y="348" font-size="19" font-weight="700" fill="#ffffff">Stowr</text>
+      <text x="510" y="374" font-size="14" fill="#e0e7ff">Browser for S3, Google Cloud Storage and folders</text>
+      <rect x="842" y="330" width="42" height="22" rx="11" fill="#4338ca"/>
+      <text x="863" y="346" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">PEP</text>
+
+      <rect x="490" y="402" width="408" height="76" rx="14" fill="#1c1f3d" stroke="#818cf8" stroke-width="2"/>
+      <text x="510" y="432" font-size="19" font-weight="700" fill="#ffffff">Hune</text>
+      <text x="510" y="458" font-size="14" fill="#e0e7ff">Dashboards over ClickHouse, PostgreSQL, MongoDB</text>
+      <rect x="842" y="414" width="42" height="22" rx="11" fill="#4338ca"/>
+      <text x="863" y="430" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">PEP</text>
+
+      <rect x="490" y="486" width="408" height="48" rx="14" fill="#1c1f3d" stroke="#818cf8" stroke-width="2"/>
+      <text x="510" y="516" font-size="19" font-weight="700" fill="#ffffff">ClickHouse Dash</text>
+      <text x="676" y="516" font-size="14" fill="#e0e7ff">Query console, with MCP</text>
+      <rect x="842" y="499" width="42" height="22" rx="11" fill="#4338ca"/>
+      <text x="863" y="515" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">PEP</text>
+    </g>
+  </g>
+</svg>

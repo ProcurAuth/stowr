@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The test kit: an in-memory back end and the helpers that the tests of each module share.
 //!
 //! [`MemoryBackend`] acts as a small S3 provider: a listing with or without a delimiter (no page limit, as the

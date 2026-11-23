@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The versions of the objects: the version calls of an instance, the start probe of the versioning, the status of
 //! the bucket for `/api/instances`, the checksums of an answer, the order of the versions and the page token of the
 //! S3 versions (docs/ARCHITECTURE.md, "Version capability and version access").

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The media types of the object keys: the built-in table of the extensions, the table of the previews, the types
 //! that a browser opens inline, and the safety headers of an answer with object bytes. The server, the volumes and
 //! the archives use the same tables. The program reads no media type file of the system.

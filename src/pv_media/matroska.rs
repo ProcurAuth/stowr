@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The Matroska and WebM header: the EBML elements of the segment before the first cluster (Info and Tracks).
 
 use super::MediaTrackInfo;

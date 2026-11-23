@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The printable characters of Unicode 15.0: the letters, the marks, the numbers, the punctuation, the symbols and
 //! the space U+0020. The quoted form of a text (`super::quote`) writes each other character as an escape.
 

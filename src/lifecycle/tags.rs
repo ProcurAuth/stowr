@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The object tags: the limits and the checks of S3, the header `X-Amz-Tagging`, the tags of an upload, the tag
 //! functions of the instance, and the job `tag_prefix`.
 //!

@@ -46,7 +46,7 @@ jobs:
       - name: Checkout ProcurAuth
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          repository: SCcagg5/procurauth
+          repository: ProcurAuth/procurauth
           # ProcurAuth v1.1. docs/CONFORMANCE.md names the same commit.
           ref: c820b4ac0e37c4769394876105fd549a6c8b38cc
           path: procurauth

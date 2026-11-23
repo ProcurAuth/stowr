@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The Parquet preview (`/api/parquet`) and the Parquet summary of the details: the footer (`PAR1` and the length of
 //! the metadata), then the `FileMetaData` in the Thrift compact protocol. The preview gives the version, the rows,
 //! the schema (at most 20,000 fields), the row groups (at most 10,000) and the creator; it decodes no data page

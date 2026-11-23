@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The fake PDP of the tests, behind the real guard of the mode `authzen`.
 //!
 //! [`FakePdp`] is an [`AccessGuard`]. It checks the token with a table of texts that the test gives. It asks each

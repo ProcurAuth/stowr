@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the package details: archives, manifests, APK, VSIX and EPUB.
 
 use std::collections::BTreeMap;

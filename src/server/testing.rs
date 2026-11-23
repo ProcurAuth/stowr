@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The test kit of the HTTP layer: an application over back ends in memory, and requests that pass the whole
 //! dispatch (the middlewares, the router and the final form of the answer) without a network.
 //!

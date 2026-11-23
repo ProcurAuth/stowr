@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests of this folder. They are a fake S3 provider, a back end that exposes it, and a fake admin
 //! API. They also build an application, instances and requests.
 

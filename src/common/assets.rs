@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The browser interface, embedded in the binary at build time (build.rs). The server never reads the interface
 //! from the file system.
 

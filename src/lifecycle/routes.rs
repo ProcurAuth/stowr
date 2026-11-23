@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes `/api/tags`, `/api/tags/bulk` and `/api/lifecycle`.
 
 use std::sync::Arc;

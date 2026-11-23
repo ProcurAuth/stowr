@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the incomplete multipart uploads: the paging of three providers, the list with the dates and the parts,
 //! the abort of chosen uploads, the abort job, the probe and the S3 documents.
 

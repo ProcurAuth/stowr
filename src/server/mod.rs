@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The HTTP server: the listener, the route table and its dispatch, the middlewares (security headers, request
 //! log, check of the identity token, budget of the request and its trailers, same-origin check of the mutations,
 //! gzip of the large JSON answers), the embedded interface (pages, assets, fingerprints, ETags, ranges, 404 page),

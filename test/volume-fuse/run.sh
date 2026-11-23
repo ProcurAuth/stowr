@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # The real test of a volume on a FUSE mount of SeaweedFS (weed mount).
 #
 # The script starts the stack of compose.yaml under its own project name: the SeaweedFS of the tests, and the container

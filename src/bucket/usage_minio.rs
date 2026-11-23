@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The usage reader of MinIO: two requests to the admin API (`/minio/admin/v3`), signed with SigV4 (service `s3`) and
 //! the S3 credentials of the `auth` block. The credentials need the admin actions `admin:GetBucketQuota`,
 //! `admin:DataUsageInfo` and `admin:StorageInfo` (for the capacity of the storage), for example the policy

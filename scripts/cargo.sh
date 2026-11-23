@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Run cargo inside Docker. Nothing is installed on the host.
 # Use: scripts/cargo.sh check --all-targets
 #      scripts/cargo.sh test

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route tests of the access policy in mode `authzen`: each request goes through the whole dispatch, with the
 //! fake guard of the access layer. They check the points where the routes meet the access layer: the check of the
 //! token, the rule of each route, the display questions and the ceilings of the request.

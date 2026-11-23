@@ -1,8 +1,6 @@
 # Access policy
 
-This document uses ASD-STE100 Simplified Technical English.
-
-Stowr follows the protocol ProcurAuth for the access of people. A reference such as P 9.4 is a paragraph of this protocol.
+Stowr follows the [ProcurAuth protocol](https://procurauth.github.io/procurauth/specification.html) for the access of people. A reference such as P 9.4 is a paragraph of this protocol.
 The text of this document is the behavior of the code. The generated list of the keys is in
 [configuration-reference.md](configuration-reference.md). The result of the conformance test is in
 [CONFORMANCE.md](CONFORMANCE.md).
@@ -54,7 +52,7 @@ access {
   identity {
     header           = "X-Identity-Token"
     issuer           = "https://edge.example"
-    audience         = "infra-s3"
+    audience         = "stowr"
     public_keys_file = "/run/keys/edge-jwks.json"
     max_age          = "5m"
     clock_skew       = "60s"
@@ -146,7 +144,7 @@ reason: `missing`, `malformed`, `algorithm`, `type`, `kid`, `signature`, `issuer
 
 ### Public keys
 
-`access.identity.public_keys` holds PEM text or a JWK Set (RFC 7517), with the rules of ClickHouse Dash. Stowr reads the
+`access.identity.public_keys` holds PEM text or a JWK Set (RFC 7517), with the rules below. Stowr reads the
 text as a JWK Set when it starts with `{` after spaces, tabs and line ends. Else it reads PEM.
 
 - PEM: 1 to 16 `-----BEGIN PUBLIC KEY-----` blocks. Each key is Ed25519 (`Ed25519`) or P-256 with an uncompressed point
@@ -221,10 +219,9 @@ when they show one provider bucket. An id has 1 to 256 bytes of UTF-8, without a
 The node comes from the exact relative key or prefix that the route sends to the storage. Stowr removes the `/` at the start
 and the NUL bytes. It does not clean the other parts: a part `..` is an id like each other part.
 
-The rule: cut the key at each `/`. Remove the last part. This part is the name of an object, the empty part after the `/`
-at the end of a folder path, or the incomplete last part of a list prefix. The other parts are the folders, from the
-top. The walk stops at the depth of the tree, and at the first part that cannot be an id. A walk that stops early gives
-a node nearer to the bucket. Thus a grant must be broader, never narrower.
+The rule: cut the key at each `/`. Remove the last part. This part is the name of an object, or the empty part after the `/` at the end of a folder path. It can also be the incomplete last part of a list prefix.
+
+The other parts are the folders, from the top. The walk stops at the depth of the tree. It also stops at the first part that cannot be an id. A walk that stops early gives a node nearer to the bucket. Thus a grant must be broader, never narrower.
 
 Examples for the service `svc` and the bucket `b`:
 
@@ -294,9 +291,7 @@ which the edge decides. A grant gives a ceiling value on the grant of the action
 read. It needs no token and asks the PDP nothing. A bad token does not change the answer. The path
 `/.well-known/access-actions` has no alias: it needs the token and gives 404.
 
-The document has the `server` (the id of the service), the types of the tree, the actions with their limits, the limits, and
-one resource for each `bucket` block and each `volume` block. A resource has the path `bucket:<id>` and the label (the name of
-the block, when it has 1 to 60 characters). The document lists every bucket label. Thus a hidden bucket is not a secret.
+The document has the `server` (the id of the service), the types of the tree, the actions with their limits, and the limits. It has one resource for each `bucket` block and each `volume` block. A resource has the path `bucket:<id>` and the label. The label is the name of the block, when it has 1 to 60 characters. The document lists every bucket label. Thus a hidden bucket is not a secret.
 
 ## Order of the checks
 
@@ -371,8 +366,12 @@ source and the write of the destination are Others, asked without usage. The tar
 
 The save of the lifecycle rules always asks the two Others. It does so also when the rules delete nothing.
 
-A route that starts a job asks its permissions when it starts the job. The job asks again at each read and each control. A
-job is a copy or a move of a prefix, a delete of a prefix, bulk tags, an abort by age, an extraction, an integrity check or Insights.
+A route that starts a job asks its permissions when it starts the job. The job asks again at each read and each control. These operations make a job:
+
+- a copy or a move of a prefix;
+- a delete of a prefix, and bulk tags;
+- an abort by age, and an extraction;
+- an integrity check, and Insights.
 
 ### Continuations
 
@@ -427,8 +426,7 @@ Stowr answers 503. The one exception: the connection failed before Stowr wrote t
 ## Approval of an effect
 
 No route of Stowr can wait for the approval of an owner (P 17.7a). Stowr sends no `context.approval` and submits no
-approval request. When the answer to the question of a use has a reason of P 17.1 (`approval_required`,
-`approval_pending`, `approval_denied` or `approval_expired`), Stowr answers HTTP 403 with exactly this body:
+approval request. The answer to the question of a use can have a reason of P 17.1: `approval_required`, `approval_pending`, `approval_denied` or `approval_expired`. Then Stowr answers HTTP 403 with exactly this body:
 
 ```json
 {"error":"approval_cannot_wait"}
@@ -446,10 +444,8 @@ The PDP gives the ceiling in `context.limits` of a `true` answer. The value is a
 of the operation that the permission lets run. When two permissions of one operation give a value for one action, the lower
 value applies.
 
-- The value of `object.read` bounds each object that the operation reads: a `GET` of bytes, a range read for a preview, the
-  source of a copy or a move, and the archive that a route opens.
-- The value of `object.write` bounds each object that the operation writes: a `PUT`, the destination of a copy or a move, a
-  restored version, a copy for a change of metadata, an extracted member and an upload.
+- The value of `object.read` bounds each object that the operation reads. Examples: a `GET` of bytes, a range read for a preview, the source of a copy or a move, an archive.
+- The value of `object.write` bounds each object that the operation writes. Examples: a `PUT`, the destination of a copy or a move, a restored version, an extracted member, an upload.
 - A `HEAD`, a list, the tags and the reads of metadata have no check.
 
 A size that is over the ceiling gives `403` with this body, before the first byte:
@@ -567,8 +563,7 @@ kept answers. Stowr asks each question with the AuthZEN Authorization API 1.0.
 - Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` at start, and writes the line
   `access.pdp_metadata`. A failure at start writes `access.pdp_failed` and does not stop the start. Stowr then reads the
   metadata before its next question. It reads the metadata again after one hour.
-- Stowr uses the endpoints of the metadata, or the default paths `/access/v1/evaluation` and `/access/v1/evaluations`
-  when the PDP has no metadata (status 404, 405, 410 or 501). An endpoint on another origin makes the metadata not valid.
+- Stowr uses the endpoints of the metadata. When the PDP has no metadata (status 404, 405, 410 or 501), it uses the default paths `/access/v1/evaluation` and `/access/v1/evaluations`. An endpoint on another origin makes the metadata not valid.
 - Stowr reads the four members of the metadata: `procurauth_usage_max_seconds`, `procurauth_idle_max_seconds`,
   `procurauth_evaluations_max_bytes` and `procurauth_evaluations_max_items`.
 - Stowr sends the PDP token in `Authorization: Bearer`. It sends `Content-Type`, `Accept` and `X-Request-ID`. The request id
@@ -596,8 +591,7 @@ kept answers. Stowr asks each question with the AuthZEN Authorization API 1.0.
 - The client keeps at most 4 connections. It closes an idle connection after 5 s, or after half of
   `procurauth_idle_max_seconds` when this value is lower.
 - `plain_http = true` accepts an `http` URL. Use it only on a trusted network.
-- A failure is: no answer before the deadline, an HTTP status other than 200, a body that is not valid, or a wrong number
-  of items. A status 401 or 403 of the PDP writes the line `access.pdp_credential_refused`.
+- These cases are a failure: no answer before the deadline, a status other than 200, an invalid body, a wrong number of items. A status 401 or 403 of the PDP writes the line `access.pdp_credential_refused`.
 
 ### The answer cache
 
@@ -624,8 +618,7 @@ The library `procurauth-pep` gives the rules of a PEP. Stowr adds these rules ar
 
 - The request id in `X-Request-ID`, the wait of a usage question, and one deadline for each call.
 - One question for each repeated question of a call.
-- The depth bound of 32 levels for the JSON of a token, and the reason `kid` in the log for a `kid` of a key of another
-  algorithm.
+- The depth bound of 32 levels for the JSON of a token. The reason `kid` in the log, for a `kid` that belongs to a key of another algorithm.
 - The permission of each refusal: the library gives a refusal for the whole operation. Stowr finds the refused permission
   in the requests of the call, or in a copy of the kept answers. The answer of Stowr names this action.
 - The `retry_after` of a `budget_exceeded` answer to a question without usage. A continuation that gets it gives `429`.
@@ -643,7 +636,7 @@ Each line starts with the date and the time in UTC, in the form `YYYY/MM/DD hh:m
 | `access.pdp_failed` | A request to the PDP failed, or the read of the metadata at start (`request_id` is `-`). Fields: `request_id`, `evaluations`, `error`. |
 | `access.pdp_metadata` | The metadata of the PDP at start. Fields: `usage_max_seconds`, `usage_wait_ms` (the wait of a usage question), `idle_max_seconds`, `evaluations_max_items`, `evaluations_max_bytes`. |
 | `access.pdp_credential_refused` | The PDP answered 401 or 403. |
-| `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits` (field `limit`), or the answer to an other permission or to the action `access` has a reason of P 17.1 (field `reason`). |
+| `access.pdp_invalid_answer` | A `true` answer lists a budget in `context.limits` (field `limit`). Or the answer to an other permission, or to the action `access`, has a reason of P 17.1 (field `reason`). |
 | `access.ceiling_unenforceable` | A `true` answer has a ceiling that the action does not list. |
 | `access.ceiling_refused` | A size is over `max_object_size`. Fields: `request_id`, `action`, `ceiling`, `limit`, `size`. |
 | `access.options` | A request to the options route. Fields: `request_id`, `subject`, `type`, `parent`, `items`, `questions`. |

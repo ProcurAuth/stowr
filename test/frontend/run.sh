@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Browser tests of the interface.
 #
 # The script starts the stack of compose.yaml (SeaweedFS, MinIO, Garage and Stowr with the volume "files") under

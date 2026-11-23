@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the document details, of the Parquet reader, of the Thrift reader and of the counts that the details
 //! share with `crate::pv_docs::count`, and the helpers of the route tests of this folder.
 

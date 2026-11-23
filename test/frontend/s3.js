@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Requests to the S3 API of the providers of the test stack, signed with SigV4. seed.js and browser-tests.js use
 // them for what has no route in Stowr, or to check the result of a page action on the provider.
 const crypto = require('crypto');

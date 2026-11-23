@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The public keys of the issuer of the identity tokens.
 //!
 //! The configuration gives them as PEM text or as a JWK Set (RFC 7517), with the rules of ClickHouse Dash: a text

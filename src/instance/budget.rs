@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The resource budget of a request or of a job: the provider calls and the provider bytes.
 
 use std::sync::atomic::{AtomicI64, Ordering};

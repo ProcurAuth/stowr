@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The permissions of the change routes, of the jobs and of the continuations (ProcurAuth 4.5 and 4.7).
 //!
 //! A route and the job that it starts build their operation with the same function. The job asks its operation again

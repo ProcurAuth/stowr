@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1226" width="1100" height="1226" role="img" aria-label="Request flows of Stowr: a folder listing, a read of a large object by byte ranges, and an upload of a large file in chunks">
+  <title>Request flows: listing, read by byte ranges, upload in chunks</title>
+  <desc>Three sequences between the browser, Stowr, the PDP and the storage. In each one, the PDP decides before the first byte moves. The listing asks for one page of the provider. The read uses exact byte ranges. The upload sends sealed chunks to a multipart upload.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#a5b4fc"/></marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#34d399"/></marker>
+  </defs>
+  <rect width="1100" height="1226" rx="20" fill="#12142a"/>
+  <g font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif">
+    <text x="40" y="52" font-size="24" font-weight="700" fill="#ffffff">Three requests, one rule: the decision comes before the first byte</text>
+    <text x="40" y="82" font-size="15" fill="#9ca3d4">Stowr asks the PDP, then it reads or writes. It streams the bytes and keeps no copy of an object.</text>
+    <g stroke="#2c3070" stroke-width="1.5" stroke-dasharray="4 5"><path d="M150 154V414"/><path d="M440 154V414"/><path d="M730 154V414"/><path d="M990 154V414"/><path d="M150 500V760"/><path d="M440 500V760"/><path d="M730 500V760"/><path d="M990 500V760"/><path d="M150 846V1186"/><path d="M440 846V1186"/><path d="M730 846V1186"/><path d="M990 846V1186"/></g>
+        <text x="40" y="118" font-size="17" font-weight="700" fill="#a5b4fc">1. List a folder</text>
+    <rect x="95" y="126" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="150" y="145" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Browser</text>
+    <rect x="385" y="126" width="110" height="28" rx="8" fill="#4338ca" fill-opacity="0.5" stroke="#818cf8"/><text x="440" y="145" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Stowr</text>
+    <rect x="675" y="126" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="730" y="145" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">PDP</text>
+    <rect x="935" y="126" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="990" y="145" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Storage</text>
+    <path d="M152 190H438" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="160" y="182" font-size="13" fill="#c7d2fe">GET /api/list?prefix=reports/</text>
+    <path d="M442 230H728" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="222" font-size="13" fill="#c7d2fe">Question: object.read on folder:reports, with its ancestors</text>
+    <path d="M728 270H442" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="450" y="262" font-size="13" fill="#a7f3d0">Decision: true</text>
+    <path d="M442 310H988" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="302" font-size="13" fill="#c7d2fe">ListObjectsV2 with delimiter "/", one page of 1000 keys at most</text>
+    <path d="M988 350H442" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="450" y="342" font-size="13" fill="#a7f3d0">The entries of the page</text>
+    <path d="M438 390H152" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="160" y="382" font-size="13" fill="#a7f3d0">The entries and the access of the node (JSON)</text>
+    <text x="40" y="464" font-size="17" font-weight="700" fill="#a5b4fc">2. Read a large object by byte ranges</text>
+    <rect x="95" y="472" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="150" y="491" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Browser</text>
+    <rect x="385" y="472" width="110" height="28" rx="8" fill="#4338ca" fill-opacity="0.5" stroke="#818cf8"/><text x="440" y="491" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Stowr</text>
+    <rect x="675" y="472" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="730" y="491" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">PDP</text>
+    <rect x="935" y="472" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="990" y="491" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Storage</text>
+    <path d="M152 536H438" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="160" y="528" font-size="13" fill="#c7d2fe">GET /s3?key=...  with Range: bytes=a-b</text>
+    <path d="M442 576H728" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="568" font-size="13" fill="#c7d2fe">Question: object.read on the node of the key</text>
+    <path d="M728 616H442" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="450" y="608" font-size="13" fill="#a7f3d0">Decision: true, with the ceiling max_object_size</text>
+    <path d="M442 656H988" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="648" font-size="13" fill="#c7d2fe">GET with the same exact range</text>
+    <path d="M988 696H442" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="450" y="688" font-size="13" fill="#a7f3d0">206 and Content-Range, checked by Stowr</text>
+    <path d="M438 736H152" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="160" y="728" font-size="13" fill="#a7f3d0">The bytes pass through a small buffer</text>
+    <text x="40" y="810" font-size="17" font-weight="700" fill="#a5b4fc">3. Upload a large file in chunks</text>
+    <rect x="95" y="818" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="150" y="837" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Browser</text>
+    <rect x="385" y="818" width="110" height="28" rx="8" fill="#4338ca" fill-opacity="0.5" stroke="#818cf8"/><text x="440" y="837" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Stowr</text>
+    <rect x="675" y="818" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="730" y="837" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">PDP</text>
+    <rect x="935" y="818" width="110" height="28" rx="8" fill="#1c1f3d" stroke="#2c3070"/><text x="990" y="837" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Storage</text>
+    <path d="M152 882H438" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="160" y="874" font-size="13" fill="#c7d2fe">POST /api/uploads with the name and the size</text>
+    <path d="M442 922H728" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="914" font-size="13" fill="#c7d2fe">Question: object.write on the node of the key, with usage</text>
+    <path d="M728 962H442" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="450" y="954" font-size="13" fill="#a7f3d0">Decision: true, one unit of the budget writes</text>
+    <path d="M442 1002H988" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="994" font-size="13" fill="#c7d2fe">Create the multipart upload</text>
+    <path d="M438 1042H152" stroke="#34d399" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#arg)"/>
+    <text x="160" y="1034" font-size="13" fill="#a7f3d0">The sealed token stowr1 (it lets the browser resume)</text>
+    <path d="M152 1082H438" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="160" y="1074" font-size="13" fill="#c7d2fe">PUT /api/uploads with one chunk and its SHA-256</text>
+    <path d="M442 1122H988" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="1114" font-size="13" fill="#c7d2fe">One part for each chunk, 16 MiB or more</text>
+    <path d="M442 1162H988" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <text x="450" y="1154" font-size="13" fill="#c7d2fe">At the end: complete the upload and check the checksum</text>
+  </g>
+</svg>

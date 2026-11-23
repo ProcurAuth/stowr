@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the helpers: the MD5 digest, the XML tree, the quoting, the URL of an admin API and the signature.
 
 use crate::bucket::sign::{SigningInput, amz_date, authorization, canonical_query, sha256_hex};

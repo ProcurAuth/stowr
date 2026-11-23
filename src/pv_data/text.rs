@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The text forms of the data previews: the simple upper case, the short form of a float and the integer of a float.
 //! The lower case, the quoted form of a name, the readers of integer and float texts and the replacement of invalid
 //! UTF-8 are in `crate::pv_docs::util`: each preview uses the same forms.

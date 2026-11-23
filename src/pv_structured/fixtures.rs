@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The cases of the tests: the inputs and the expected answers, in `testdata/fixtures.json`.
 
 use std::sync::OnceLock;

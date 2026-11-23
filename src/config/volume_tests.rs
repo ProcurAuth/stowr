@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the `volume` block: the values, the defaults, the refusals and the folders of the start.
 
 use crate::common::config::{PROVIDER_VOLUME, VOLUME_HOST_ID};

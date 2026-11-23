@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Theme control: System (default), Dark or Light, saved in this browser only.
    The page loads this script without defer in <head>, so the theme applies before the first paint. The key is
    "stowr.theme": the tabs of the same origin share one choice.

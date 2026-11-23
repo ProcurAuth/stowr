@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route tests of the ceiling `max_object_size`, of the display questions of a listing and of the options route
 //! in mode `authzen`. Each request goes through the whole dispatch with the fake guard. A test reads the answer, the
 //! objects of the back end, the jobs and the questions of the fake.

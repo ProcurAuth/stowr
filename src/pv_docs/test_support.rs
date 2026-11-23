@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests of this folder: an application over the memory back end and a call of a route.
 
 use std::collections::BTreeMap;

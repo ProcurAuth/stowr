@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The text helpers of the metadata readers: the bytes of a file as text, the case of a text, the integers and the
 //! decimal numbers of a text, and the number forms of the properties.
 

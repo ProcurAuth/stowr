@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*!
  * BB.menu — lightweight popover for kebab menus
  * - Trigger: .bb-kebab (icon only)

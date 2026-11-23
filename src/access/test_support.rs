@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests of the access policy: a configuration in mode `authzen`, the instances over the memory
 //! back end, the layer with the fake guard, and the context of a request with a valid token.
 

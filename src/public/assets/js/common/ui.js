@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*!
  * BB.ui — minimal modal/toast utilities (framework-agnostic)
  * - Alert / Confirm / Prompt rendered as centered overlay with backdrop

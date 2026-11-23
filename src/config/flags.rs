@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The flags of the command line: `-name value`, `-name=value`, `--name value` and `--name=value`, a boolean flag
 //! without a value, `--` at the end of the flags, and `-h` or `-help` for the help.
 //!

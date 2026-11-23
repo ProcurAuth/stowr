@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The table of the named character references of HTML.
 
 /// The longest name of a reference that has no `;`.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The AWS Signature Version 4 of a `GET` request to an admin API (the admin API of MinIO uses service `s3`).
 
 use aws_lc_rs::{digest, hmac};

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The details of documents (`/api/media-info` for the formats that are not media): the container and the properties
 //! that a bounded read gives.
 //!

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Small text helpers of the previews: UTF-8 decoding with the rules of a byte stream, truncation on a character
 //! border, simple lower case, the number syntax of the previews, the stable sort of the previews and the quoted form
 //! of a name in a message.

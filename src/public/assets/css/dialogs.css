@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 /* dialogs.css: the dialogs of the shared scripts (details, versions, insights, permissions, transfers).
    Each colour literal is a token of stowr.css, so the rules follow the light and the dark theme. stowr.css loads
    after this file and gives its look to the shared controls (buttons, menus, dialogs, toasts). */

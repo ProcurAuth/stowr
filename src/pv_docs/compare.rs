@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The comparison of cell values of the worksheets and of the SQLite tables: the column filters (`>=`, `<=`, `!=`,
 //! `=`, `>`, `<`, else a part of the text) and the order of a sort (numbers, then RFC 3339 times, then the text
 //! without regard to case; an empty value comes last). The stable sort is in `util`.

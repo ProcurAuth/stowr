@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The storage calls of an instance: the listing, the reads, the writes, the deletes, the copies, the moves, the
 //! multipart uploads and the resumable uploads.
 //!

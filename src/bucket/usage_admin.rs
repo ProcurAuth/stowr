@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The admin requests of the usage readers. This file has the transport seam and the URL of an admin API. It also has
 //! the error that names the step and the status but never the URL, and the read of a JSON answer with a size limit.
 //!

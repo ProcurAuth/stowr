@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The MD5 digest (RFC 1321). S3 asks for it in the header `Content-MD5` of the batch delete, of the lifecycle and of
 //! the Object Lock requests. The integrity of an archive entry gives it to a person, who compares it with a value of
 //! the provider or of another tool. It is not a security function.

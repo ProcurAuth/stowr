@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The options route of the service (ProcurAuth 5.6 to 5.8): `GET /.well-known/procurauth/resources`.
 //!
 //! The route lists the children of a node, page by page. It shows only the children that the subject of the

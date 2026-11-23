@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The SHA-256 checksums of the uploads: the header `X-Checksum-Sha256`, the composite checksum of an S3 multipart
 //! object, and the helpers of the direct upload (`PUT /s3`).
 //!

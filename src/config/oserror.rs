@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The text of an error of the operating system in the messages of the start: `<operation> <path>: <cause>`, with the
 //! cause in lower case, for example `open /etc/stowr/token: no such file or directory`. The text is the same with each
 //! C library.

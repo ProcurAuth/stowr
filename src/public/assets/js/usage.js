@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.usage: the usage and the quota of a bucket (GET /api/usage).
  * - the read: one answer for each instance, kept in the page; a read with fresh asks the server to read the admin API

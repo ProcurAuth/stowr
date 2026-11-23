@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Tests of the algorithms of src/public/assets/js/diff.js. They run in Node, with no browser.
 const assert = require('assert');
 const diff = require('/src/diff.js');

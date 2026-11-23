@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The background jobs in memory, the Insights statistics, the per-object integrity, the technical inspection and
 //! the version routes (docs/ARCHITECTURE.md, "Background jobs", "Insights treemap normalization", "Version
 //! capability and version access"; docs/PREVIEWS.md, "Per-object integrity", "Technical inspection").

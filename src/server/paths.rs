@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The rules of the paths of the requests: the lexical clean of a path, the escape of a path for a URL, the last
 //! element and the extension of a key, and the decode of the escapes of a path.
 

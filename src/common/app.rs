@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The application: the configuration, the storage instances and the managers that live in the memory of the
 //! process. The module `server` builds it at start (`crate::server::build_app`).
 

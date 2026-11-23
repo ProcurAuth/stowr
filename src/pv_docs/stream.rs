@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A buffered byte reader over an object: the windows of a [`WindowReader`], or the body of a read.
 //!
 //! The reader keeps one chunk at a time. It never holds more than a chunk and the bytes that a caller asks to

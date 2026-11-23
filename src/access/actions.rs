@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The action document of the service (ProcurAuth 5.1 to 5.5a).
 //!
 //! The service builds the document one time at start, from the typed configuration, and it serves the same bytes on

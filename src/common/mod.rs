@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The shared part of the program: the types that the other modules use together.
 //!
 //! A change of a type here changes each module that uses it.

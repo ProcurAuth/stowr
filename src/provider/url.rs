@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The URLs of the providers: the base URL of an `auth` block, and the session URL of a GCS resumable upload.
 //!
 //! The rules of the paths are these. The escaped form of a path keeps the text of the URL when that text is a valid

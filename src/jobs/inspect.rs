@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The technical inspection of one object (docs/PREVIEWS.md, "Technical inspection"): the metadata of the provider,
 //! the first 64 KiB and, when useful, the last 64 KiB, the detected media type, the structural markers, and the
 //! exact provider requests and bytes of the inspection. The headers that carry a credential do not go to the client.

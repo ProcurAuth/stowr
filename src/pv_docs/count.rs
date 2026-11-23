@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The explicit counts of a document: the lines of a JSON text, the records and the columns of delimited text, and
 //! the used rows and columns of the active sheet of a workbook. Each count reads the object in order from its
 //! start, so a request for the details never does it.

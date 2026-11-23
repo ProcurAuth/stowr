@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The SQLite preview sessions and their routes (`/api/sqlite/sessions`).
 //!
 //! A session keeps the range reader of one object and its tables in memory. Its life ends after

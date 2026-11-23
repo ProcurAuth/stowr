@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The access policy of ProcurAuth: the identity token, the questions to the PDP, the resource tree, the action
 //! document, the options route, the budgets and the display rules (docs/ACCESS.md).
 //!

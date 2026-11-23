@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the size of a chunk, of `Content-Range`, of the body limit and of the form that the client sees.
 
 use bytes::Bytes;

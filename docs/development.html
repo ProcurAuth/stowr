@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="The scripts, the tests, the dependencies, the rules of the runtime and the steps of a release.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Development | Stowr">
+<meta property="og:description" content="The scripts, the tests, the dependencies, the rules of the runtime and the steps of a release.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/development.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Development | Stowr">
+<meta name="twitter:description" content="The scripts, the tests, the dependencies, the rules of the runtime and the steps of a release.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/development.html">
+<title>Development | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> Build, test and release</p><h1>Development</h1><p class="lede">The scripts, the tests, the dependencies, the rules of the runtime and the steps of a release.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#requirements">Requirements</a></li><li><a href="#scripts">Scripts</a></li><li><a href="#validation">Validation</a></li><li><a href="#layout-of-the-code">Layout of the code</a></li><li><a href="#dependencies">Dependencies</a></li><li><a href="#rules-of-the-runtime">Rules of the runtime</a></li><li><a href="#configuration-reference">Configuration reference</a></li><li><a href="#documents-and-website">Documents and website</a></li><li><a href="#frontend">Frontend</a></li><li><a href="#browser-tests-of-the-interface">Browser tests of the interface</a></li><li><a href="#fuse-test-of-the-volumes">FUSE test of the volumes</a></li><li><a href="#conformance-test-of-the-access-policy">Conformance test of the access policy</a></li><li><a href="#shell-syntax">Shell syntax</a></li><li><a href="#pdfjs-assets">PDF.js assets</a></li><li><a href="#scratch-runtime">Scratch runtime</a></li><li><a href="#release">Release</a></li><li><a href="#release-validation">Release validation</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/DEVELOPMENT.md"><code>docs/DEVELOPMENT.md</code></a> in the repository.</p><h2 id="requirements"><a class="self" href="#requirements">Requirements</a></h2>
+<ul><li>Docker. The scripts run the compiler in a container. Do not install a compiler on the host.</li><li>Nothing else for the build. The test stacks (SeaweedFS, MinIO, Garage, Playwright) also run in Docker.</li></ul>
+<h2 id="scripts"><a class="self" href="#scripts">Scripts</a></h2>
+<div class="tablewrap"><table><thead><tr><th scope="col">Script</th><th scope="col">Use</th></tr></thead><tbody><tr><th scope="row"><code>scripts/cargo.sh &lt;arguments&gt;</code></th><td data-label="Use">Run cargo in the development image (<code>stowr-dev:1</code>). The script runs as the user of the host. The cargo registry and the target folder are Docker volumes: no file of root appears in the repository.</td></tr><tr><th scope="row"><code>scripts/static.sh</code></th><td data-label="Use">Build the static program for the musl target of the host architecture: <code>x86_64-unknown-linux-musl</code> or <code>aarch64-unknown-linux-musl</code>. <code>--check</code> also checks that the file is static and runs it. <code>--copy &lt;folder&gt;</code> copies the file to a folder of the host.</td></tr><tr><th scope="row"><code>scripts/check-invariants.sh</code></th><td data-label="Use">Check the rules of the runtime that the compiler does not check. Refer to "Rules of the runtime".</td></tr><tr><th scope="row"><code>scripts/build-site.py</code></th><td data-label="Use">Build the pages of <code>docs/</code> from the Markdown files. <code>--check</code> changes nothing and fails when a page is not current. It needs <code>python3</code> only.</td></tr><tr><th scope="row"><code>scripts/check-docs.py</code></th><td data-label="Use">Check the links, the site, the rules of ASD-STE100 and the hygiene of the files. It makes no network request. <code>--online</code> also asks each public URL. It needs <code>python3</code> only.</td></tr></tbody></table></div>
+<p>The release build reads <code>STOWR_BUILD_VERSION</code>, <code>STOWR_BUILD_COMMIT</code> and <code>STOWR_BUILD_DATE</code> at compile time. <code>stowr version</code> and <code>/api/build</code> show them. A build without them shows <code>dev</code>.</p>
+<p>The test images also set <code>STOWR_MULTIPART_COPY_THRESHOLD</code> and <code>STOWR_MULTIPART_COPY_PART_SIZE</code> at compile time: a copy then goes in parts with small objects. A release build does not set them. Refer to <a href="architecture.html">ARCHITECTURE.md</a>, "Copy in parts".</p>
+<h2 id="validation"><a class="self" href="#validation">Validation</a></h2>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>scripts/cargo.sh fmt --all -- --check
+scripts/cargo.sh clippy --all-targets --locked -- -D warnings
+scripts/cargo.sh test --locked
+scripts/check-invariants.sh
+scripts/static.sh --check
+python3 -I scripts/check-docs.py</code></pre></div>
+<h2 id="layout-of-the-code"><a class="self" href="#layout-of-the-code">Layout of the code</a></h2>
+<p>The crate is at the root of the repository: <code>Cargo.toml</code>, <code>build.rs</code> and <code>src/</code>. <code>src/main.rs</code> starts the program. <code>src/lib.rs</code> has one module for each part of the program. Each part is a folder <code>src/&lt;part&gt;/</code> with its <code>mod.rs</code>.</p>
+<div class="tablewrap"><table><thead><tr><th scope="col">Folder</th><th scope="col">Content</th></tr></thead><tbody><tr><th scope="row"><code>src/common/</code></th><td data-label="Content">The shared types: the error and its envelope, the typed configuration, the context of an operation, the request and the answer. Also the storage traits, the JSON encoder, the times, the query, the embedded interface and the application.</td></tr><tr><th scope="row"><code>src/config/</code></th><td data-label="Content">The reader of the HCL file, the table of the keys, the reference, <code>print-config</code>, the command line, the identity of the build. <code>src/config/env.rs</code> is the only reader of the environment.</td></tr><tr><th scope="row"><code>src/server/</code></th><td data-label="Content">The HTTP server, the route table, the middlewares, the interface, the object gateway, the listing, the copy and the delete.</td></tr><tr><th scope="row"><code>src/instance/</code></th><td data-label="Content">The storage instance: the gates, the budgets, the ceilings, the learned permissions, the versions, the range readers, the signed cursors.</td></tr><tr><th scope="row"><code>src/provider/</code></th><td data-label="Content">The clients of S3 and of GCS, and the shared client of each <code>auth</code> block.</td></tr><tr><th scope="row"><code>src/volume/</code></th><td data-label="Content">The volume back end. It is the only folder that writes to the local file system.</td></tr><tr><th scope="row"><code>src/uploads/</code></th><td data-label="Content">The resumable uploads, the resume token, the incomplete multipart uploads.</td></tr><tr><th scope="row"><code>src/jobs/</code></th><td data-label="Content">The background jobs, Insights, the integrity, the inspection, the version routes.</td></tr><tr><th scope="row"><code>src/archive/</code></th><td data-label="Content">The ZIP reader and writer, the ZIP of a folder, the archive entries, the extraction.</td></tr><tr><th scope="row"><code>src/lifecycle/</code></th><td data-label="Content">The object tags and the lifecycle rules.</td></tr><tr><th scope="row"><code>src/bucket/</code></th><td data-label="Content">Object Lock, the encryption, the edit of the metadata, the usage and the quota.</td></tr><tr><th scope="row"><code>src/access/</code></th><td data-label="Content">The access policy: the routes and their actions, the resource tree, the options route, the guard of the PDP.</td></tr><tr><th scope="row"><code>src/pv_docs/</code>, <code>src/pv_data/</code>, <code>src/pv_structured/</code>, <code>src/pv_media/</code></th><td data-label="Content">The previews and the details of the objects.</td></tr><tr><th scope="row"><code>src/testkit/</code></th><td data-label="Content">The test kit: the memory back end and the shared helpers of the tests.</td></tr><tr><th scope="row"><code>src/public/</code></th><td data-label="Content">The browser interface. <code>build.rs</code> embeds each file in the binary.</td></tr></tbody></table></div>
+<h2 id="dependencies"><a class="self" href="#dependencies">Dependencies</a></h2>
+<p>Each dependency has an exact version in <code>Cargo.toml</code>, and <code>Cargo.lock</code> fixes the others. Add a dependency only when the code that it replaces is larger or less strict. The program has its own code for these jobs:</p>
+<ul><li>the HCL reader, the CSV reader and the MIME reader;</li><li>the ZIP reader and writer, the SQLite reader, the Parquet reader and the DER reader;</li><li>the readers of image and media headers;</li><li>the S3 signature.</li></ul>
+<div class="tablewrap"><table><thead><tr><th scope="col">Crate</th><th scope="col">Reason</th></tr></thead><tbody><tr><th scope="row"><code>tokio</code></th><td data-label="Reason">The asynchronous runtime. It runs the listener, the timers, the signals, the tasks of the jobs and the threads for the CPU work.</td></tr><tr><th scope="row"><code>hyper</code>, <code>hyper-util</code>, <code>http</code>, <code>http-body</code>, <code>http-body-util</code>, <code>bytes</code></th><td data-label="Reason">The HTTP/1.1 server and the HTTP/1.1 client of the providers, of the admin APIs and of the PDP. The client follows no redirect and uses no proxy.</td></tr><tr><th scope="row"><code>rustls</code>, <code>tokio-rustls</code>, <code>hyper-rustls</code></th><td data-label="Reason">TLS 1.2 and 1.3 to the providers and to the PDP. The roots are the certificate bundle of the image. No environment variable.</td></tr><tr><th scope="row"><code>aws-lc-rs</code></th><td data-label="Reason">SHA-256, HMAC-SHA-256, AES-GCM, RSA signatures and the random generator. It is also the cryptography of <code>rustls</code>.</td></tr><tr><th scope="row"><code>serde</code>, <code>serde_json</code></th><td data-label="Reason">The JSON of the answers, of the requests and of the provider APIs. <code>src/common/json.rs</code> gives the exact form of the answers.</td></tr><tr><th scope="row"><code>flate2</code></th><td data-label="Reason">Deflate, gzip and zlib with the pure Rust back end: the ZIP entries, the gzip answers, the compressed parts of the previews.</td></tr><tr><th scope="row"><code>quick-xml</code></th><td data-label="Reason">The pull reader of XML: the provider answers, the Office Open XML parts, EPUB and SVG headers. It expands no external entity.</td></tr><tr><th scope="row"><code>base64</code></th><td data-label="Reason">The base64 forms of the checksums, of the tokens and of the previews.</td></tr><tr><th scope="row"><code>libc</code></th><td data-label="Reason"><code>statfs</code>, <code>O_NOFOLLOW</code> and the error numbers of the volume back end.</td></tr><tr><th scope="row"><code>tower-service</code></th><td data-label="Reason">The connector trait of the provider client: TCP, then TLS, with a time limit for each step.</td></tr><tr><th scope="row"><code>procurauth-pep</code></th><td data-label="Reason">The PEP of ProcurAuth 1.1 for the mode <code>authzen</code>. It checks the identity token, asks the PDP, keeps the answers and gives the transport over TLS. It comes from one fixed commit of the ProcurAuth repository.</td></tr><tr><th scope="row"><code>procurauth-core</code></th><td data-label="Reason">The shared types of ProcurAuth: the key set of the edge (JWK Set and PEM keys), the JWS decoder and the decision of the PDP. It comes from the same commit as <code>procurauth-pep</code>.</td></tr></tbody></table></div>
+<h2 id="rules-of-the-runtime"><a class="self" href="#rules-of-the-runtime">Rules of the runtime</a></h2>
+<p><code>scripts/check-invariants.sh</code> checks these rules. The CI runs it.</p>
+<ul><li>The program never runs another program.</li><li>Only <code>src/config/env.rs</code> reads the environment: the variables that the configuration names with <code>_env</code>.</li><li>The clients of the providers use no proxy and follow no redirect.</li><li>Only the folder <code>src/volume/</code> writes to the local file system: the files of a <code>volume</code> block. Put the code of a test that makes fixtures in a file named <code>tests.rs</code> or <code>*_tests.rs</code>.</li><li>Only <code>src/volume/statfs.rs</code> has <code>unsafe</code> code (<code>unsafe_code</code> is <code>deny</code> for the crate).</li><li>The repository has no font file.</li><li>The interface loads nothing from another origin.</li><li>Each dependency has an exact version.</li></ul>
+<p>The compiler and clippy also refuse <code>unwrap</code>, <code>expect</code>, <code>panic!</code>, <code>todo!</code>, <code>unimplemented!</code>, <code>dbg!</code> and the print macros in the code of the program. The tests can use them.</p>
+<p>The program keeps no state on the local file system. It runs as a static binary in a scratch container with a read-only root file system. Only the HCL file, the credential files and the folders of the <code>volume</code> blocks are mounted.</p>
+<h2 id="configuration-reference"><a class="self" href="#configuration-reference">Configuration reference</a></h2>
+<p><code>docs/configuration-reference.md</code> comes from the table of the keys in <code>src/config/</code>. After a change of the table, make it again:</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>scripts/cargo.sh run --quiet -- config-reference &gt; docs/configuration-reference.md</code></pre></div>
+<p>A test fails when the file and the table do not agree.</p>
+<h2 id="documents-and-website"><a class="self" href="#documents-and-website">Documents and website</a></h2>
+<p>The Markdown files in <code>docs/</code> and <code>CHANGELOG.md</code> are the source of the website. <code>scripts/build-site.py</code> makes the pages <code>docs/*.html</code> from them. The Overview page and the page 404 are in the script. The pages have no build step to read, no external request and no web font. They use relative links, so they work from <code>file://</code> and from GitHub Pages.</p>
+<p>After a change of a Markdown file, run the script and commit the pages with the change:</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>python3 -I scripts/build-site.py
+python3 -I scripts/check-docs.py</code></pre></div>
+<p><code>scripts/check-docs.py</code> runs four checks:</p>
+<ul><li>the links and the anchors;</li><li>the pages of the site;</li><li>the rules of ASD-STE100: sentences of 25 words at most, six sentences in a paragraph, and no banned word;</li><li>the hygiene of the files: no secret, no address, no e-mail address and no image registry.</li></ul>
+<p>The workflow <code>docs</code> runs it.</p>
+<h2 id="frontend"><a class="self" href="#frontend">Frontend</a></h2>
+<p>The frontend under <code>src/public</code> is plain HTML, CSS and JavaScript. It has no build step. Edit the files, build the program again and reload. The program embeds one interface: no key selects an interface.</p>
+<ul><li>Change a colour, a size, a radius or a duration in the tokens at the top of <code>assets/css/stowr.css</code>. The components name tokens only.</li><li>A new icon name needs a rule in <code>assets/css/icons.css</code> and a Tabler file in <code>assets/icons/tabler/</code>.</li><li>A test of the server finds an external URL, an absent asset, an absent icon file and an icon name without a rule.</li></ul>
+<h2 id="browser-tests-of-the-interface"><a class="self" href="#browser-tests-of-the-interface">Browser tests of the interface</a></h2>
+<p><code>test/frontend/run.sh</code> starts three S3 providers (SeaweedFS, MinIO and Garage) and Stowr. It puts the test objects in the buckets and in the volume <code>files</code>. It runs <code>browser-tests.js</code> in a Playwright container. Refer to <a href="https://github.com/ProcurAuth/stowr/blob/main/test/README.md">test/README.md</a>. Two runs at the same time on one machine need two project names: set <code>FRONTEND_TEST_PROJECT</code>. To run some tests only, set <code>ONLY</code> to a part of their names.</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>./test/frontend/run.sh</code></pre></div>
+<h2 id="fuse-test-of-the-volumes"><a class="self" href="#fuse-test-of-the-volumes">FUSE test of the volumes</a></h2>
+<p><code>test/volume-fuse/run.sh</code> runs the tests of the volumes and a browser smoke test on a FUSE mount of SeaweedFS (<code>weed mount</code>). Only the container of the mount gets <code>/dev/fuse</code>, <code>SYS_ADMIN</code> and no AppArmor profile. The container has the pinned Rust image, the source and the compiled tests. The script runs <code>cargo test volume::</code> in it, with the variable <code>STOWR_TEST_VOLUME_DIR</code> set to a folder of the mount. Only the tests (<code>src/volume/tests.rs</code>) read this variable. Without it, the tests use a folder of the temporary folder of the system.</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>./test/volume-fuse/run.sh</code></pre></div>
+<h2 id="conformance-test-of-the-access-policy"><a class="self" href="#conformance-test-of-the-access-policy">Conformance test of the access policy</a></h2>
+<p><code>test/conformance/run.sh</code> runs the ProcurAuth conformance runner against Stowr in Docker. Set <code>PROCURAUTH_DIR</code> when the ProcurAuth repository is not next to the checkout of Stowr. Refer to <a href="conformance.html">CONFORMANCE.md</a>.</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>./test/conformance/run.sh</code></pre></div>
+<h2 id="shell-syntax"><a class="self" href="#shell-syntax">Shell syntax</a></h2>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>for file in scripts/*.sh test/*.sh test/*/*.sh test/*/scripts/*.sh; do
+  [ -e "$file" ] || continue
+  bash -n "$file"
+done</code></pre></div>
+<h2 id="pdfjs-assets"><a class="self" href="#pdfjs-assets">PDF.js assets</a></h2>
+<p>The repository has the official <code>pdfjs-dist</code> 4.10.38 ESM module and worker at:</p>
+<div class="code-wrap"><span class="label">text</span><pre data-copy tabindex="0" aria-label="Code example: text"><code>src/public/assets/vendor/pdfjs/4.10.38/pdf.min.mjs
+src/public/assets/vendor/pdfjs/4.10.38/pdf.worker.min.mjs</code></pre></div>
+<p>Keep the Apache-2.0 license notice in the same folder. The program does not get these assets at start or at run time.</p>
+<h2 id="scratch-runtime"><a class="self" href="#scratch-runtime">Scratch runtime</a></h2>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>./test/scratch-runtime.sh</code></pre></div>
+<p>The test builds the scratch image. It checks the numeric user and the identity of the static binary. It starts the container with <code>--read-only</code> and runs the health check of the program.</p>
+<h2 id="release"><a class="self" href="#release">Release</a></h2>
+<p><code>.github/workflows/release.yaml</code> makes the release when you push a tag <code>vX.Y.Z</code> (or <code>vX.Y.Z-suffix</code>, a prerelease). Do these steps:</p>
+<ol><li>Set the version <code>X.Y.Z</code> in <code>Cargo.toml</code>. Run <code>scripts/cargo.sh check</code> without <code>--locked</code>: cargo writes the version into <code>Cargo.lock</code>.</li><li>Add the section <code>## X.Y.Z (date)</code> under <code>## Unreleased</code> in <code>CHANGELOG.md</code>. The text of this section becomes the notes of the release. Run <code>python3 -I scripts/build-site.py</code>: the pages show the version of <code>Cargo.toml</code>.</li><li>Merge the change into <code>main</code>, then tag the commit: <code>git tag vX.Y.Z</code>, <code>git push origin vX.Y.Z</code>.</li></ol>
+<p>The workflow does these steps:</p>
+<ol><li>It makes sure of three facts. The tag is equal to the version of <code>Cargo.toml</code>. <code>CHANGELOG.md</code> has the section. No workflow publishes a container image.</li><li>It runs the format check, clippy, the tests and <code>scripts/check-invariants.sh</code>.</li><li>It builds the static binary on an amd64 runner and on an arm64 runner with <code>scripts/static.sh</code>. The compile-time values are the version (<code>X.Y.Z</code>), the commit and the date of the commit. It makes sure that each binary is static, has the correct architecture, and shows the version.</li><li>It packs <code>stowr_X.Y.Z_linux_amd64.tar.gz</code> and <code>stowr_X.Y.Z_linux_arm64.tar.gz</code>. Each archive has one file at its root: <code>stowr</code>, mode 0755.</li><li>It writes <code>checksums.txt</code> (SHA-256, the format of <code>sha256sum</code>) and creates the GitHub release with the three files.</li></ol>
+<p>No workflow builds an image for a registry or publishes an image.</p>
+<h2 id="release-validation"><a class="self" href="#release-validation">Release validation</a></h2>
+<p>Before you distribute an archive, extract that archive into a clean folder and do the full validation there.</p></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

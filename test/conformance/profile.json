@@ -1,6 +1,6 @@
 {
   "pep": {
-    "service": "infra-s3",
+    "service": "stowr",
     "token": {
       "header": "X-Identity-Token",
       "iss": "https://edge.example",
@@ -35,7 +35,7 @@
         "ancestors": [
           {
             "type": "service",
-            "id": "infra-s3"
+            "id": "stowr"
           },
           {
             "type": "bucket",
@@ -52,7 +52,7 @@
         "ancestors": [
           {
             "type": "service",
-            "id": "infra-s3"
+            "id": "stowr"
           },
           {
             "type": "bucket",
@@ -75,7 +75,7 @@
         "ancestors": [
           {
             "type": "service",
-            "id": "infra-s3"
+            "id": "stowr"
           },
           {
             "type": "bucket",
@@ -101,7 +101,7 @@
         "ancestors": [
           {
             "type": "service",
-            "id": "infra-s3"
+            "id": "stowr"
           },
           {
             "type": "bucket",

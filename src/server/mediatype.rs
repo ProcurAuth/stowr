@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Media types: the built-in table of the extensions, the text of a `Content-Disposition` value, and the detection of
 //! the media type of the first bytes of a body (the algorithm of <https://mimesniff.spec.whatwg.org/>).
 

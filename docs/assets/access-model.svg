@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 600" width="1100" height="600" role="img" aria-label="Access model of Stowr: the resource tree service, bucket, folder and subfolder, the question that Stowr sends to the PDP with the chain of ancestors, the five actions and the two limits">
+  <title>Access model: the resource chain, the actions and the limits</title>
+  <desc>An object key maps to a node of the tree: service, bucket, folder, subfolder. An object is not a node. Its node is the deepest folder that holds it. Stowr sends the node and the chain of ancestors to the PDP. A grant on a node covers each node below it. The service has five actions and two limits.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#a5b4fc"/>
+    </marker>
+  </defs>
+  <rect width="1100" height="600" rx="20" fill="#12142a"/>
+  <g font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif">
+    <text x="40" y="52" font-size="24" font-weight="700" fill="#ffffff">The access model: a chain of nodes, five actions, two limits</text>
+    <text x="40" y="82" font-size="15" fill="#9ca3d4">A grant on a node covers each node below it. The chain comes from the configuration and the key, never from the client.</text>
+
+    <!-- The tree -->
+    <text x="40" y="124" font-size="13" font-weight="700" fill="#a5b4fc" letter-spacing="0.8">RESOURCE TREE</text>
+    <g stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)">
+      <path d="M130 164V186"/>
+      <path d="M130 224V246"/>
+      <path d="M130 284V306"/>
+    </g>
+    <rect x="40" y="132" width="180" height="32" rx="9" fill="#4338ca" fill-opacity="0.45" stroke="#818cf8" stroke-width="2"/>
+    <text x="130" y="154" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">service  svc</text>
+    <rect x="40" y="192" width="180" height="32" rx="9" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="130" y="214" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">bucket  b</text>
+    <rect x="40" y="252" width="180" height="32" rx="9" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="130" y="274" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">folder  reports</text>
+    <rect x="40" y="312" width="180" height="32" rx="9" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="130" y="334" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">subfolder  2026</text>
+    <rect x="40" y="372" width="180" height="32" rx="9" fill="none" stroke="#34d399" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="130" y="394" font-size="14" fill="#a7f3d0" text-anchor="middle">object  q1.csv</text>
+    <path d="M130 344V370" stroke="#34d399" stroke-width="1.5" stroke-dasharray="4 4" fill="none"/>
+    <text x="240" y="156" font-size="12" fill="#c7d2fe">the id is the audience</text>
+    <text x="240" y="216" font-size="12" fill="#c7d2fe">the label of the block</text>
+    <text x="240" y="276" font-size="12" fill="#c7d2fe">first part of the key</text>
+    <text x="240" y="336" font-size="12" fill="#c7d2fe">second part of the key</text>
+    <text x="240" y="388" font-size="12" fill="#a7f3d0">not a node: the node of</text>
+    <text x="240" y="404" font-size="12" fill="#a7f3d0">a key is its deepest folder</text>
+
+    <!-- The question -->
+    <text x="470" y="124" font-size="13" font-weight="700" fill="#a5b4fc" letter-spacing="0.8">THE QUESTION FOR  reports/2026/q1.csv</text>
+    <rect x="470" y="136" width="590" height="268" rx="12" fill="#0f1220" stroke="#2c3070" stroke-width="1.5"/>
+    <g font-family="ui-monospace, Menlo, Consolas, monospace" font-size="13.5" fill="#dfe3f2" style="white-space:pre" xml:space="preserve">
+      <text xml:space="preserve" x="490" y="164">{ "subject":  { "type": "user", "id": "alice" },</text>
+      <text xml:space="preserve" x="490" y="188">  "action":   { "name": "object.read" },</text>
+      <text xml:space="preserve" x="490" y="212">  "resource": { "type": "subfolder", "id": "2026",</text>
+      <text xml:space="preserve" x="490" y="236">    "properties": { "ancestors": [</text>
+      <text xml:space="preserve" x="490" y="260">      { "type": "service", "id": "svc" },</text>
+      <text xml:space="preserve" x="490" y="284">      { "type": "bucket",  "id": "b" },</text>
+      <text xml:space="preserve" x="490" y="308">      { "type": "folder",  "id": "reports" } ] } } }</text>
+    </g>
+    <text x="490" y="352" font-size="12.5" fill="#c7d2fe">The subject comes from the identity token. Stowr sends the node of the key and the</text>
+    <text x="490" y="370" font-size="12.5" fill="#c7d2fe">chain above it. The PDP finds a grant on the node or on any ancestor.</text>
+
+    <!-- Actions -->
+    <text x="40" y="446" font-size="13" font-weight="700" fill="#a5b4fc" letter-spacing="0.8">ACTIONS</text>
+    <g font-size="13" font-weight="700" fill="#e0e7ff" text-anchor="middle">
+      <rect x="40" y="456" width="150" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070"/><text x="115" y="480">object.read</text><text x="115" y="498" font-size="11.5" font-weight="400" fill="#c7d2fe">list, preview, download</text>
+      <rect x="202" y="456" width="150" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070"/><text x="277" y="480">object.write</text><text x="277" y="498" font-size="11.5" font-weight="400" fill="#c7d2fe">upload, copy to, edit</text>
+      <rect x="364" y="456" width="150" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070"/><text x="439" y="480">object.delete</text><text x="439" y="498" font-size="11.5" font-weight="400" fill="#c7d2fe">delete, move from</text>
+      <rect x="526" y="456" width="150" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070"/><text x="601" y="480">object.lock</text><text x="601" y="498" font-size="11.5" font-weight="400" fill="#c7d2fe">hold and retention</text>
+      <rect x="688" y="456" width="150" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070"/><text x="763" y="480">bucket.admin</text><text x="763" y="498" font-size="11.5" font-weight="400" fill="#c7d2fe">lifecycle rules</text>
+    </g>
+    <text x="40" y="540" font-size="12.5" fill="#c7d2fe">The first four apply to a service, a bucket, a folder or a subfolder. bucket.admin applies to a service or a bucket.</text>
+
+    <!-- Limits -->
+    <text x="870" y="446" font-size="13" font-weight="700" fill="#a5b4fc" letter-spacing="0.8">LIMITS</text>
+    <rect x="870" y="456" width="190" height="56" rx="10" fill="#0ea5e9" fill-opacity="0.22" stroke="#38bdf8"/>
+    <text x="965" y="480" font-size="13" font-weight="700" fill="#e0f2fe" text-anchor="middle">writes</text>
+    <text x="965" y="498" font-size="11.5" fill="#bae6fd" text-anchor="middle">budget: the PDP counts</text>
+    <rect x="870" y="522" width="190" height="56" rx="10" fill="#34d399" fill-opacity="0.18" stroke="#34d399"/>
+    <text x="965" y="546" font-size="13" font-weight="700" fill="#d1fae5" text-anchor="middle">max_object_size</text>
+    <text x="965" y="564" font-size="11.5" fill="#a7f3d0" text-anchor="middle">ceiling: Stowr applies, in bytes</text>
+    <text x="40" y="566" font-size="12.5" fill="#c7d2fe">A grant covers all the nodes below its node. An answer of false stops the operation before the first byte.</text>
+  </g>
+</svg>

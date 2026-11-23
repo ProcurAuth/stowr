@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the volume back end: the keys, the listing, the reads, the root prefix, the instance and the usage.
 //!
 //! These tests need a real folder. Each test makes its own folder under a folder of the tests. The tests run on a

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The MIME reader of the e-mail preview: the header block, the media type with its parameters, the quoted-printable
 //! decoder and the multipart reader.
 

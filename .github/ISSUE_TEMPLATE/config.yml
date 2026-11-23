@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/ProcurAuth/stowr/security/advisories/new
+    about: Do not open a public issue for a vulnerability. Use the private report.
+  - name: Read the documentation
+    url: https://procurauth.github.io/stowr/
+    about: The guide, the configuration, the access policy and the operations.

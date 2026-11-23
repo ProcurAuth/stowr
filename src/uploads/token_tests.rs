@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the resume token: the form, the key, the limits of its life and the tokens of other versions.
 
 use std::sync::Arc;

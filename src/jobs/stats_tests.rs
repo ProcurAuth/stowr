@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the Insights statistics: the bounded lists, the folder totals, the treemap and the public form.
 
 use std::collections::BTreeMap;

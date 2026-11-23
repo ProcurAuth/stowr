@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Embed the browser interface (`src/public`) in the binary.
 //!
 //! The build script writes a table of each file of `src/public`, in the order of the paths, with the bytes of the

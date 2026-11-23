@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // Browser tests of the interface. They cover these parts:
 // 1 the theme selector, 2 the breadcrumb and the toolbar row, the header and the bucket selector, 3 the bulk upload,
 // 4 the denied permissions and the answers 401 and 403, 5 one smoke test on each S3 provider (SeaweedFS, MinIO and

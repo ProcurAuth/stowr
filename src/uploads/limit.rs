@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A body that ends after a fixed number of bytes.
 
 use std::pin::Pin;

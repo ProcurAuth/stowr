@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The reader of delimited records over an [`ObjectStream`].
 //!
 //! The rules of the reader:

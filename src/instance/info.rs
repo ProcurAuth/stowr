@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The public facts of an instance in `/api/instances` (docs/ARCHITECTURE.md).
 //!
 //! The facts of the feature modules (tags, lifecycle, uploads, Object Lock, encryption, metadata, usage) come from

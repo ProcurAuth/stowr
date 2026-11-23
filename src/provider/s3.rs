@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The S3 back end: the listing, the reads with ranges and conditions, the writes, the copy, the multipart upload,
 //! the versions, the delete and the batch delete, and the permission probe. Each request has the SigV4 signature of
 //! the credentials of the `auth` block in mode `access_key`, and no signature in mode `anonymous`.

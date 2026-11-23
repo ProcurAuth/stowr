@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The previews of text and office documents: JSON (raw, beautified, summary, tree), delimited text (CSV, TSV,
 //! PSV), the search in a document, Excel-family worksheets, Word documents, and the package properties of Office
 //! Open XML files (docs/PREVIEWS.md, "JSON", "Tabular data", "Office Open XML").

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the count of the size of a volume and of its usage.
 
 use std::fs;

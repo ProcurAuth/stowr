@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The content type of a file of a volume. A file has no metadata of S3: the type comes from the extension of the
 //! name. The release image has no `/etc/mime.types`, so the tables of the program are the whole source.
 

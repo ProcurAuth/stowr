@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The integers of a byte slice in big-endian and little-endian order. A read past the end of the slice gives 0: the
 //! readers check each length before a read.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of Object Lock. They check the S3 requests and documents, the probe, the validation of a request, the
 //! rules of the retention, the route, and the explanation of a refused delete.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the lifecycle rules: the editor, the save, the read back, the probes and the facts of the bucket.
 
 use std::sync::Arc;

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes `GET /api/multiparts` and `POST /api/multiparts/abort`.
 
 use std::sync::Arc;

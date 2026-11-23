@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The PEM reader and the base64 decoder of the structured readers.
 
 /// One PEM block.

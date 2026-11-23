@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The job manager: the jobs in the memory of the process, two workers, the reaper of the paused jobs, the controls
 //! (pause, resume, cancel), the history and the reuse of a recent Insights job.
 //!

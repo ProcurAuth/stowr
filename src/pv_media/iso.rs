@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The ISO base media file format (MP4, MOV, M4A, HEIF, AVIF, CR3): the boxes of a `moov` or `meta` box, the
 //! duration of `mvhd`, the dimensions of `tkhd` and `ispe`, and the tracks (handler, language, sample entry).
 

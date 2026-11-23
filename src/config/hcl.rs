@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The reader of the HCL subset of the configuration: blocks with labels, attributes, quoted strings, integers without
 //! sign, the booleans `true` and `false`, and lists of strings. The comments are `#`, `//` and `/* */`.
 //!

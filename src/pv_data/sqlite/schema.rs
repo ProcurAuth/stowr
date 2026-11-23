@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The schema of a SQLite database: the rows of `sqlite_schema` (page 1), and a small reader of `CREATE TABLE` that
 //! finds the columns, their declared types, the primary key, the row id alias, `WITHOUT ROWID` and the virtual
 //! generated columns. The reader never runs SQL. A table that it cannot read (a virtual table, an unusual

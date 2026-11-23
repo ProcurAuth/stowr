@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests of the configuration: temporary folders, the services of the tests (an environment of
 //! the test, a reader of the public keys of the tests, a resolution of the paths of a volume), and the texts that the
 //! tests share.

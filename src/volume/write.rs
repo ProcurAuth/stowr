@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The writes of a volume. Each write of a file goes to a temporary file in the folder of the target, is
 //! synchronized to the disk, and replaces the target with one rename. A reader sees the old file or the new file,
 //! never a part.

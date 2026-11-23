@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Usage and quota of a bucket.
 //!
 //! The S3 API gives no usage and no quota of a bucket. Each provider gives them in its own admin API. The `usage`

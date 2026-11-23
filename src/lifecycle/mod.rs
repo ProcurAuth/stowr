@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The object tags and the lifecycle rules of a bucket (docs/ARCHITECTURE.md, "Object tags and lifecycle" and
 //! "Edit of the lifecycle rules").
 //!

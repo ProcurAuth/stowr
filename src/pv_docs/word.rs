@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The preview of a Word document (DOCX, DOCM, DOTX, DOTM) on the server: the paragraphs, the headings, the list
 //! items and the tables of `word/document.xml`, as text.
 //!

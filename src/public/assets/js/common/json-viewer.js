@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Large JSON preview. Raw and Beautify are paged server-side; Tree nodes are
    expanded server-side with constant-memory streaming parsers. */
 (function () {

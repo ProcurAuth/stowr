@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The object routes: the gateway `/s3` (read, write, delete, the bounded ranges of a preview, and the raw listing in
 //! the XML form of S3) and `/open/` (an object with its own name, inline when a browser can show it).
 

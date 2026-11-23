@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The usage reader of SeaweedFS: the master gives the sizes of the volumes, the filer gives the quota. Both
 //! requests have no credential: the master and the filer of SeaweedFS must be on a closed network.
 //!

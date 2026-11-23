@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The small helpers that the functions of this folder share. They are the S3 call seam, the XML tree of the provider
 //! answers and the quoting of a text.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The answer of a known content: the conditions (`If-Match`, `If-None-Match`, `If-Range`), the ranges (one range, or
 //! several ranges as `multipart/byteranges`), `HEAD`, and the error answers of a bad range.
 

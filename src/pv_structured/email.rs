@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The e-mail previews and details: the message headers, the parts of a MIME message, the attachments and the text
 //! of the body.
 

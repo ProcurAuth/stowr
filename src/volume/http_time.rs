@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The dates of the conditional headers of a read. A client can send an HTTP date in three forms: the standard form
 //! (`Sun, 06 Nov 1994 08:49:37 GMT`), the old form with a long day name and a two-digit year (`Sunday, 06-Nov-94
 //! 08:49:37 GMT`), and the form of the C library (`Sun Nov  6 08:49:37 1994`).

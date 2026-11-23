@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The streamed ZIP writer of the ZIP of a folder.
 //!
 //! Each entry is stored (method 0). A file entry has a local header with a CRC-32 and sizes of 0 and the flag

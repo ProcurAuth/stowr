@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The walk of the objects of a prefix for a job, and the jobs that walk a prefix: the copy, the move, the delete and
 //! the Insights statistics. The copy and the move of one object in parts are here too.
 //!

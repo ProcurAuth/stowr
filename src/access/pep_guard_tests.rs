@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the guard of the mode `authzen`: the check of real tokens, the map of each outcome of the library to
 //! the answer of Stowr, the permission of a refusal, the action `access`, and the configuration of the library.
 

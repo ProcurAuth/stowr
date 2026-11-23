@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes `/api/uploads` and `/api/uploads/resume`.
 //!
 //! `POST /api/uploads` makes a session. `GET` gives the state of a session, `PUT` sends one chunk, and `DELETE`

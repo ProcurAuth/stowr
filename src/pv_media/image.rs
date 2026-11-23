@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The dimensions of the images from their headers: PNG, GIF, WebP, JPEG, BMP, PSD, TGA, ICO, DDS, PCX, SGI, QOI,
 //! farbfeld, the PNM family, Radiance HDR, FITS, OpenEXR, JPEG 2000 and SVG.
 

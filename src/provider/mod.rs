@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The clients of the providers: S3 (SigV4, listing, ranges, multipart, versions, batch delete, copy in parts) and
 //! GCS (service account, JSON API, resumable upload), and the shared client of each `auth` block.
 //!

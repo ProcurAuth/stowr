@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * The information page of a bucket or a volume: /-/<host>/<bucket>/?info. The bucket selector opens it (the link of
  * the state icons and of the usage, in the trigger and in each entry of the list). The header has the selector of the

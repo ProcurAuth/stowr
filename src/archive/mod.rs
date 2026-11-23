@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The ZIP archives: the reader of a central directory over exact byte ranges, the streamed writer of the ZIP of a
 //! folder, the read of one entry, the extraction of entries to objects and the integrity of entries
-//! (docs/ARCHITECTURE.md, "Archive extraction"; docs/SECURITY.md, "Archive members").
+//! (docs/ARCHITECTURE.md, "Archive extraction"; docs/SECURITY-MODEL.md, "Archive members").
 //!
 //! The ZIP reader of this module is also the reader of the Office Open XML, EPUB, JAR and APK previews.
 //!

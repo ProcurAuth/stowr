@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The `volume` block: one folder of the file system of the server that the browser shows as it shows a bucket
 //! (docs/ARCHITECTURE.md, "Volumes"). The start checks that the folder exists, that it is a folder, and that the
 //! process can read it. The volume back end checks the write permission at start: it writes a file.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The editor of the lifecycle rules of a bucket (`PUT /api/lifecycle`), the start probes, and the facts of the
 //! bucket.
 //!

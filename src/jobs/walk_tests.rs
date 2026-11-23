@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the walk of a prefix and of the copy of large objects in parts.
 
 use std::sync::Arc;

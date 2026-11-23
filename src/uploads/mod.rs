@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The uploads: the resumable upload sessions in memory, the sealed resume token `stowr1`, the SHA-256 checksums of
 //! the parts, and the incomplete multipart uploads (docs/ARCHITECTURE.md, "Upload resume protocol", "Upload
 //! checksums", "Cleanup of incomplete multipart uploads").

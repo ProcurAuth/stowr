@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The CRC-32C (Castagnoli) digest of the per-object integrity, which reads the object in a stream. MD5 comes from
 //! `crate::common::md5`, SHA-256 from `aws-lc-rs` and CRC-32 (IEEE) from `flate2`.
 //!

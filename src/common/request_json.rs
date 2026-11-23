@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The rules of a JSON request body, after the syntax check: the reader gives the parsed value to the request type.
 //!
 //! - A structure accepts only an object. An array never fills the members of a structure in their order.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The TIFF structures: classic TIFF, BigTIFF and the TIFF-like headers of camera RAW files (Olympus ORF, Panasonic
 //! RW2). The reader follows only the declared offsets of the image file directories (IFD): it never scans the image
 //! data for tags. It gives the EXIF properties (camera, lens, exposure, GPS), the embedded JPEG preview of a RAW file

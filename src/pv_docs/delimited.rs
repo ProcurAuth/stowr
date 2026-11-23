@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The preview of delimited text (CSV, TSV, PSV): pages of records with a signed cursor.
 //!
 //! A page reads the object in order from the byte offset of the cursor. The first page finds the delimiter in a

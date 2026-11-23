@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 /* viewers.css: the previews of the preview page (text, code, tables, JSON, PDF, media, archives, documents).
    Each colour literal is a token of stowr.css, so the rules follow the light and the dark theme. stowr.css loads
    after this file and gives its look to the shared controls (buttons, menus, dialogs, toasts). */

@@ -8,7 +8,7 @@ access {
   identity {
     header           = "X-Identity-Token"
     issuer           = "https://edge.example"
-    audience         = "infra-s3"
+    audience         = "stowr"
     public_keys_file = "/conformance/edge-jwks.json"
     max_age          = "5m"
     clock_skew       = "30s"

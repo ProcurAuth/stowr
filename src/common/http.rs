@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The HTTP types of the handlers: the request, the answer, the body, the route, and the writers of the usual
 //! answers (JSON, error, text error, 404, 405).
 

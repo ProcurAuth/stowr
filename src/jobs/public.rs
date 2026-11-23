@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The public form of a job: the JSON object that the routes give to the client.
 //!
 //! The form keeps the progress small: the result of an integrity job or of an archive job shows only after the job

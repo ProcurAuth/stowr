@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The XML of the S3 answers and requests: a reader that walks the elements of a document, and the escape of a text.
 //!
 //! The reader follows these rules. The first element is the root. An element matches by its local name: a namespace

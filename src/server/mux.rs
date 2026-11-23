@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The router of the route table. A path that is not clean gets a permanent redirect to its clean form. A path
 //! `/x` without a route, whose subtree `/x/` has a route, gets a permanent redirect to `/x/`. The longest pattern
 //! that matches wins. The match compares each segment of the path with its escapes decoded.

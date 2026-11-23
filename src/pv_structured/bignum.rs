@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Small unsigned big integers for the checks of keys: the product of the primes of an RSA key, the congruences of
 //! its exponents, and the equation of an elliptic curve.
 

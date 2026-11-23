@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the routes `/api/uploads` and `/api/uploads/resume`: the answers that come before a call to the storage.
 
 use std::sync::Arc;

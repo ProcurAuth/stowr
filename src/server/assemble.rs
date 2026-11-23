@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The assembly of the application: the shared provider clients of the `auth` blocks, the instances (the buckets,
 //! then the volumes), the managers in memory and the access layer; then the start probes and the stop.
 

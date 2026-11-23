@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The request of `stowr healthcheck`: one `GET` of the health URL, with a deadline of 3 seconds for the connection,
 //! the TLS handshake and the headers of the answer. The request follows no redirect and uses no proxy. An answer
 //! other than 200 is a failure.

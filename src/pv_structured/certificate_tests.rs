@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the certificate, request and key details.
 
 use std::collections::BTreeMap;

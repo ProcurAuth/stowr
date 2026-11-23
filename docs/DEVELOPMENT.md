@@ -1,7 +1,5 @@
 # Development and validation
 
-This document uses ASD-STE100 Simplified Technical English.
-
 ## Requirements
 
 - Docker. The scripts run the compiler in a container. Do not install a compiler on the host.
@@ -14,6 +12,8 @@ This document uses ASD-STE100 Simplified Technical English.
 | `scripts/cargo.sh <arguments>` | Run cargo in the development image (`stowr-dev:1`). The script runs as the user of the host. The cargo registry and the target folder are Docker volumes: no file of root appears in the repository. |
 | `scripts/static.sh` | Build the static program for the musl target of the host architecture: `x86_64-unknown-linux-musl` or `aarch64-unknown-linux-musl`. `--check` also checks that the file is static and runs it. `--copy <folder>` copies the file to a folder of the host. |
 | `scripts/check-invariants.sh` | Check the rules of the runtime that the compiler does not check. Refer to "Rules of the runtime". |
+| `scripts/build-site.py` | Build the pages of `docs/` from the Markdown files. `--check` changes nothing and fails when a page is not current. It needs `python3` only. |
+| `scripts/check-docs.py` | Check the links, the site, the rules of ASD-STE100 and the hygiene of the files. It makes no network request. `--online` also asks each public URL. It needs `python3` only. |
 
 The release build reads `STOWR_BUILD_VERSION`, `STOWR_BUILD_COMMIT` and `STOWR_BUILD_DATE` at compile time. `stowr version`
 and `/api/build` show them. A build without them shows `dev`.
@@ -30,6 +30,7 @@ scripts/cargo.sh clippy --all-targets --locked -- -D warnings
 scripts/cargo.sh test --locked
 scripts/check-invariants.sh
 scripts/static.sh --check
+python3 -I scripts/check-docs.py
 ```
 
 ## Layout of the code
@@ -39,7 +40,7 @@ The crate is at the root of the repository: `Cargo.toml`, `build.rs` and `src/`.
 
 | Folder | Content |
 |---|---|
-| `src/common/` | The shared types: the error and its envelope, the typed configuration, the context of an operation, the request and the answer, the storage traits, the JSON encoder of the answers, the times, the query, the embedded interface, the application. |
+| `src/common/` | The shared types: the error and its envelope, the typed configuration, the context of an operation, the request and the answer. Also the storage traits, the JSON encoder, the times, the query, the embedded interface and the application. |
 | `src/config/` | The reader of the HCL file, the table of the keys, the reference, `print-config`, the command line, the identity of the build. `src/config/env.rs` is the only reader of the environment. |
 | `src/server/` | The HTTP server, the route table, the middlewares, the interface, the object gateway, the listing, the copy and the delete. |
 | `src/instance/` | The storage instance: the gates, the budgets, the ceilings, the learned permissions, the versions, the range readers, the signed cursors. |
@@ -58,12 +59,16 @@ The crate is at the root of the repository: `Cargo.toml`, `build.rs` and `src/`.
 ## Dependencies
 
 Each dependency has an exact version in `Cargo.toml`, and `Cargo.lock` fixes the others. Add a dependency only when the
-code that it replaces is larger or less strict. The program writes its own HCL reader, ZIP reader and writer, SQLite reader,
-Parquet reader, DER reader, CSV reader, MIME reader, image and media header readers, and the S3 signature.
+code that it replaces is larger or less strict. The program has its own code for these jobs:
+
+- the HCL reader, the CSV reader and the MIME reader;
+- the ZIP reader and writer, the SQLite reader, the Parquet reader and the DER reader;
+- the readers of image and media headers;
+- the S3 signature.
 
 | Crate | Reason |
 |---|---|
-| `tokio` | The asynchronous runtime: the listener, the timers, the signals, the tasks of the jobs, the blocking threads of the CPU work. |
+| `tokio` | The asynchronous runtime. It runs the listener, the timers, the signals, the tasks of the jobs and the threads for the CPU work. |
 | `hyper`, `hyper-util`, `http`, `http-body`, `http-body-util`, `bytes` | The HTTP/1.1 server and the HTTP/1.1 client of the providers, of the admin APIs and of the PDP. The client follows no redirect and uses no proxy. |
 | `rustls`, `tokio-rustls`, `hyper-rustls` | TLS 1.2 and 1.3 to the providers and to the PDP. The roots are the certificate bundle of the image. No environment variable. |
 | `aws-lc-rs` | SHA-256, HMAC-SHA-256, AES-GCM, RSA signatures and the random generator. It is also the cryptography of `rustls`. |
@@ -73,7 +78,7 @@ Parquet reader, DER reader, CSV reader, MIME reader, image and media header read
 | `base64` | The base64 forms of the checksums, of the tokens and of the previews. |
 | `libc` | `statfs`, `O_NOFOLLOW` and the error numbers of the volume back end. |
 | `tower-service` | The connector trait of the provider client: TCP, then TLS, with a time limit for each step. |
-| `procurauth-pep` | The PEP of ProcurAuth 1.1 for the mode `authzen`: the check of the identity token, the questions to the PDP, the kept answers and the transport over TLS. It comes from one fixed commit of the ProcurAuth repository. |
+| `procurauth-pep` | The PEP of ProcurAuth 1.1 for the mode `authzen`. It checks the identity token, asks the PDP, keeps the answers and gives the transport over TLS. It comes from one fixed commit of the ProcurAuth repository. |
 | `procurauth-core` | The shared types of ProcurAuth: the key set of the edge (JWK Set and PEM keys), the JWS decoder and the decision of the PDP. It comes from the same commit as `procurauth-pep`. |
 
 ## Rules of the runtime
@@ -107,7 +112,30 @@ scripts/cargo.sh run --quiet -- config-reference > docs/configuration-reference.
 
 A test fails when the file and the table do not agree.
 
+## Documents and website
+
+The Markdown files in `docs/` and `CHANGELOG.md` are the source of the website. `scripts/build-site.py` makes the pages
+`docs/*.html` from them. The Overview page and the page 404 are in the script. The pages have no build step to read, no
+external request and no web font. They use relative links, so they work from `file://` and from GitHub Pages.
+
+After a change of a Markdown file, run the script and commit the pages with the change:
+
+```sh
+python3 -I scripts/build-site.py
+python3 -I scripts/check-docs.py
+```
+
+`scripts/check-docs.py` runs four checks:
+
+- the links and the anchors;
+- the pages of the site;
+- the rules of ASD-STE100: sentences of 25 words at most, six sentences in a paragraph, and no banned word;
+- the hygiene of the files: no secret, no address, no e-mail address and no image registry.
+
+The workflow `docs` runs it.
+
 ## Frontend
+
 
 The frontend under `src/public` is plain HTML, CSS and JavaScript. It has no build step. Edit the files, build the program
 again and reload. The program embeds one interface: no key selects an interface.
@@ -115,12 +143,11 @@ again and reload. The program embeds one interface: no key selects an interface.
 - Change a colour, a size, a radius or a duration in the tokens at the top of `assets/css/stowr.css`. The components name
   tokens only.
 - A new icon name needs a rule in `assets/css/icons.css` and a Tabler file in `assets/icons/tabler/`.
-- A test of the server finds an external URL, a missing asset, a missing icon file and an icon name without a rule.
+- A test of the server finds an external URL, an absent asset, an absent icon file and an icon name without a rule.
 
 ## Browser tests of the interface
 
-`test/frontend/run.sh` starts three S3 providers (SeaweedFS, MinIO and Garage) and Stowr, puts the test objects in the
-buckets and in the volume `files`, and runs `browser-tests.js` in a Playwright container. Refer to
+`test/frontend/run.sh` starts three S3 providers (SeaweedFS, MinIO and Garage) and Stowr. It puts the test objects in the buckets and in the volume `files`. It runs `browser-tests.js` in a Playwright container. Refer to
 [test/README.md](../test/README.md). Two runs at the same time on one machine need two project names: set
 `FRONTEND_TEST_PROJECT`. To run some tests only, set `ONLY` to a part of their names.
 
@@ -175,8 +202,7 @@ Keep the Apache-2.0 license notice in the same folder. The program does not get 
 ./test/scratch-runtime.sh
 ```
 
-The test builds the scratch image, checks the numeric user and the identity of the static binary, starts the container with
-`--read-only`, and runs the health check of the program.
+The test builds the scratch image. It checks the numeric user and the identity of the static binary. It starts the container with `--read-only` and runs the health check of the program.
 
 ## Release
 
@@ -185,14 +211,13 @@ these steps:
 
 1. Set the version `X.Y.Z` in `Cargo.toml`. Run `scripts/cargo.sh check` without `--locked`: cargo writes the version into
    `Cargo.lock`.
-2. Add the section `## X.Y.Z (date)` at the top of `CHANGELOG.md`. The text of this section becomes the notes of the
-   release.
+2. Add the section `## X.Y.Z (date)` under `## Unreleased` in `CHANGELOG.md`. The text of this section becomes the notes of
+   the release. Run `python3 -I scripts/build-site.py`: the pages show the version of `Cargo.toml`.
 3. Merge the change into `main`, then tag the commit: `git tag vX.Y.Z`, `git push origin vX.Y.Z`.
 
 The workflow does these steps:
 
-1. It makes sure that the tag is equal to the version of `Cargo.toml`, that `CHANGELOG.md` has the section, and that no
-   workflow publishes a container image.
+1. It makes sure of three facts. The tag is equal to the version of `Cargo.toml`. `CHANGELOG.md` has the section. No workflow publishes a container image.
 2. It runs the format check, clippy, the tests and `scripts/check-invariants.sh`.
 3. It builds the static binary on an amd64 runner and on an arm64 runner with `scripts/static.sh`. The compile-time
    values are the version (`X.Y.Z`), the commit and the date of the commit. It makes sure that each binary is static,

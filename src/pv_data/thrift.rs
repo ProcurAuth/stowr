@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A small reader of the Thrift compact protocol: the field headers, the collection headers, the integers in zigzag
 //! varint form, the binary values and the skip of the unknown values. The Parquet metadata uses it.
 //!

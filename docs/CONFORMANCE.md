@@ -1,7 +1,5 @@
 # Conformance of the access policy
 
-This document uses ASD-STE100 Simplified Technical English.
-
 The ProcurAuth repository has a conformance runner, `access-conformance`. The runner tests a service (a PEP) with the
 series U of cases. Stowr runs this series in Docker. The behavior that the cases test is in [ACCESS.md](ACCESS.md).
 
@@ -88,14 +86,20 @@ The runner skips these cases:
 The cases U02, U40, U59 and U113 also have steps with the operation `use_service`. The runner skips these steps and runs
 the other steps of the cases. These cases pass.
 
-The new cases of ProcurAuth 1.1 that run all pass: U118 (the form of `iat` and `exp`), U119 (a token without `kid` and a
-key set with two keys), U120 (`nbf`), U126 (a reason of 17.1 for an other permission) and U127 (the health probe and a
-route without action). The cases U121 to U125 need an MCP endpoint.
+The new cases of ProcurAuth 1.1 that run all pass:
+
+- U118 tests the form of `iat` and `exp`.
+- U119 tests a token without `kid` and a key set with two keys.
+- U120 tests `nbf`.
+- U126 tests a reason of 17.1 for an other permission.
+- U127 tests the health probe and a route without action.
+
+The cases U121 to U125 need an MCP endpoint.
 
 ## The file expected.txt
 
 The file `expected.txt` lists each case that does not pass. Write one case id for each line, then the status `fail` or `skip`,
-then an optional `#` and the reason. A line with a case id only is a failed case. Blank lines and comment lines are allowed.
+then an optional `#` and the reason. A line with a case id only is a failed case. The file can have blank lines and comment lines.
 
 The script exits with 0 only when the failed cases and the skipped cases are equal to this list. A case that fails or skips
 and is not in the list is a failure of the test. A case in the list that has another result is also a failure: change the list.

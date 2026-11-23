@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The incomplete multipart uploads of a bucket: the list, the abort of chosen uploads and the job that aborts the
 //! old ones (docs/ARCHITECTURE.md, "Cleanup of incomplete multipart uploads").
 //!

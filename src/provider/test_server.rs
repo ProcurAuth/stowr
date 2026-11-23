@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A local HTTP server for the tests of the provider clients. Each request goes to a handler with its body read. The
 //! server can also speak TLS with the fixture certificate of this module.
 
@@ -45,7 +46,7 @@ OfHMrBUo9jzBU7vgI50lrUC9aOa0VU8nz28=
 -----END CERTIFICATE-----
 ";
 
-/// The private key of [`SERVER_CERTIFICATE_PEM`] (PKCS #8). It is a test fixture without any other use.
+/// The private key of [`SERVER_CERTIFICATE_PEM`] (PKCS #8). It is a public test key, made for these tests only. It protects nothing.
 const SERVER_KEY_PEM: &str = "-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1xsPtwh5tsVRrKel
 uun2yhYtGW4iM2pC/t4egiJ2UjahRANCAAQOs+RMA1+S+bvGl5g93Q0hZEI6/QvV

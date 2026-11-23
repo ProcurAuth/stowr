@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the storage calls of an instance.
 
 use std::sync::atomic::{AtomicI64, Ordering};

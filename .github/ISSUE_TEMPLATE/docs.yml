@@ -1,0 +1,18 @@
+name: Error in the documents
+description: A document, the website or a picture says something that is not true or not clear.
+labels: ["documentation"]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: The page or the file, and the heading.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What is wrong
+      description: State what the text says, and what the code does. Name the version.
+    validations:
+      required: true

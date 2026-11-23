@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The identity of the build: the version, the commit and the date that the release build gives
 //! (`STOWR_BUILD_VERSION`, `STOWR_BUILD_COMMIT`, `STOWR_BUILD_DATE` at compile time).
 

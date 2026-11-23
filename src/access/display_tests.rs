@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the display questions: the list of the instances, the member `access` of a listing and the
 //! navigation listing.
 

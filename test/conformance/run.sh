@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Run the ProcurAuth conformance series U (role PEP) against Stowr. The script uses Docker, git and python3.
 # Use: test/conformance/run.sh [--no-build] [--cases U01,U02,...] [--format text|json] [--log FILE]
 #

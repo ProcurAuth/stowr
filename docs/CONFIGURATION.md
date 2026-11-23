@@ -48,10 +48,10 @@ server {
 | `job_history_limit` | `10` | Number of terminal job results retained in process memory. Valid range: 1-20. |
 | `access_mode` | `inherit_credentials` | `inherit_credentials` or `force_read_only`. |
 | `log_mode` | `anonymous` | `anonymous` avoids object keys in request logs; `detailed` is for controlled diagnostics. |
-| `allow_full_object_fallback` | `false` | Allows explicitly implemented parser fallbacks that require a complete object. It never changes strict Range validation into an implicit oversized response. |
+| `allow_full_object_fallback` | `false` | Lets a parser read a full object when a format has no range reader. It never turns a strict Range check into an oversized answer. |
 | `memory_limit_bytes` | `0` | A soft limit of the memory of the process. `0` sets no limit. The server accepts the value and shows it. Valid values: `0`, or 32 MiB to 1 PiB. |
-| `max_storage_bytes_per_request` | 256 GiB | Provider bytes allowed for one interactive HTTP request. |
-| `max_storage_requests_per_request` | `4096` | Provider calls allowed for one interactive HTTP request. |
+| `max_storage_bytes_per_request` | 256 GiB | The provider bytes that one interactive HTTP request can transfer. |
+| `max_storage_requests_per_request` | `4096` | The provider calls that one interactive HTTP request can make. |
 | `max_range_cache_bytes` | 8 MiB | Maximum in-memory cache used by a range reader session. |
 | `max_concurrent_storage_requests` | `4` | Global provider-request concurrency. |
 | `max_concurrent_requests_per_storage` | `2` | Provider-request concurrency for one bucket. |
@@ -73,7 +73,7 @@ The binary contains one browser interface. No key selects it.
 auth "primary-s3" {
   provider               = "s3"
   mode                   = "access_key"
-  endpoint               = "https://s3.example.internal"
+  endpoint               = "https://s3.example.com"
   region                 = "eu-west-1"
   access_key_id_file     = "/run/secrets/s3-access-key-id"
   secret_access_key_file = "/run/secrets/s3-secret-access-key"
@@ -89,25 +89,25 @@ S3 modes:
 
 A secret (`secret_access_key`, `session_token`) accepts only its `_env` form (the name of an environment variable) or its `_file` form. A secret in clear text in the file stops the start. `access_key_id` is an identifier, not a secret: it also accepts the value in the file. Give one form only. File paths relative to the HCL file are resolved from the HCL directory. The value of a file applies without its last line end; a secret with a space or a control character stops the start.
 
-The server never changes a value to make it fit. It does not remove spaces, does not change the case (`provider = "S3"` is an error), does not remove the `/` at the end of `endpoint`, and does not add or remove a `/` in `root_prefix` (`root_prefix` is `""` or a prefix such as `"published/"`). The error gives the key, the expected form and the value.
+The server never changes a value to make it fit. It does not remove spaces. It does not change the case: `provider = "S3"` is an error. It does not remove the `/` at the end of `endpoint`. It does not add or remove a `/` in `root_prefix`, which is `""` or a prefix such as `"published/"`. The error gives the key, the expected form and the value.
 
-The endpoint must use HTTP or HTTPS and may not contain credentials, a query string, or a fragment. Redirects and process environment proxies are disabled.
+The endpoint must use HTTP or HTTPS. It must not contain credentials, a query string or a fragment. Stowr follows no redirect and uses no proxy of the environment.
 
 ## Usage of the buckets
 
-A `usage` block in an `s3` auth block gives the usage and the quota of its buckets, and the capacity of the storage behind them (the disks or the nodes of the provider). The bucket selector shows them in the facts of each bucket, and warns about a bucket that uses 90 % or more of its limit. Without the block, the server makes no admin request and the interface shows no usage. Refer to "Usage and quota of a bucket" in [ARCHITECTURE.md](ARCHITECTURE.md).
+A `usage` block in an `s3` auth block gives the usage and the quota of its buckets. It also gives the capacity of the storage behind them: the disks or the nodes of the provider. The bucket selector shows these facts for each bucket. It warns about a bucket that uses 90 % or more of its limit. Without the block, the server makes no admin request and the interface shows no usage. Refer to "Usage and quota of a bucket" in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ```hcl
 auth "garage" {
   provider               = "s3"
-  endpoint               = "https://garage.example.internal"
+  endpoint               = "https://garage.example.com"
   region                 = "garage"
   access_key_id_file     = "/run/secrets/garage-key-id"
   secret_access_key_file = "/run/secrets/garage-secret"
 
   usage {
     source     = "garage"
-    endpoint   = "http://garage.example.internal:3903"
+    endpoint   = "http://garage.example.com:3903"
     token_file = "/run/secrets/garage-admin-token"
   }
 }
@@ -115,11 +115,13 @@ auth "garage" {
 
 | Source | `endpoint` | `filer_endpoint` | `token` | Credentials |
 |---|---|---|---|---|
-| `garage` | Required: the admin API (port 3903 by default) | Not allowed | Required, `token_env` or `token_file` only: the admin token | The bearer token |
-| `seaweedfs` | Required: the master (port 9333 by default) | Required: the filer (port 8888 by default) | Not allowed | None: keep the master and the filer on a closed network |
-| `minio` | Optional: the endpoint of the auth block by default | Not allowed | Not allowed | The S3 credentials of the auth block, mode `access_key` only. They need `admin:GetBucketQuota`, `admin:DataUsageInfo` and `admin:StorageInfo` |
+| `garage` | Required: the admin API (port 3903 by default) | Refused | Required, `token_env` or `token_file` only: the admin token | The bearer token |
+| `seaweedfs` | Required: the master (port 9333 by default) | Required: the filer (port 8888 by default) | Refused | None: keep the master and the filer on a closed network |
+| `minio` | Optional: the endpoint of the auth block by default | Refused | Refused | The S3 credentials of the auth block, mode `access_key` only. They need `admin:GetBucketQuota`, `admin:DataUsageInfo` and `admin:StorageInfo` |
 
-For the capacity of the storage, the reader of `seaweedfs` also asks each volume server that the master gives (`/status`): keep them on the closed network of the master. Write `source` in lower case: the server does not change its case. A key that another source needs is a contradiction and stops the start. A `usage` block in a `gcs` auth block also stops the start. AWS S3 has no quota: give no block. The URLs use HTTP or HTTPS, without credentials, query, fragment or a `/` at the end. `print-config` shows the URLs and hides the token.
+For the capacity of the storage, the reader of `seaweedfs` also asks each volume server that the master gives (`/status`). Keep them on the closed network of the master. Write `source` in lower case: the server does not change its case. A key that another source needs is a contradiction and stops the start. A `usage` block in a `gcs` auth block also stops the start. AWS S3 has no quota, so give no block.
+
+A URL uses HTTP or HTTPS. It has no credentials, no query, no fragment and no `/` at the end. `print-config` shows the URLs and hides the token.
 
 ## GCS authentication
 
@@ -157,7 +159,7 @@ bucket "archive" {
 | `auth` | required | Referenced authentication id. |
 | `bucket` | required | Provider bucket name. |
 | `root_prefix` | empty | Virtual root exposed by the application. |
-| `permissions` | omitted | Optional application ceiling containing `read`, `write`, and/or `delete`. |
+| `permissions` | omitted | An optional ceiling of the application. It lists `read`, `write` and `delete`, in any number. |
 | `max_scan_pages` | `1` | Maximum 1,000-entry provider listing pages combined in navigation. `0` means no page-count limit. |
 | `quota_bytes` | omitted | A size limit (1 to 2^60 bytes) that the interface shows when the provider gives no limit. It needs a `usage` block in the auth block. The server does not enforce it. |
 | `encryption` | `""` | `""` sends no encryption header. `"sse-s3"` sends `x-amz-server-side-encryption: AES256` with each write of an object (upload, copy, move, rename, metadata edit, restore). SSE-C and SSE-KMS are not supported. Not for a `gcs` bucket. Refer to the section "Encryption" of [ARCHITECTURE.md](ARCHITECTURE.md). |
@@ -166,9 +168,7 @@ bucket "archive" {
 
 ## Volume block
 
-A `volume` block shows a folder of the server as a bucket: a Docker volume, an NFS or CephFS mount, or a FUSE mount
-such as `weed mount` of SeaweedFS. It needs no `auth` block. The section "Volumes" of
-[ARCHITECTURE.md](ARCHITECTURE.md) gives the rules of the paths, the listings, the writes and the uploads.
+A `volume` block shows a folder of the server as a bucket. The folder can be a Docker volume, an NFS or CephFS mount, or a FUSE mount such as `weed mount` of SeaweedFS. The block needs no `auth` block. The section "Volumes" of [ARCHITECTURE.md](ARCHITECTURE.md) gives the rules of the paths, the listings, the writes and the uploads.
 
 ```hcl
 volume "shared" {
@@ -195,8 +195,7 @@ These rules stop the start:
   `permissions`. The start makes and removes a temporary file to check it. Give `permissions = ["read"]` for a folder
   that is read only. With `server.access_mode = "force_read_only"`, the start makes no such check.
 - A `volume` block and a `bucket` block with the same label.
-- An `auth` block with the label `volume` in a file with a `volume` block: `volume` is the address word of the
-  volumes in the interface (`/-/volume/<id>/`).
+- An `auth` block with the label `volume` in a file with a `volume` block. The word `volume` is part of the address of a volume in the interface (`/-/volume/<id>/`).
 
 The address of a volume in the interface is `/-/volume/<id>/`. The process of Stowr reads and writes the files: give it the owner or the group of the folder. In a container, mount the folder with
 write access, and keep the root file system read only.
@@ -207,8 +206,7 @@ The `access` block is mandatory. A file without it stops the start. The block se
 
 - `authzen`: Stowr checks the identity token that the edge signs. It asks a PDP (Policy Decision Point) for each operation.
   The blocks `identity` and `pdp` are mandatory.
-- `open`: Stowr checks no token and asks no PDP. The two blocks are not allowed. Use this mode only behind a reverse proxy that
-  authenticates the users. Stowr writes a warning at start.
+- `open`: Stowr checks no token and asks no PDP. The two blocks stop the start. Use this mode only behind a reverse proxy that authenticates the users. Stowr writes a warning at start.
 
 ```hcl
 access {
@@ -216,7 +214,7 @@ access {
 
   identity {
     issuer           = "https://edge.example"
-    audience         = "infra-s3"
+    audience         = "stowr"
     public_keys_file = "/run/keys/edge-jwks.json"
   }
 
@@ -233,7 +231,7 @@ access {
 }
 ```
 
-The file of `public_keys_file` holds PEM public keys or a JWK Set, as in ClickHouse Dash. A text that starts with `{` is a JWK
+The file of `public_keys_file` holds PEM public keys or a JWK Set. A text that starts with `{` is a JWK
 Set. Other text is PEM: 1 to 16 `-----BEGIN PUBLIC KEY-----` blocks, Ed25519 or P-256. [ACCESS.md](ACCESS.md), "Public keys",
 gives the rules.
 
@@ -250,4 +248,4 @@ A single bounded version-list request is made for every bucket when the applicat
 
 ## Public path
 
-There is no public-path attribute. The frontend resolves URLs relative to `document.baseURI`. A reverse proxy can mount the application under any path by stripping the public prefix before forwarding requests to the backend.
+There is no public-path attribute. The frontend resolves URLs relative to `document.baseURI`. A reverse proxy can publish the application under any path. The proxy removes the public prefix before it sends the request to Stowr.

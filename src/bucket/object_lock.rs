@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Object Lock: the retention and the legal hold of one version of an object (`GET` and `PUT /api/object-lock`).
 //!
 //! A bucket has Object Lock only when its owner made it with it. Such a bucket always keeps versions. The start

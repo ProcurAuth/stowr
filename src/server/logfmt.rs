@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The forms of the values of the request log: a quoted text that no control character can break, and a duration in
 //! milliseconds.
 

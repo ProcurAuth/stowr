@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 set -eu
 
 # The service is healthy when the entrypoint created the buckets and the S3 API answers (any HTTP status). A closed

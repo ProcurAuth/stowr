@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The signed cursors of the paged previews: an opaque token that the client sends back, authenticated with a
 //! random key of the process (HMAC-SHA-256) and bound to a scope (the kind, the instance and the key).
 //!

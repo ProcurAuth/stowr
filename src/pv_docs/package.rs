@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The Office Open XML package as a ZIP archive: the names of the parts, the read of the size of an object, and the
 //! bridge between the stream of an entry and a parser that runs on a blocking thread.
 //!

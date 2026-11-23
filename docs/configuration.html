@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="The blocks, the keys and the rules of the configuration file. A mistake stops the start, and the message names the key.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Configuration | Stowr">
+<meta property="og:description" content="The blocks, the keys and the rules of the configuration file. A mistake stops the start, and the message names the key.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/configuration.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Configuration | Stowr">
+<meta name="twitter:description" content="The blocks, the keys and the rules of the configuration file. A mistake stops the start, and the message names the key.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/configuration.html">
+<title>Configuration | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html" aria-current="page">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> One HCL file, a closed schema</p><h1>Configuration</h1><p class="lede">The blocks, the keys and the rules of the configuration file. A mistake stops the start, and the message names the key.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#server-block">Server block</a></li><li><a href="#s3-authentication">S3 authentication</a></li><li><a href="#usage-of-the-buckets">Usage of the buckets</a></li><li><a href="#gcs-authentication">GCS authentication</a></li><li><a href="#bucket-block">Bucket block</a></li><li><a href="#volume-block">Volume block</a></li><li><a href="#access">Access</a></li><li><a href="#version-capability-probe">Version capability probe</a></li><li><a href="#public-path">Public path</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/CONFIGURATION.md"><code>docs/CONFIGURATION.md</code></a> in the repository.</p><p>The application accepts one HCL file through <code>-c &lt;path&gt;</code> or <code>-config &lt;path&gt;</code>. Runtime settings and provider credentials come from this file only. An attribute with an <code>_env</code> form reads the environment variable that the file names, and no other variable.</p>
+<p><a href="reference.html">configuration-reference.md</a> is the generated list of every key, with its default, its range and its forms. <code>stowr print-config -c &lt;path&gt;</code> (or <code>stowr -c &lt;path&gt; --print-config</code>) checks the file, writes the value and the source of each key, and exits. The server writes the same values in its log at start. Secrets are hidden.</p>
+<p>Supported top-level blocks:</p>
+<ul><li>exactly one <code>access</code> block (refer to "Access");</li><li>zero or one <code>server</code> block;</li><li>zero or more <code>auth "id"</code> blocks;</li><li>zero or more <code>bucket "id"</code> blocks. Each <code>bucket</code> block needs an <code>auth</code> block;</li><li>zero or more <code>volume "id"</code> blocks: a folder of the server that the browser shows as a bucket.</li></ul>
+<p>A file needs one <code>bucket</code> block or one <code>volume</code> block at least.</p>
+<p>Unknown blocks, attributes, nested blocks, and wrong value types are rejected. The HCL file is limited to 4 MiB. Individual secret files are limited to 1 MiB; a GCS service-account file is bounded separately by the provider parser.</p>
+<h2 id="server-block"><a class="self" href="#server-block">Server block</a></h2>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>server {
+  listen            = ":8080"
+  job_history_limit = 10
+  access_mode       = "inherit_credentials"
+  log_mode          = "anonymous"
+
+  memory_limit_bytes = 67108864
+
+  max_storage_bytes_per_request       = 274877906944
+  max_storage_requests_per_request    = 4096
+  max_range_cache_bytes               = 8388608
+  max_concurrent_storage_requests     = 4
+  max_concurrent_requests_per_storage = 2
+
+  session_ttl_seconds = 1200
+  max_stats_folders   = 1000
+  max_archive_entries = 10000
+
+  max_background_storage_bytes    = 274877906944
+  max_background_storage_requests = 100000
+}</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th scope="col">Attribute</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead><tbody><tr><th scope="row"><code>listen</code></th><td data-label="Default"><code>:8080</code></td><td data-label="Description">Numeric <code>host:port</code> listen address. URL syntax is rejected.</td></tr><tr><th scope="row"><code>job_history_limit</code></th><td data-label="Default"><code>10</code></td><td data-label="Description">Number of terminal job results retained in process memory. Valid range: 1-20.</td></tr><tr><th scope="row"><code>access_mode</code></th><td data-label="Default"><code>inherit_credentials</code></td><td data-label="Description"><code>inherit_credentials</code> or <code>force_read_only</code>.</td></tr><tr><th scope="row"><code>log_mode</code></th><td data-label="Default"><code>anonymous</code></td><td data-label="Description"><code>anonymous</code> avoids object keys in request logs; <code>detailed</code> is for controlled diagnostics.</td></tr><tr><th scope="row"><code>allow_full_object_fallback</code></th><td data-label="Default"><code>false</code></td><td data-label="Description">Lets a parser read a full object when a format has no range reader. It never turns a strict Range check into an oversized answer.</td></tr><tr><th scope="row"><code>memory_limit_bytes</code></th><td data-label="Default"><code>0</code></td><td data-label="Description">A soft limit of the memory of the process. <code>0</code> sets no limit. The server accepts the value and shows it. Valid values: <code>0</code>, or 32 MiB to 1 PiB.</td></tr><tr><th scope="row"><code>max_storage_bytes_per_request</code></th><td data-label="Default">256 GiB</td><td data-label="Description">The provider bytes that one interactive HTTP request can transfer.</td></tr><tr><th scope="row"><code>max_storage_requests_per_request</code></th><td data-label="Default"><code>4096</code></td><td data-label="Description">The provider calls that one interactive HTTP request can make.</td></tr><tr><th scope="row"><code>max_range_cache_bytes</code></th><td data-label="Default">8 MiB</td><td data-label="Description">Maximum in-memory cache used by a range reader session.</td></tr><tr><th scope="row"><code>max_concurrent_storage_requests</code></th><td data-label="Default"><code>4</code></td><td data-label="Description">Global provider-request concurrency.</td></tr><tr><th scope="row"><code>max_concurrent_requests_per_storage</code></th><td data-label="Default"><code>2</code></td><td data-label="Description">Provider-request concurrency for one bucket.</td></tr><tr><th scope="row"><code>session_ttl_seconds</code></th><td data-label="Default"><code>1200</code></td><td data-label="Description">In-memory preview/session TTL.</td></tr><tr><th scope="row"><code>max_stats_folders</code></th><td data-label="Default"><code>1000</code></td><td data-label="Description">Maximum exact folder aggregates retained by one Insights result.</td></tr><tr><th scope="row"><code>max_archive_entries</code></th><td data-label="Default"><code>10000</code></td><td data-label="Description">Maximum deterministic central-directory entries and selected archive members.</td></tr><tr><th scope="row"><code>max_background_storage_bytes</code></th><td data-label="Default">256 GiB</td><td data-label="Description">Provider-byte budget for an explicit full-object job.</td></tr><tr><th scope="row"><code>max_background_storage_requests</code></th><td data-label="Default"><code>100000</code></td><td data-label="Description">Provider-call budget for an explicit background job.</td></tr></tbody></table></div>
+<p>The server never creates a data directory. All sessions and jobs are memory-only. At most four jobs may be active or queued at once.</p>
+<h3 id="browser-interface">Browser interface</h3>
+<p>The binary contains one browser interface. No key selects it.</p>
+<h2 id="s3-authentication"><a class="self" href="#s3-authentication">S3 authentication</a></h2>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>auth "primary-s3" {
+  provider               = "s3"
+  mode                   = "access_key"
+  endpoint               = "https://s3.example.com"
+  region                 = "eu-west-1"
+  access_key_id_file     = "/run/secrets/s3-access-key-id"
+  secret_access_key_file = "/run/secrets/s3-secret-access-key"
+  session_token_file     = "/run/secrets/s3-session-token"
+  insecure_skip_verify   = false
+}</code></pre></div>
+<p>S3 modes:</p>
+<ul><li><code>access_key</code>: requires <code>access_key_id</code> or <code>access_key_id_file</code> and <code>secret_access_key</code> or <code>secret_access_key_file</code>; <code>session_token</code> is optional.</li><li><code>anonymous</code>: rejects access-key fields.</li></ul>
+<p>A secret (<code>secret_access_key</code>, <code>session_token</code>) accepts only its <code>_env</code> form (the name of an environment variable) or its <code>_file</code> form. A secret in clear text in the file stops the start. <code>access_key_id</code> is an identifier, not a secret: it also accepts the value in the file. Give one form only. File paths relative to the HCL file are resolved from the HCL directory. The value of a file applies without its last line end; a secret with a space or a control character stops the start.</p>
+<p>The server never changes a value to make it fit. It does not remove spaces. It does not change the case: <code>provider = "S3"</code> is an error. It does not remove the <code>/</code> at the end of <code>endpoint</code>. It does not add or remove a <code>/</code> in <code>root_prefix</code>, which is <code>""</code> or a prefix such as <code>"published/"</code>. The error gives the key, the expected form and the value.</p>
+<p>The endpoint must use HTTP or HTTPS. It must not contain credentials, a query string or a fragment. Stowr follows no redirect and uses no proxy of the environment.</p>
+<h2 id="usage-of-the-buckets"><a class="self" href="#usage-of-the-buckets">Usage of the buckets</a></h2>
+<p>A <code>usage</code> block in an <code>s3</code> auth block gives the usage and the quota of its buckets. It also gives the capacity of the storage behind them: the disks or the nodes of the provider. The bucket selector shows these facts for each bucket. It warns about a bucket that uses 90 % or more of its limit. Without the block, the server makes no admin request and the interface shows no usage. Refer to "Usage and quota of a bucket" in <a href="architecture.html">ARCHITECTURE.md</a>.</p>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>auth "garage" {
+  provider               = "s3"
+  endpoint               = "https://garage.example.com"
+  region                 = "garage"
+  access_key_id_file     = "/run/secrets/garage-key-id"
+  secret_access_key_file = "/run/secrets/garage-secret"
+
+  usage {
+    source     = "garage"
+    endpoint   = "http://garage.example.com:3903"
+    token_file = "/run/secrets/garage-admin-token"
+  }
+}</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th scope="col">Source</th><th scope="col"><code>endpoint</code></th><th scope="col"><code>filer_endpoint</code></th><th scope="col"><code>token</code></th><th scope="col">Credentials</th></tr></thead><tbody><tr><th scope="row"><code>garage</code></th><td data-label="endpoint">Required: the admin API (port 3903 by default)</td><td data-label="filer_endpoint">Refused</td><td data-label="token">Required, <code>token_env</code> or <code>token_file</code> only: the admin token</td><td data-label="Credentials">The bearer token</td></tr><tr><th scope="row"><code>seaweedfs</code></th><td data-label="endpoint">Required: the master (port 9333 by default)</td><td data-label="filer_endpoint">Required: the filer (port 8888 by default)</td><td data-label="token">Refused</td><td data-label="Credentials">None: keep the master and the filer on a closed network</td></tr><tr><th scope="row"><code>minio</code></th><td data-label="endpoint">Optional: the endpoint of the auth block by default</td><td data-label="filer_endpoint">Refused</td><td data-label="token">Refused</td><td data-label="Credentials">The S3 credentials of the auth block, mode <code>access_key</code> only. They need <code>admin:GetBucketQuota</code>, <code>admin:DataUsageInfo</code> and <code>admin:StorageInfo</code></td></tr></tbody></table></div>
+<p>For the capacity of the storage, the reader of <code>seaweedfs</code> also asks each volume server that the master gives (<code>/status</code>). Keep them on the closed network of the master. Write <code>source</code> in lower case: the server does not change its case. A key that another source needs is a contradiction and stops the start. A <code>usage</code> block in a <code>gcs</code> auth block also stops the start. AWS S3 has no quota, so give no block.</p>
+<p>A URL uses HTTP or HTTPS. It has no credentials, no query, no fragment and no <code>/</code> at the end. <code>print-config</code> shows the URLs and hides the token.</p>
+<h2 id="gcs-authentication"><a class="self" href="#gcs-authentication">GCS authentication</a></h2>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>auth "gcs-service-account" {
+  provider         = "gcs"
+  mode             = "service_account"
+  credentials_file = "/run/secrets/gcs-service-account.json"
+}</code></pre></div>
+<p>GCS modes:</p>
+<ul><li><code>service_account</code>: requires <code>credentials_file</code>;</li><li><code>anonymous</code>: rejects <code>credentials_file</code>.</li></ul>
+<p>If omitted, the GCS endpoint defaults to <code>https://storage.googleapis.com</code>.</p>
+<h2 id="bucket-block"><a class="self" href="#bucket-block">Bucket block</a></h2>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>bucket "archive" {
+  name           = "Archive"
+  auth           = "primary-s3"
+  bucket         = "archive"
+  root_prefix    = "published/"
+  permissions    = ["read"]
+  max_scan_pages = 15
+}</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th scope="col">Attribute</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead><tbody><tr><th scope="row"><code>name</code></th><td data-label="Default">block id</td><td data-label="Description">Frontend display name.</td></tr><tr><th scope="row"><code>auth</code></th><td data-label="Default">required</td><td data-label="Description">Referenced authentication id.</td></tr><tr><th scope="row"><code>bucket</code></th><td data-label="Default">required</td><td data-label="Description">Provider bucket name.</td></tr><tr><th scope="row"><code>root_prefix</code></th><td data-label="Default">empty</td><td data-label="Description">Virtual root exposed by the application.</td></tr><tr><th scope="row"><code>permissions</code></th><td data-label="Default">omitted</td><td data-label="Description">An optional ceiling of the application. It lists <code>read</code>, <code>write</code> and <code>delete</code>, in any number.</td></tr><tr><th scope="row"><code>max_scan_pages</code></th><td data-label="Default"><code>1</code></td><td data-label="Description">Maximum 1,000-entry provider listing pages combined in navigation. <code>0</code> means no page-count limit.</td></tr><tr><th scope="row"><code>quota_bytes</code></th><td data-label="Default">omitted</td><td data-label="Description">A size limit (1 to 2^60 bytes) that the interface shows when the provider gives no limit. It needs a <code>usage</code> block in the auth block. The server does not enforce it.</td></tr><tr><th scope="row"><code>encryption</code></th><td data-label="Default"><code>""</code></td><td data-label="Description"><code>""</code> sends no encryption header. <code>"sse-s3"</code> sends <code>x-amz-server-side-encryption: AES256</code> with each write of an object (upload, copy, move, rename, metadata edit, restore). SSE-C and SSE-KMS are not supported. Not for a <code>gcs</code> bucket. Refer to the section "Encryption" of <a href="architecture.html">ARCHITECTURE.md</a>.</td></tr></tbody></table></div>
+<p><code>read</code> permits list, preview, details, inspection, version listing, and download. <code>write</code> permits upload, destination-side object creation, and the edit of the tags and the metadata of an object. <code>delete</code> permits deletion and the source side of move/rename. Provider policy and retention rules still apply.</p>
+<h2 id="volume-block"><a class="self" href="#volume-block">Volume block</a></h2>
+<p>A <code>volume</code> block shows a folder of the server as a bucket. The folder can be a Docker volume, an NFS or CephFS mount, or a FUSE mount such as <code>weed mount</code> of SeaweedFS. The block needs no <code>auth</code> block. The section "Volumes" of <a href="architecture.html">ARCHITECTURE.md</a> gives the rules of the paths, the listings, the writes and the uploads.</p>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>volume "shared" {
+  name           = "Shared files"
+  path           = "/data/shared"
+  root_prefix    = "published/"
+  permissions    = ["read", "write", "delete"]
+  max_scan_pages = 15
+}</code></pre></div>
+<div class="tablewrap"><table><thead><tr><th scope="col">Attribute</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead><tbody><tr><th scope="row"><code>name</code></th><td data-label="Default">block id</td><td data-label="Description">The name that the interface shows.</td></tr><tr><th scope="row"><code>path</code></th><td data-label="Default">required</td><td data-label="Description">The absolute path of the folder, without <code>/</code> at the end and without an empty, <code>.</code> or <code>..</code> part. The server does not clean the value. The folder must exist at start, and the process must read it.</td></tr><tr><th scope="row"><code>permissions</code></th><td data-label="Default">omitted</td><td data-label="Description">The ceiling of the operations: <code>read</code>, <code>write</code> and <code>delete</code>. Without the key, the three apply.</td></tr><tr><th scope="row"><code>root_prefix</code></th><td data-label="Default">empty</td><td data-label="Description">The folder of <code>path</code> that the browser shows: a relative path that ends with <code>/</code>. It must exist at start. A symbolic link that leaves it is not followed.</td></tr><tr><th scope="row"><code>max_scan_pages</code></th><td data-label="Default"><code>1</code></td><td data-label="Description">The 1000-entry pages of a folder that one listing combines. <code>0</code> means no limit.</td></tr></tbody></table></div>
+<p>These rules stop the start:</p>
+<ul><li>A folder that does not exist, a file in place of the folder, or a folder that the process cannot read.</li><li>A folder that the process cannot write when the permissions include <code>write</code> or <code>delete</code>, or when the block has no <code>permissions</code>. The start makes and removes a temporary file to check it. Give <code>permissions = ["read"]</code> for a folder that is read only. With <code>server.access_mode = "force_read_only"</code>, the start makes no such check.</li><li>A <code>volume</code> block and a <code>bucket</code> block with the same label.</li><li>An <code>auth</code> block with the label <code>volume</code> in a file with a <code>volume</code> block. The word <code>volume</code> is part of the address of a volume in the interface (<code>/-/volume/&lt;id&gt;/</code>).</li></ul>
+<p>The address of a volume in the interface is <code>/-/volume/&lt;id&gt;/</code>. The process of Stowr reads and writes the files: give it the owner or the group of the folder. In a container, mount the folder with write access, and keep the root file system read only.</p>
+<h2 id="access"><a class="self" href="#access">Access</a></h2>
+<p>The <code>access</code> block is mandatory. A file without it stops the start. The block sets who can use Stowr. Its key <code>mode</code> has two values.</p>
+<ul><li><code>authzen</code>: Stowr checks the identity token that the edge signs. It asks a PDP (Policy Decision Point) for each operation. The blocks <code>identity</code> and <code>pdp</code> are mandatory.</li><li><code>open</code>: Stowr checks no token and asks no PDP. The two blocks stop the start. Use this mode only behind a reverse proxy that authenticates the users. Stowr writes a warning at start.</li></ul>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>access {
+  mode = "authzen"
+
+  identity {
+    issuer           = "https://edge.example"
+    audience         = "stowr"
+    public_keys_file = "/run/keys/edge-jwks.json"
+  }
+
+  pdp {
+    url        = "https://pdp.example:4182"
+    token_file = "/run/secrets/pdp-token"
+  }
+}</code></pre></div>
+<div class="code-wrap"><span class="label">hcl</span><pre data-copy tabindex="0" aria-label="Code example: hcl"><code>access {
+  mode = "open"
+}</code></pre></div>
+<p>The file of <code>public_keys_file</code> holds PEM public keys or a JWK Set. A text that starts with <code>{</code> is a JWK Set. Other text is PEM: 1 to 16 <code>-----BEGIN PUBLIC KEY-----</code> blocks, Ed25519 or P-256. <a href="access.html">ACCESS.md</a>, "Public keys", gives the rules.</p>
+<p><a href="reference.html">configuration-reference.md</a> gives each key of the block with its default, its range and its forms. <a href="access.html">ACCESS.md</a> gives the rules of the identity token, the resource tree, the actions, the routes, the budgets and the errors.</p>
+<p>The key <code>server.access_mode</code> is a storage ceiling of the process: <code>force_read_only</code> refuses each write and each delete for all the people. The <code>access</code> block sets the access of each person. The two apply together, and <code>server.access_mode</code> is checked first.</p>
+<h2 id="version-capability-probe"><a class="self" href="#version-capability-probe">Version capability probe</a></h2>
+<p>A single bounded version-list request is made for every bucket when the application starts. A volume has no versions and gets no request. Any error marks version browsing unavailable for that bucket. This includes providers such as Garage that return HTTP 501 for the version-list API. The result is process-local and is exposed only as a boolean capability; the HCL file does not need a versioning flag.</p>
+<h2 id="public-path"><a class="self" href="#public-path">Public path</a></h2>
+<p>There is no public-path attribute. The frontend resolves URLs relative to <code>document.baseURI</code>. A reverse proxy can publish the application under any path. The proxy removes the public prefix before it sends the request to Stowr.</p></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

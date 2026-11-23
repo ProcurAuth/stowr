@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The size of the files of a volume. The usage of a volume says what the folder holds: the sum of the sizes of its
 //! regular files (the size of each file, not the blocks of the disk). A request never walks the tree: a sizer walks
 //! it in the background, one walk at a time, and the request gets the last count.

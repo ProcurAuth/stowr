@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The only reader of the process environment, and the forms `<name>`, `<name>_env` and `<name>_file` of a key.
 //!
 //! The configuration names each variable with an attribute `<name>_env`. The program reads no other variable

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The kind of an object for Insights and the details, and the media types of the object routes: the type that a key
 //! gives when the provider gives a generic type, and the types that a browser opens inline.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The quoted form of a text in the messages and in the effective configuration, and the escapes of a quoted string
 //! of the HCL file.
 //!

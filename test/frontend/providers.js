@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 // The three S3 providers of the test stack (compose.yaml, config.hcl). seed.js and browser-tests.js read this table.
 // Each provider has the bucket "default" behind one instance. The flags are the facts of test/README.md: the seed
 // enables what a provider has, and the smoke test checks that the page shows a feature only where the flag is true.

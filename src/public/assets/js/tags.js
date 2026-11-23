@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.tags: the object tags of the interface.
  * - the tags section of the file details (read; with the frameless "Edit" button: add, remove, save), with the lifecycle

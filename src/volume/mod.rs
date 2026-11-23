@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The volume back end: a folder of the server that the browser shows as a bucket (docs/ARCHITECTURE.md,
 //! "Volumes").
 //!

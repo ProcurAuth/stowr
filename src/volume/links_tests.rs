@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the symbolic links of a volume. The tree is the one of `tests::volume_tree`: `link-in` is a link to
 //! a folder in the root, `link-file` a link to a file in the root, `link-out` a link to a folder outside the root,
 //! and `link-dangling` a link that does not resolve.

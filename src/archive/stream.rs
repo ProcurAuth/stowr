@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The streamed bodies of the archive routes.
 //!
 //! [`stream`] gives a body that a task fills through a [`StreamSender`]. Each send waits at most the idle time for

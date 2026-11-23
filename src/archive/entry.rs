@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! One entry of an archive, and the runners of two jobs:
 //! - `GET|HEAD /api/archive-entry`: the bytes of one entry.
 //! - `POST /api/archive-extract`: the job `extract_archive`.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The display questions of the access policy (ProcurAuth 4.4).
 //!
 //! They decide what the interface shows: the list of the buckets, the controls of a folder and the path to a folder

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The check of the URLs of the configuration: the endpoint of a provider, of an admin API and of the PDP, and the
 //! host and port of `server.listen`.
 //!

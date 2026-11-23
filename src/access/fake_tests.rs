@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the guard of the mode `authzen` over the fake PDP: the rules of the client of the PDP that the library
 //! `procurauth-pep` and the transport of Stowr give. The tests of the routes then test the service against the real
 //! guard.

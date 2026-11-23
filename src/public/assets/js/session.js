@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*!
  * BB.session: one clear message for the answers that concern the whole page.
  *

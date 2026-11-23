@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The storage functions that the uploads use, as one interface for each instance.
 //!
 //! The upload manager and the incomplete-upload functions work with an [`UploadTarget`]: one storage instance with

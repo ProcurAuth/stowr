@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the encryption. They check the headers of the writes, the default encryption of the bucket, the
 //! probe, the route, and the objects with a key of the client.
 

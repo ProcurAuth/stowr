@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the command line: the commands, the flags, the exit statuses, print-config and the health check.
 
 use std::io::{Read as _, Write as _};

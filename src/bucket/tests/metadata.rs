@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the edit of the metadata: the validation, the S3 copy, the probe and the route.
 
 use std::collections::BTreeMap;

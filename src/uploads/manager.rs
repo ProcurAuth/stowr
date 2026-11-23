@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The upload sessions in the memory of the process, and the operations on them.
 //!
 //! The state of a session is in memory only. At most four sessions exist at the same time, so abandoned browser tabs

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! One page of the rows of a table: the search in the visible columns, the column filters, the optional sort and the
 //! totals.
 //!

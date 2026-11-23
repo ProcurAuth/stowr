@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The search of a text in an object. The route reads the object in order, in fragments of at most 256 KiB that end
 //! at a line feed, and keeps the end of a fragment so that a match can cross the border of two fragments.
 

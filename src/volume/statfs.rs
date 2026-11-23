@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The capacity of the file system of a volume (`statfs`). This is the only module of the program with `unsafe`
 //! code: one call to the C library, with a buffer that this module owns.
 #![allow(unsafe_code)]

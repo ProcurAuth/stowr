@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route `/api/media-info`: the details of one object.
 //!
 //! The readers of the documents get the request first. A media key then gets the reader of its format over byte

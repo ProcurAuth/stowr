@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The version routes (docs/ARCHITECTURE.md, "Version capability and version access"): the versions of one key,
 //! the count of the versions of visible keys, the restore of a version and the delete of one version for ever.
 //!

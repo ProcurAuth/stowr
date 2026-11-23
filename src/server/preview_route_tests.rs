@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route tests of the previews, of the details, of the version routes, of the jobs and of the uploads. Each
 //! request goes through the whole dispatch: the middlewares, the router and the handler. Some tests also check the
 //! idle limits of the request bodies and of the streamed answers, and the start probes of a real application.

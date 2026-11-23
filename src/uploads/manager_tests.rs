@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the upload sessions: the S3 multipart flow, the resume, the cancel, the limits and the idle sessions.
 
 use std::sync::Arc;

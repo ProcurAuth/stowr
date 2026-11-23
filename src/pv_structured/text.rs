@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The structured text formats: vCard and iCalendar. The folded lines, the properties, the records of the
 //! previews and the properties of the details.
 

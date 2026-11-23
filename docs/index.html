@@ -3,175 +3,176 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Stowr</title>
-<meta name="description" content="Stowr is a small web application to browse S3 buckets, Google Cloud Storage and server folders. One static binary and one configuration file.">
-<meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#0d0f12">
-<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Stowr is a web application that browses S3-compatible storage, Google Cloud Storage and folders of the server. It is one static binary with one HCL file, and it keeps no state on disk.">
 <meta property="og:type" content="website">
-<meta property="og:title" content="Stowr">
-<meta property="og:description" content="Browse S3 buckets, Google Cloud Storage and server folders in one place. One static binary.">
-<meta property="og:image" content="https://sccagg5.github.io/stowr/assets/img/og.png">
-<meta property="og:url" content="https://sccagg5.github.io/stowr/">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Stowr: every bucket and folder, in one page">
+<meta property="og:description" content="Stowr is a web application that browses S3-compatible storage, Google Cloud Storage and folders of the server. It is one static binary with one HCL file, and it keeps no state on disk.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="preload" href="media/stowr-promo-poster.jpg" as="image" type="image/jpeg" fetchpriority="high">
+<meta name="twitter:title" content="Stowr: every bucket and folder, in one page">
+<meta name="twitter:description" content="Stowr is a web application that browses S3-compatible storage, Google Cloud Storage and folders of the server. It is one static binary with one HCL file, and it keeps no state on disk.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/">
+<title>Stowr: every bucket and folder, in one page</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
 </head>
 <body>
-<a class="skip" href="#run">Skip to the download</a>
-
-<header class="nav">
-  <a class="brand" href="#top" aria-label="Stowr, top of the page">
-    <svg viewBox="0 0 18 18" aria-hidden="true"><rect fill="#356fe6" x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill="#356fe6" fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></svg>
-    Stowr
-  </a>
-  <nav class="links" aria-label="Sections">
-    <a href="#inside">Features</a>
-    <a href="#storages">Storages</a>
-    <a href="#run">Run it</a>
-    <a href="https://github.com/SCcagg5/stowr/blob/main/docs/ARCHITECTURE.md">Documentation</a>
-  </nav>
-  <a class="gh" href="https://github.com/SCcagg5/stowr" aria-label="GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.7-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z"/></svg></a>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html" aria-current="page">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
 </header>
-
-<main id="top">
-  <section class="hero" aria-labelledby="h1">
-    <h1 id="h1">Browse every bucket and folder <em>in one place.</em></h1>
-    <p class="lede">Stowr shows S3 buckets, Google Cloud Storage and mounted folders in one web page. It is one static binary with one configuration file.</p>
-    <div class="cta">
-      <a class="btn primary" href="https://github.com/SCcagg5/stowr/releases/latest">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0l-5-5m5 5l5-5M5 20h14"/></svg>
-        Download v0.3.0
-      </a>
-      <a class="btn" href="#run">Run it</a>
-    </div>
-    <p class="fine">Linux, amd64 and arm64. Each file is on the page of the release, with its checksum.</p>
-    <div class="stage">
-      <div class="window">
-        <video controls playsinline preload="none" poster="media/stowr-promo-poster.jpg" width="1920" height="1080" aria-label="A 54-second tour of Stowr with voice-over and music: the bucket menu, the file preview, the information page and the first command.">
-          <source src="media/stowr-promo.mp4" type="video/mp4" media="(min-width: 1000px)">
-          <source src="media/stowr-promo-720.mp4" type="video/mp4">
-          <track kind="subtitles" src="media/stowr-promo.vtt" srclang="en" label="English">
-        </video>
+<main id="main">
+<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap hero-grid">
+    <div>
+      <p class="eyebrow"><span class="badge">Version 0.3.0</span> Browser for S3, Google Cloud Storage and folders</p>
+      <h1 id="hero-title">Stowr</h1>
+      <p class="promise">Every bucket and folder, in one page. One static binary and one HCL file.</p>
+      <p class="sub">Stowr reads only the bytes that it shows, and it keeps no state on disk. It is for operators who run their own storage.</p>
+      <div class="btn-row">
+        <a class="btn primary" href="getting-started.html">Get started</a>
+        <a class="btn" href="https://github.com/ProcurAuth/stowr/releases/latest">Download v0.3.0</a>
       </div>
-      <p class="credit">54 seconds, with voice-over and music. Turn the sound on. Music: Happy Beats &amp; Business Moves Vol. 12 by Sascha Ende at <a href="https://ende.app/en">ende.app</a> (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>).</p>
+      <p class="more"><a href="architecture.html">See how it works</a></p>
     </div>
-  </section>
-
-  <section id="inside" aria-labelledby="inside-h">
-    <h2 id="inside-h">What you do with your files, on one page.</h2>
-    <div class="bento">
-      <article class="feature wide">
-        <div class="shot"><img src="assets/img/selector-1440.webp" srcset="assets/img/selector-800.webp 800w, assets/img/selector-1440.webp 1440w" sizes="(min-width: 900px) 690px, 100vw" width="1440" height="570" loading="lazy" alt="The bucket menu lists three hosts with their buckets. Each bucket shows seven state icons and how full it is."></div>
-        <div class="text">
-          <h3>Every storage in one menu</h3>
-          <p>Switch between hosts and buckets. Each entry shows what you may do, the versioning, the lock, the lifecycle rules and how full the bucket is.</p>
-        </div>
-      </article>
-      <article class="feature narrow">
-        <div class="shot"><img src="assets/img/markdown-1440.webp" srcset="assets/img/markdown-800.webp 800w, assets/img/markdown-1440.webp 1440w" sizes="(min-width: 900px) 490px, 100vw" width="1440" height="420" loading="lazy" alt="A Markdown file with a table, shown in the page."></div>
-        <div class="text">
-          <h3>Read a file at once</h3>
-          <p>Markdown, PDF, images, logs and archives open in the page. Stowr reads only the bytes that it shows.</p>
-        </div>
-      </article>
-      <article class="feature narrow">
-        <div class="shot"><img src="assets/img/preview-1440.webp" srcset="assets/img/preview-800.webp 800w, assets/img/preview-1440.webp 1440w" sizes="(min-width: 900px) 490px, 100vw" width="1440" height="640" loading="lazy" alt="A CSV file with 400 rows, shown as a table with sort and filters."></div>
-        <div class="text">
-          <h3>Tables from your data files</h3>
-          <p>CSV, Excel, Parquet, SQLite and JSON lines open as tables. Sort, filter and page without a download.</p>
-        </div>
-      </article>
-      <article class="feature wide">
-        <div class="shot"><img src="assets/img/lifecycle-1440.webp" srcset="assets/img/lifecycle-800.webp 800w, assets/img/lifecycle-1440.webp 1440w" sizes="(min-width: 900px) 690px, 100vw" width="1440" height="500" loading="lazy" alt="The information page of a bucket: identity, permissions, data protection, storage gauges and the editor of the lifecycle rules."></div>
-        <div class="text">
-          <h3>One page for the bucket</h3>
-          <p>See the permissions, the versioning, the encryption, the quota and the free space. Add and edit the lifecycle rules on the same page.</p>
-        </div>
-      </article>
+    <div class="hero-shot"><figure class="shot"><img src="assets/img/hero.webp" alt="The Stowr interface: a bucket with folders, and the menu of buckets and hosts" loading="lazy" decoding="async"><figcaption>The bucket menu shows the state of each bucket: read, write, delete, encryption, lock, versions and lifecycle.</figcaption></figure></div>
+  </div>
+</section>
+<section class="section" aria-labelledby="why-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="why-h">One page for the storage that you have</h2>
+    <p>Stowr shows the objects of many buckets, previews them and works on them. It runs on a host with little memory.</p></div>
+    <div class="grid c3"><a class="card" href="architecture.html#storage-interfaces"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/></svg></div><h3>One page for each storage</h3><p>Browse AWS S3, MinIO, SeaweedFS, Garage, Google Cloud Storage and folders of the server. One menu lists them all, with the state of each bucket.</p></a><a class="card" href="architecture.html#stateless-state-model"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5"/></svg></div><h3>Bounded and stateless</h3><p>Stowr reads exact byte ranges. It has no database, no cache folder and no temporary file. Each limit has a key in the file.</p></a><a class="card" href="access.html"><div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></div><h3>Access with ProcurAuth</h3><p>In the mode authzen, Stowr checks an identity token and asks a PDP before each operation. A grant on a folder covers the folders below it.</p></a></div>
+  </div>
+</section>
+<section class="section alt" aria-labelledby="how-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="how-h">How it works</h2>
+    <p>Stowr is one static binary. The interface is inside. The access guard asks the PDP before each operation.</p></div>
+    <figure class="panel"><img src="assets/architecture.svg" alt="Architecture of Stowr: the browser, the edge, the single binary with the HTTP server, the access guard, the storage instances and the jobs, the three providers, and the PDP" loading="lazy" decoding="async"><figcaption><strong>The single binary.</strong> The HTTP server, the access guard, the storage instances, the jobs and the three provider clients are in one program. Only a volume writes files.</figcaption></figure>
+    <figure class="panel"><img src="assets/flow.svg" alt="Three request flows: a folder listing, a read of a large object by byte ranges, and an upload in chunks" loading="lazy" decoding="async"><figcaption><strong>Three requests.</strong> In each one, the PDP decides before the first byte moves. A large object is read with exact byte ranges. An upload goes in chunks, with a token to resume it.</figcaption></figure>
+    <figure class="panel"><img src="assets/access-model.svg" alt="The resource tree, the question that Stowr sends to the PDP, the five actions and the two limits" loading="lazy" decoding="async"><figcaption><strong>The access model.</strong> The tree is service, bucket, folder and subfolder. A grant on a node covers the nodes below it. <a href='access.html'>Read the rules</a>.</figcaption></figure>
+  </div>
+</section>
+<section class="section" aria-labelledby="see-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="see-h">See it</h2>
+    <p>Each picture comes from a live copy of the product, with demo data. Nothing is mocked.</p></div>
+    <div class="shots"><figure class="shot"><img src="assets/img/browser-light.webp" alt="The folder list of a bucket in the light theme" loading="lazy" decoding="async"><figcaption><strong>Browse.</strong> A dense table of folders and files, with a bucket menu.</figcaption></figure><figure class="shot"><img src="assets/img/browser-dark.webp" alt="The folder list of a bucket in the dark theme" loading="lazy" decoding="async"><figcaption><strong>Two themes.</strong> The interface has a light theme and a dark theme.</figcaption></figure><figure class="shot"><img src="assets/img/tags-versions.webp" alt="A folder with tag chips and a version count on one file" loading="lazy" decoding="async"><figcaption><strong>Tags and versions.</strong> The list shows the tags and the number of versions of each file.</figcaption></figure><figure class="shot"><img src="assets/img/preview-csv.webp" alt="A CSV file shown as a table with filters" loading="lazy" decoding="async"><figcaption><strong>Tables.</strong> CSV, Excel, Parquet, SQLite and JSON lines open as tables.</figcaption></figure><figure class="shot"><img src="assets/img/preview-archive.webp" alt="The contents of a ZIP archive" loading="lazy" decoding="async"><figcaption><strong>Archives.</strong> Stowr reads the central directory. You can open, download or extract one entry.</figcaption></figure><figure class="shot"><img src="assets/img/preview-image.webp" alt="An image shown in the dark theme" loading="lazy" decoding="async"><figcaption><strong>Images.</strong> Stowr shows an image in the page, and reads only the bytes that it needs.</figcaption></figure><figure class="shot"><img src="assets/img/preview-large.webp" alt="The schema of a Parquet file of 979 MB, read with two storage requests" loading="lazy" decoding="async"><figcaption><strong>Large objects.</strong> A Parquet file of 979 MB. Stowr reads the footer: two storage requests.</figcaption></figure><figure class="shot"><img src="assets/img/inspect.webp" alt="The inspection of a large object: three storage requests and 128 KB read" loading="lazy" decoding="async"><figcaption><strong>Inspection.</strong> Stowr reads small exact ranges to find the format. It shows the requests and the bytes.</figcaption></figure><figure class="shot"><img src="assets/img/uploads.webp" alt="The upload panel at 35 percent, with the rate and the time left" loading="lazy" decoding="async"><figcaption><strong>Uploads.</strong> A large file goes in chunks. The panel shows the rate and the time left.</figcaption></figure><figure class="shot"><img src="assets/img/insights.webp" alt="Storage insights: the size by type, the most recent files and the largest files" loading="lazy" decoding="async"><figcaption><strong>Insights.</strong> The size and the count by type, the most recent files and the largest files.</figcaption></figure><figure class="shot"><img src="assets/img/info.webp" alt="The information page of a bucket: identity, permissions, data protection, operations and the lifecycle rules" loading="lazy" decoding="async"><figcaption><strong>One page for a bucket.</strong> The permissions, the protection of the data and the lifecycle rules.</figcaption></figure><figure class="shot"><img src="assets/img/access-readonly.webp" alt="A folder that the person can read but not change: the badge Read only" loading="lazy" decoding="async"><figcaption><strong>Access.</strong> The PDP lets this person read the folder. Stowr hides the controls that change data.</figcaption></figure><figure class="shot"><img src="assets/img/access-refused.webp" alt="A folder that the access policy refuses: no folder to open" loading="lazy" decoding="async"><figcaption><strong>Refusal.</strong> The PDP refuses this folder. Stowr shows no object of it.</figcaption></figure><figure class="shot"><img src="assets/img/access-buckets.webp" alt="The menu of buckets with only the buckets that the person can use" loading="lazy" decoding="async"><figcaption><strong>Only what you may use.</strong> The menu lists the buckets where the person holds an action.</figcaption></figure></div>
+  </div>
+</section>
+<section class="section alt" aria-labelledby="features-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="features-h">What Stowr does</h2></div>
+    <div class="tablewrap"><table class="feature-table"><thead><tr><th scope="col">Area</th><th scope="col">What Stowr does</th></tr></thead><tbody><tr><th scope="row">Storage</th><td data-label="What Stowr does">AWS S3, MinIO, SeaweedFS and Garage through the S3 API. Google Cloud Storage. Folders of the server as volumes.</td></tr><tr><th scope="row">Browsing</th><td data-label="What Stowr does">Dense tables, folders, search, sort, tags, version counts and the settings of the columns.</td></tr><tr><th scope="row">Previews</th><td data-label="What Stowr does">Text, code, Markdown, JSON, CSV, Parquet, SQLite, Excel, Word, PDF, images, audio, video, archives, certificates and email.</td></tr><tr><th scope="row">Large objects</th><td data-label="What Stowr does">Exact byte-range readers, an integrity check that hashes the stream, an inspection of the structure, and Insights on a folder.</td></tr><tr><th scope="row">Operations</th><td data-label="What Stowr does">Resumable upload with SHA-256 checksums, copy in parts, archive download and extraction, and edit of metadata and tags.</td></tr><tr><th scope="row">Versions</th><td data-label="What Stowr does">Versions of an object, restore, permanent delete, and the comparison of two versions in the browser.</td></tr><tr><th scope="row">Bucket functions</th><td data-label="What Stowr does">Lifecycle rules, Object Lock, SSE-S3 encryption, incomplete multipart uploads, and the usage and quota of a bucket.</td></tr><tr><th scope="row">Access</th><td data-label="What Stowr does">The mode authzen checks an identity token and asks a PDP. The mode open needs a proxy that signs users in.</td></tr><tr><th scope="row">Configuration</th><td data-label="What Stowr does">One HCL file with a closed schema. A mistake stops the start. The command print-config shows each value and its source.</td></tr><tr><th scope="row">Runtime</th><td data-label="What Stowr does">A read-only root file system is enough. No request goes to another origin. The binary is static, for Linux amd64 and arm64.</td></tr></tbody></table></div>
+  </div>
+</section>
+<section class="section" aria-labelledby="run-h">
+  <div class="wrap narrow">
+    <div class="section-head"><h2 id="run-h">Run it in five minutes</h2>
+    <p>This test starts a local S3-compatible service in Docker, on 127.0.0.1. It needs a file <code>config.hcl</code>: the <a href="getting-started.html">guide</a> has it, with each step.</p></div>
+    <div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: quick start"><code>docker run -d --rm --name stowr-demo-s3 -p 127.0.0.1:8333:8333 chrislusf/seaweedfs:4.41 server -s3 -dir=/data \
+  -master.volumeSizeLimitMB=64 -volume.max=30 -volume.minFreeSpace=1GiB
+sleep 10
+curl -s -X PUT http://127.0.0.1:8333/demo
+printf '# Hello\n\nThis file is in the bucket demo.\n' | curl -s --retry 5 --retry-delay 2 --retry-all-errors \
+  -X PUT -H 'Content-Type: text/markdown' --data-binary @- http://127.0.0.1:8333/demo/notes/hello.md
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
+tar -xzf stowr_0.3.0_linux_amd64.tar.gz
+./stowr -c config.hcl</code></pre></div>
+    <div class="btn-row"><a class="btn primary" href="getting-started.html">Open the guide</a><a class="btn" href="configuration.html">Read the configuration</a></div>
+  </div>
+</section>
+<section class="section alt" aria-labelledby="family-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="family-h">Part of ProcurAuth</h2>
+    <p>Stowr is a PEP of the <a href="https://procurauth.github.io/procurauth/">ProcurAuth</a> specification. The portal gives it identity tokens and decisions.</p></div>
+    <figure class="panel family-fig"><img src="assets/family.svg" alt="The ProcurAuth family: the specification, the reference tools, the portal, and the services Stowr, Hune and ClickHouse Dash" loading="lazy" decoding="async"></figure>
+    <ul class="prose">
+      <li><a href="https://github.com/ProcurAuth/procurauth">ProcurAuth</a>: the open specification, the tools and the conformance cases.</li>
+      <li><a href="https://github.com/ProcurAuth/portal">portal</a>: the backend, the edge and the PDP.</li>
+      <li><a href="https://github.com/ProcurAuth/hune">Hune</a>: dashboards over ClickHouse, PostgreSQL and MongoDB.</li>
+      <li><a href="https://github.com/Circular-fi/Clickhouse-dash">ClickHouse Dash</a>: a query console with MCP.</li>
+    </ul>
+  </div>
+</section>
+<section class="section" aria-labelledby="go-h">
+  <div class="wrap">
+    <div class="section-head"><h2 id="go-h">Where to go next</h2></div>
+    <div class="btn-row">
+      <a class="btn primary" href="getting-started.html">Getting started</a>
+      <a class="btn" href="configuration.html">Configuration</a>
+      <a class="btn" href="access.html">Access and ProcurAuth</a>
+      <a class="btn" href="operations.html">Operations</a>
+      <a class="btn" href="changelog.html">Changelog</a>
     </div>
-    <div class="more" aria-label="More functions">
-      <span class="chip">Upload of very large files</span>
-      <span class="chip">Versions and comparison</span>
-      <span class="chip">Tags and tag filter</span>
-      <span class="chip">Edit of the metadata</span>
-      <span class="chip">Object Lock</span>
-      <span class="chip">Encryption SSE-S3</span>
-      <span class="chip">Abort of incomplete uploads</span>
-    </div>
-  </section>
-
-  <section id="storages" aria-labelledby="storages-h">
-    <h2 id="storages-h">Works with the storage that you have.</h2>
-    <p class="sub">Stowr reads the answers of each provider and shows only what the provider can do. A server folder, such as a mount of SeaweedFS, is a volume.</p>
-    <div class="compat">
-      <span class="chip">AWS S3</span>
-      <span class="chip">MinIO</span>
-      <span class="chip">SeaweedFS</span>
-      <span class="chip">Garage</span>
-      <span class="chip">Google Cloud Storage</span>
-      <span class="chip">Server folders (volumes)</span>
-    </div>
-  </section>
-
-  <section id="run" aria-labelledby="run-h">
-    <h2 id="run-h">Run it in three steps.</h2>
-    <div class="steps">
-      <div class="step">
-        <span class="n">1</span>
-        <h3>Download</h3>
-        <pre tabindex="0" aria-label="Command"><code id="cmd-download">curl -fsSLO https://github.com/SCcagg5/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
-tar xzf stowr_0.3.0_linux_amd64.tar.gz</code></pre>
-        <button class="copy" type="button" data-copy="cmd-download">Copy</button>
-        <p class="note">For arm64, use the file <code>stowr_0.3.0_linux_arm64.tar.gz</code>.</p>
-      </div>
-      <div class="step">
-        <span class="n">2</span>
-        <h3>Name a bucket</h3>
-        <pre tabindex="0" aria-label="Configuration"><code id="cmd-config">access {
-  mode = "open"
-}
-
-auth "s3" {
-  provider               = "s3"
-  mode                   = "access_key"
-  endpoint               = "https://s3.example.internal"
-  region                 = "eu-west-1"
-  access_key_id_file     = "/run/secrets/s3-access-key-id"
-  secret_access_key_file = "/run/secrets/s3-secret-access-key"
-}
-
-bucket "documents" {
-  name        = "Documents"
-  auth        = "s3"
-  bucket      = "documents"
-  permissions = ["read", "write", "delete"]
-}</code></pre>
-        <button class="copy" type="button" data-copy="cmd-config">Copy</button>
-        <p class="note">Save it as <code>config.hcl</code>. Set the <code>access</code> block: mode <code>"authzen"</code> checks each request with your access policy; mode <code>"open"</code> needs a reverse proxy that signs your users in.</p>
-      </div>
-      <div class="step">
-        <span class="n">3</span>
-        <h3>Run</h3>
-        <pre tabindex="0" aria-label="Command"><code id="cmd-run">./stowr -c config.hcl</code></pre>
-        <button class="copy" type="button" data-copy="cmd-run">Copy</button>
-        <p class="note">Open <code>http://localhost:8080</code>. Check the file first with <code>./stowr print-config -c config.hcl</code>.</p>
-      </div>
-    </div>
-    <p class="runfoot">
-      The archive has no runtime dependency. Next:
-      <a href="https://github.com/SCcagg5/stowr/blob/main/docs/CONFIGURATION.md">configuration</a>,
-      <a href="https://github.com/SCcagg5/stowr/blob/main/docs/ARCHITECTURE.md">architecture</a>.
-    </p>
-  </section>
+  </div>
+</section>
 </main>
-
-<footer class="foot">
-  <span>Stowr</span>
-  <a href="https://github.com/SCcagg5/stowr">GitHub</a>
-  <a href="https://github.com/SCcagg5/stowr/blob/main/CHANGELOG.md">Changes</a>
-  <a class="sp" href="#top">Top of the page</a>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
 </footer>
-<script src="assets/site.js" defer></script>
 </body>
 </html>

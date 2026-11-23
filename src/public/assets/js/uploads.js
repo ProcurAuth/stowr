@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*!
  * BB.uploads: the bulk upload of the interface.
  *

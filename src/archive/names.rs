@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The names of the archives: the safe name of an entry and the unique name of a member of the ZIP of a folder.
 //! The module also gives the file name of the ZIP of a folder, the selection of an extraction and the quoted form of
 //! a name in a message.

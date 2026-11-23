@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The context of an operation: what a storage call needs to know about the request or the job that makes it.
 //!
 //! Each storage call gets an [`OpCtx`]. The context carries the resource budget, the mode of the concurrency

@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 670" width="1100" height="670" role="img" aria-label="Architecture of Stowr: a browser and an edge in front of one static binary that holds the HTTP server, the access guard, the storage instances and the jobs, with the S3, GCS and volume providers behind it and a PDP on the side">
+  <title>Architecture of the single binary</title>
+  <desc>The browser reaches the edge. The edge signs an identity token and sends the request to Stowr. Inside Stowr, the HTTP server calls the access guard. The guard asks the PDP. The storage instances call the S3 client, the GCS client or the volume. Each provider reaches its own storage.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#a5b4fc"/>
+    </marker>
+  </defs>
+  <rect width="1100" height="670" rx="20" fill="#12142a"/>
+  <g font-family="Inter, 'Segoe UI', -apple-system, Helvetica, Arial, sans-serif">
+    <text x="40" y="52" font-size="24" font-weight="700" fill="#ffffff">One binary: interface, access guard and storage clients</text>
+    <text x="40" y="82" font-size="15" fill="#9ca3d4">Stowr is one static program. It serves the interface from memory and keeps no state on disk.</text>
+
+    <!-- Outside, left -->
+    <rect x="36" y="250" width="120" height="80" rx="12" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="96" y="283" font-size="16" font-weight="700" fill="#e0e7ff" text-anchor="middle">Browser</text>
+    <text x="96" y="304" font-size="12" fill="#c7d2fe" text-anchor="middle">the interface</text>
+    <text x="96" y="320" font-size="12" fill="#c7d2fe" text-anchor="middle">comes from Stowr</text>
+
+    <rect x="196" y="250" width="130" height="80" rx="12" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="261" y="283" font-size="16" font-weight="700" fill="#e0e7ff" text-anchor="middle">Edge</text>
+    <text x="261" y="304" font-size="12" fill="#c7d2fe" text-anchor="middle">signs the identity</text>
+    <text x="261" y="320" font-size="12" fill="#c7d2fe" text-anchor="middle">token (authzen)</text>
+
+    <path d="M156 290H194" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+    <path d="M326 290H378" stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+
+    <!-- The binary -->
+    <rect x="380" y="100" width="450" height="440" rx="16" fill="#171a38" stroke="#818cf8" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="400" y="128" font-size="14" font-weight="700" fill="#a5b4fc">stowr: one static binary (Linux amd64 and arm64)</text>
+
+    <rect x="400" y="148" width="410" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="418" y="172" font-size="15" font-weight="700" fill="#e0e7ff">HTTP server</text>
+    <text x="418" y="192" font-size="12.5" fill="#c7d2fe">hyper on tokio, the routes, the embedded interface</text>
+
+    <rect x="400" y="224" width="410" height="56" rx="10" fill="#4338ca" fill-opacity="0.45" stroke="#818cf8" stroke-width="2"/>
+    <text x="418" y="248" font-size="15" font-weight="700" fill="#ffffff">Access guard (PEP)</text>
+    <text x="418" y="268" font-size="12.5" fill="#e0e7ff">checks the token, asks one question for each operation</text>
+
+    <rect x="400" y="300" width="410" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="418" y="324" font-size="15" font-weight="700" fill="#e0e7ff">Storage instances</text>
+    <text x="418" y="344" font-size="12.5" fill="#c7d2fe">permission ceilings, budgets, range readers, signed cursors</text>
+
+    <rect x="400" y="376" width="410" height="56" rx="10" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="418" y="400" font-size="15" font-weight="700" fill="#e0e7ff">Jobs and uploads</text>
+    <text x="418" y="420" font-size="12.5" fill="#c7d2fe">in memory and bounded: at most four active jobs</text>
+
+    <g stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)">
+      <path d="M605 204V222"/>
+      <path d="M605 280V298"/>
+      <path d="M605 356V374"/>
+    </g>
+
+    <rect x="400" y="458" width="130" height="56" rx="10" fill="#0ea5e9" fill-opacity="0.28" stroke="#38bdf8" stroke-width="2"/>
+    <text x="465" y="483" font-size="15" font-weight="700" fill="#e0f2fe" text-anchor="middle">S3 client</text>
+    <text x="465" y="502" font-size="12" fill="#bae6fd" text-anchor="middle">signed requests</text>
+    <rect x="540" y="458" width="130" height="56" rx="10" fill="#0ea5e9" fill-opacity="0.28" stroke="#38bdf8" stroke-width="2"/>
+    <text x="605" y="483" font-size="15" font-weight="700" fill="#e0f2fe" text-anchor="middle">GCS client</text>
+    <text x="605" y="502" font-size="12" fill="#bae6fd" text-anchor="middle">JSON and upload API</text>
+    <rect x="680" y="458" width="130" height="56" rx="10" fill="#34d399" fill-opacity="0.22" stroke="#34d399" stroke-width="2"/>
+    <text x="745" y="483" font-size="15" font-weight="700" fill="#d1fae5" text-anchor="middle">Volume</text>
+    <text x="745" y="502" font-size="12" fill="#a7f3d0" text-anchor="middle">files of a folder</text>
+
+    <path d="M605 432V445M465 445H745" stroke="#a5b4fc" stroke-width="2" fill="none"/>
+    <g stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)">
+      <path d="M465 445V456"/>
+      <path d="M605 445V456"/>
+      <path d="M745 445V456"/>
+    </g>
+
+    <!-- External storage -->
+    <g stroke="#a5b4fc" stroke-width="2" fill="none" marker-end="url(#ar)">
+      <path d="M465 514V572"/>
+      <path d="M605 514V572"/>
+      <path d="M745 514V572"/>
+    </g>
+    <g stroke="#2c3070" stroke-width="1.5" fill="#1c1f3d">
+      <rect x="400" y="574" width="130" height="68" rx="10"/>
+      <rect x="540" y="574" width="130" height="68" rx="10"/>
+      <rect x="680" y="574" width="130" height="68" rx="10"/>
+    </g>
+    <text x="465" y="598" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">S3-compatible</text>
+    <text x="465" y="616" font-size="11.5" fill="#c7d2fe" text-anchor="middle">AWS S3, MinIO,</text>
+    <text x="465" y="631" font-size="11.5" fill="#c7d2fe" text-anchor="middle">SeaweedFS, Garage</text>
+    <text x="605" y="598" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Google Cloud</text>
+    <text x="605" y="616" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Storage</text>
+    <text x="745" y="598" font-size="14" font-weight="700" fill="#e0e7ff" text-anchor="middle">Server folder</text>
+    <text x="745" y="616" font-size="11.5" fill="#c7d2fe" text-anchor="middle">Docker volume, NFS,</text>
+    <text x="745" y="631" font-size="11.5" fill="#c7d2fe" text-anchor="middle">FUSE mount</text>
+
+    <!-- PDP -->
+    <rect x="906" y="206" width="158" height="92" rx="12" fill="#1c1f3d" stroke="#2c3070" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="985" y="238" font-size="16" font-weight="700" fill="#e0e7ff" text-anchor="middle">PDP</text>
+    <text x="985" y="259" font-size="12" fill="#c7d2fe" text-anchor="middle">policy decision point</text>
+    <text x="985" y="276" font-size="12" fill="#c7d2fe" text-anchor="middle">AuthZEN 1.0, ProcurAuth</text>
+    <path d="M810 252H904" stroke="#a5b4fc" stroke-width="2" fill="none" marker-start="url(#ar)" marker-end="url(#ar)"/>
+    <text x="857" y="242" font-size="11.5" fill="#9ca3d4" text-anchor="middle">question</text>
+    <text x="857" y="272" font-size="11.5" fill="#9ca3d4" text-anchor="middle">decision</text>
+
+    <!-- Notes -->
+    <rect x="906" y="330" width="158" height="110" rx="12" fill="none" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="922" y="354" font-size="13" font-weight="700" fill="#a5b4fc">Mode open</text>
+    <text x="922" y="374" font-size="12" fill="#c7d2fe">No edge and no PDP.</text>
+    <text x="922" y="392" font-size="12" fill="#c7d2fe">Put a reverse proxy</text>
+    <text x="922" y="410" font-size="12" fill="#c7d2fe">that signs users in</text>
+    <text x="922" y="428" font-size="12" fill="#c7d2fe">in front of Stowr.</text>
+
+    <rect x="36" y="400" width="300" height="112" rx="12" fill="none" stroke="#2c3070" stroke-width="1.5"/>
+    <text x="52" y="426" font-size="13" font-weight="700" fill="#34d399">No state on disk</text>
+    <text x="52" y="448" font-size="12" fill="#c7d2fe">No database, no cache folder, no job file.</text>
+    <text x="52" y="466" font-size="12" fill="#c7d2fe">No hidden object in a bucket.</text>
+    <text x="52" y="484" font-size="12" fill="#c7d2fe">Only a volume writes files, in its folder.</text>
+    <text x="52" y="502" font-size="12" fill="#c7d2fe">A read-only root file system is enough.</text>
+  </g>
+</svg>

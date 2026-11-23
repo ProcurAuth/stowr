@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Shared settings of the scripts that run Docker. Source this file. Do not run it.
 # It sets: root, image, registry_volume, target_volume, uid and gid.
 

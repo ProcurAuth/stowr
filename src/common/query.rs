@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The query string of a request, and the escape rules of URLs.
 //!
 //! [`Query::parse`] reads a raw query as the routes always read it: the parts split at `&`, each part splits at

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The capacity of the storage behind the buckets, for the usage readers that can read it. The numbers are raw. The
 //! replication or the erasure code of the provider uses more than one byte of the disks for one byte of an object.
 //! Each request is a `GET` of the admin API of the `usage` block, with the same credentials and the same size limits.

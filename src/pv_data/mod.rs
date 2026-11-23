@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The previews of data files and the details of documents: SQLite (a reader of the database pages over byte
 //! ranges, with sessions in memory), Parquet (the footer and the Thrift compact metadata), and the details of the
 //! documents (SQLite header, Parquet summary, and the calls to the Office and structured readers)

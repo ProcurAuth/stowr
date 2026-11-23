@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the action document: the published actions, the limits, the exact bytes and the rules of the
 //! linter of ProcurAuth (5.2, 5.3c and 6.1).
 

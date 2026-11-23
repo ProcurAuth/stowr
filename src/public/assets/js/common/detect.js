@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Shared file-type and syntax detection. No runtime dependency. */
 (function () {
   'use strict';

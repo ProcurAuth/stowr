@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the reader of the public keys of the issuer.
 
 use aws_lc_rs::encoding::{AsDer, PublicKeyX509Der};

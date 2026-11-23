@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Dates and times of the answers, of the providers and of the log.
 //!
 //! A [`Timestamp`] is a point in time with a precision of one nanosecond, and the offset that its text had. The

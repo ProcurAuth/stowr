@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The preview of an XLSX or XLSM workbook on the server: the list of the sheets, and pages of one sheet with a
 //! filter, a search and a sort.
 //!

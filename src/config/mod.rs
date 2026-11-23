@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The configuration: the strict reader of the HCL file, the table of the keys, the reference that the table
 //! makes (docs/configuration-reference.md), the effective configuration (`print-config` and the log at start), the
 //! warnings of the start, the command line and the identity of the build (docs/CONFIGURATION.md).

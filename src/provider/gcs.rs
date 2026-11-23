@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The GCS back end: the JSON API, the OAuth token of a service account (an RS256 JWT), the generations and the
 //! resumable upload.
 //!

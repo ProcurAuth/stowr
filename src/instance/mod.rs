@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The storage instance: one bucket block or one volume block, over its back end.
 //!
 //! An [`Instance`] wraps a [`Backend`]. Each call takes a slot of the gate of the process and of the gate of the
 //! instance, counts the resource budget of the context, checks the ceilings of the access policy, and learns the
-//! permissions of the provider from the result (docs/ARCHITECTURE.md, "Storage interfaces"; docs/SECURITY.md,
+//! permissions of the provider from the result (docs/ARCHITECTURE.md, "Storage interfaces"; docs/SECURITY-MODEL.md,
 //! "Permission enforcement"). The instance also gives the version functions, the multipart functions, the start
 //! probes of the versioning, and the public facts of `/api/instances`.
 //!

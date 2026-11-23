@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the job manager: the jobs of a prefix, the limits, the history, the controls, the reaper, the panic
 //! of a job, the ceilings of a job and the routes `/api/jobs/` and `/api/stats`.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The check of the URIs of the alternative names of a certificate. A URI is valid when a strict URL reader
 //! accepts it and its host has valid labels.
 

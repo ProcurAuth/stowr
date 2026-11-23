@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The guard of the access policy: the check of the identity token and the questions to the PDP.
 //!
 //! Stowr writes its routes against this trait. The mode `open` has [`OpenGuard`]. The mode `authzen` has the guard

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The usage of a volume after a change: a write marks the count of the folder old, and the next reads of
 //! `/api/usage` give the state of the new count (`computing`, then `ready`) and the new size of the folder.
 

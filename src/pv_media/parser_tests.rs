@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the format readers: the image headers, TIFF and EXIF, the audio headers, ISO base media, Matroska,
 //! the text helpers, and the routes over these formats.
 

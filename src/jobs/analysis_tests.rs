@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the integrity, of the technical inspection and of the version routes.
 
 use std::sync::Arc;

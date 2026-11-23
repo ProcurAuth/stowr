@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The resource tree of the access policy (docs/ACCESS.md, "The resource tree").
 //!
 //! ```text
@@ -61,7 +62,7 @@ pub struct Resource {
 }
 
 impl Resource {
-    /// The text form of the chain, for example `service:infra-s3/bucket:logs/folder:2026`. Each id is
+    /// The text form of the chain, for example `service:stowr/bucket:logs/folder:2026`. Each id is
     /// percent-encoded. The log, the cache and [`super::Ask`] use this form.
     pub fn path(&self) -> String {
         let mut out = String::new();

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The guard of the mode `authzen`: the library `procurauth-pep` of ProcurAuth 1.1.
 //!
 //! The library checks the identity token, asks the PDP, keeps the answers and the token results, and applies the

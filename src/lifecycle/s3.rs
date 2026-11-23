@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The S3 requests of the tags and of the lifecycle rules, and the flavour of the provider.
 //!
 //! The functions of this file send their requests through [`S3Wire`]. The S3 back end is the wire of the program.

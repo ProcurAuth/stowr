@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.multiparts: the window "Incomplete uploads" of the Actions menu.
  * - the incomplete multipart uploads of the folder (or of the bucket at the root), as a table with the start date, the

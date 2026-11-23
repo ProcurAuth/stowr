@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The reads of a volume: the listing, the tree walk, HEAD, GET with the conditions and the ranges of S3, and the
 //! probe of the permissions.
 //!

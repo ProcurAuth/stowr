@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Stowr: a self-contained browser for S3-compatible storage, Google Cloud Storage and folders of the server.
 //!
 //! The crate has one module for each part of the program, and the shared module `common`. docs/DEVELOPMENT.md gives

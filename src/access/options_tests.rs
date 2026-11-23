@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the options route (ProcurAuth 5.6 to 5.8, cases U05 and U70 to U83).
 
 use std::collections::BTreeSet;

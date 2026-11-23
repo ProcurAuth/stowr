@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The embedded browser interface: the pages, the assets, the fingerprint of the build, the prepared answers, the
 //! pages of the addresses `/-/<host>/<bucket>/...` and the 404 page.
 //!

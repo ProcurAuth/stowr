@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Safe code and Markdown rendering helpers. All runtime assets are local. */
 (function () {
   'use strict';

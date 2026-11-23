@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The JSON encoding of the answers.
 //!
 //! The answers keep one exact form, so that a client sees the same bytes for the same value:

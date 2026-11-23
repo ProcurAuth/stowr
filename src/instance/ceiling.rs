@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The ceilings of the access policy (`max_object_size`) and their checks in the storage calls
 //! (docs/ACCESS.md, "The ceiling max_object_size").
 //!

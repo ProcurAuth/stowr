@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The fakes of the tests: a provider that keeps the lifecycle configuration and the tags as bytes, the back ends
 //! that carry it, and the helpers that call a route.
 

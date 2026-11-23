@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The effective configuration: the value that applies for each key, and its source. `print-config` writes it, and
 //! the server writes it in its log at start. The output hides each secret.
 

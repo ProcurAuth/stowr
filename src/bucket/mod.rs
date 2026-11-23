@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The protection and the facts of the objects and of the buckets. This folder has four functions: Object Lock, the
 //! encryption, the edit of the metadata, and the usage and the quota of a bucket with the capacity of its storage
 //! (docs/ARCHITECTURE.md, "Object Lock", "Encryption", "Edit of the metadata", "Usage and quota of a bucket").

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The audio headers: MP3 (the ID3v2 tag and the first MPEG audio frame), WAV (RIFF chunks and the INFO list), FLAC
 //! (STREAMINFO and the Vorbis comments) and the last granule position of an Ogg stream.
 

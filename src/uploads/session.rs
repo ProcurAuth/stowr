@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The upload session: its state in memory, the form that the client sees, the size of a chunk and the
 //! `Content-Range` of a chunk.
 

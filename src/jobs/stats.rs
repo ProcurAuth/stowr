@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The Insights statistics of a prefix: the counts by type and by folder, the largest and the most recent objects in
 //! bounded heaps, and the treemap that the job builds at its end (docs/ARCHITECTURE.md, "Insights treemap
 //! normalization").

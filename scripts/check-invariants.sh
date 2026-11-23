@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Check the rules of the runtime that the compiler does not check (docs/DEVELOPMENT.md, "Rules of the runtime").
 # Use: scripts/check-invariants.sh
 # The script reads the files of the repository only. It needs bash, grep and find.

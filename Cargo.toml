@@ -4,7 +4,8 @@ version = "0.3.0"
 edition = "2024"
 rust-version = "1.99"
 description = "A self-contained browser for S3-compatible storage, Google Cloud Storage and folders of the server"
-repository = "https://github.com/SCcagg5/stowr"
+repository = "https://github.com/ProcurAuth/stowr"
+license = "MIT OR Apache-2.0"
 publish = false
 build = "build.rs"
 
@@ -46,8 +47,8 @@ base64 = "=0.22.1"
 libc = "=0.2.191"
 # The PEP of ProcurAuth 1.1 (mode authzen): the check of the identity token, the questions to the PDP, the kept answers,
 # and the transport over TLS with rustls and aws-lc-rs. procurauth-core gives the key set of the edge.
-procurauth-pep = { git = "https://github.com/SCcagg5/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false, features = ["tls"] }
-procurauth-core = { git = "https://github.com/SCcagg5/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false }
+procurauth-pep = { git = "https://github.com/ProcurAuth/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false, features = ["tls"] }
+procurauth-core = { git = "https://github.com/ProcurAuth/procurauth", rev = "c820b4ac0e37c4769394876105fd549a6c8b38cc", default-features = false }
 
 [profile.release]
 opt-level = 3

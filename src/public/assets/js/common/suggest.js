@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.suggest: a text field with a small popover of suggested values (the ARIA combobox pattern).
  * - the popover has the look of the other menus of the page, and it is in the large window or in the body, so that the

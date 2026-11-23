@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the reader of the configuration: the `server`, `auth` and `bucket` blocks, the strict values, the
 //! sizes of the files, the reference and the encryption key.
 

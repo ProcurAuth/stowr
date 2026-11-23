@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A strict pull reader of XML over a stream of bytes.
 //!
 //! The reader gives start tags, end tags and text. It knows the five predefined entities and the numeric

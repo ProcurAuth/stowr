@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The edit of the metadata of an object: S3 `CopyObject` onto the same key with `x-amz-metadata-directive: REPLACE`.
 //!
 //! The request gives the complete state: the standard headers (`Content-Type`, `Cache-Control`,

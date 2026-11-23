@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The ZIP format: the central directory read over exact byte ranges (ZIP64 too), the entries stored or deflated,
 //! and the streamed writer with data descriptors.
 //!

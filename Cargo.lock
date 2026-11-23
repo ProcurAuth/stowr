@@ -616,7 +616,7 @@ dependencies = [
 [[package]]
 name = "procurauth-core"
 version = "1.1.0"
-source = "git+https://github.com/SCcagg5/procurauth?rev=c820b4ac0e37c4769394876105fd549a6c8b38cc#c820b4ac0e37c4769394876105fd549a6c8b38cc"
+source = "git+https://github.com/ProcurAuth/procurauth?rev=c820b4ac0e37c4769394876105fd549a6c8b38cc#c820b4ac0e37c4769394876105fd549a6c8b38cc"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -631,7 +631,7 @@ dependencies = [
 [[package]]
 name = "procurauth-pep"
 version = "1.1.0"
-source = "git+https://github.com/SCcagg5/procurauth?rev=c820b4ac0e37c4769394876105fd549a6c8b38cc#c820b4ac0e37c4769394876105fd549a6c8b38cc"
+source = "git+https://github.com/ProcurAuth/procurauth?rev=c820b4ac0e37c4769394876105fd549a6c8b38cc#c820b4ac0e37c4769394876105fd549a6c8b38cc"
 dependencies = [
  "procurauth-core",
  "rustls",

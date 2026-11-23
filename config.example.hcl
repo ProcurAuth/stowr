@@ -10,7 +10,7 @@ access {
     # header = "X-Identity-Token"
     issuer           = "https://edge.example"
     # The id of this service: the aud of the tokens and the root of each chain of resources.
-    audience         = "infra-s3"
+    audience         = "stowr"
     # PEM public keys or a JWK Set (RFC 7517): 1 to 16 keys, Ed25519 or P-256. Give public_keys, public_keys_env or
     # public_keys_file.
     public_keys_file = "/run/keys/edge-jwks.json"

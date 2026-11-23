@@ -1,5 +1,5 @@
 # The SeaweedFS of the test stacks: one process (master, volume, filer and S3 API), from the pinned GitHub release.
-# The version and the checksums are the ones of the Home repository (versions.lock).
+# The version and the checksums pin one release of SeaweedFS.
 FROM alpine:3.21
 
 ARG TARGETARCH

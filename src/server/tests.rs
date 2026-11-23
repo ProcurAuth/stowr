@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route tests of the HTTP layer: each request goes through the whole dispatch over a back end in memory.
 
 use std::collections::BTreeMap;

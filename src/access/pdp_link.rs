@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The link of the guard to the PDP: a transport around the transport of the library `procurauth-pep`, and the
 //! journal of one call.
 //!

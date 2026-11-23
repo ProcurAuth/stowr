@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the HTTP client: TLS with the fixture certificate, no redirect, the gzip of the answers, the time
 //! limits and the cancel.
 

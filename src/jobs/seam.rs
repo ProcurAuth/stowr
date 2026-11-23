@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The points where the routes of this folder meet the access policy (docs/ACCESS.md, "The routes"): the read and
 //! the control of a job, the count of the versions of many keys, and the restore of a version.
 

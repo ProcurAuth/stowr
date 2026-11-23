@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 set -eu
 
 # One MinIO server with one drive for the tests. The identity comes from the HCL file of the browser, as for the

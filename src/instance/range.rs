@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The range readers of the previews.
 //!
 //! A [`RangeSource`] reads exact byte ranges of one object (one version). It checks each answer `206` and its

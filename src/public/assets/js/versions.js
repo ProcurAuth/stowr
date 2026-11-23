@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.versions: the versions of an object of the interface.
  * - the version picker of the file details: one row for each version, with its number, its date, its size and what

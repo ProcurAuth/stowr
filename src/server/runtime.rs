@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The HTTP/1.1 runtime: the listener, the timeouts of the connections, the conversion of a request, the final form
 //! of an answer, and the graceful stop.
 //!

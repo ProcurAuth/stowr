@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the structured text readers: folded lines, contacts and calendars.
 
 use std::collections::BTreeMap;

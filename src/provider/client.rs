@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The HTTP client of the providers, of the admin APIs and of the health check.
 //!
 //! The client speaks HTTP/1.1. It follows no redirect: the caller gets a `3xx` answer as it is. It reads no proxy

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the capacity of the storage behind the buckets, and of the answer that takes the more constraining
 //! part.
 

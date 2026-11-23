@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the transport of the guard: the request id, the waits, the deadline of a call and the journal.
 
 use std::sync::Mutex;

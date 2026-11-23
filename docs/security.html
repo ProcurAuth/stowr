@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="The protections of the runtime, the access policy, the browser and the provider connections. To report a vulnerability, read the security policy.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Security model | Stowr">
+<meta property="og:description" content="The protections of the runtime, the access policy, the browser and the provider connections. To report a vulnerability, read the security policy.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/security.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Security model | Stowr">
+<meta name="twitter:description" content="The protections of the runtime, the access policy, the browser and the provider connections. To report a vulnerability, read the security policy.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/security.html">
+<title>Security model | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html" aria-current="page">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> What Stowr protects, and how</p><h1>Security model</h1><p class="lede">The protections of the runtime, the access policy, the browser and the provider connections. To report a vulnerability, read the security policy.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#no-application-storage">No application storage</a></li><li><a href="#access-policy">Access policy</a></li><li><a href="#permission-enforcement">Permission enforcement</a></li><li><a href="#version-capability-probe">Version capability probe</a></li><li><a href="#upload-resume-token">Upload resume token</a></li><li><a href="#provider-connections">Provider connections</a></li><li><a href="#browser-isolation">Browser isolation</a></li><li><a href="#raw-private-key-preview">Raw private-key preview</a></li><li><a href="#complete-object-operations">Complete-object operations</a></li><li><a href="#resource-limits">Resource limits</a></li><li><a href="#archive-members">Archive members</a></li><li><a href="#logging">Logging</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/SECURITY-MODEL.md"><code>docs/SECURITY-MODEL.md</code></a> in the repository.</p><p>This document tells what Stowr protects and how. To report a vulnerability, read <a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">SECURITY.md</a>.</p>
+<h2 id="no-application-storage"><a class="self" href="#no-application-storage">No application storage</a></h2>
+<p>The runtime does not create or change these things:</p>
+<ul><li>local state files;</li><li>a local database;</li><li>cache or checkpoint folders;</li><li>temporary files, except the files of a volume;</li><li>hidden provider objects;</li><li>control prefixes, tags or metadata;</li><li>probe uploads or probe deletes.</li></ul>
+<p>A scratch container can run Stowr with a read-only root file system and no data volume. A change in a provider happens only for an explicit operation of a person: upload, copy, move, restore, extraction, overwrite or delete.</p>
+<p>A provider can record each network request in its audit log. Stowr cannot make its reads and writes invisible to S3, to GCS, to Garage or to a proxy.</p>
+<h2 id="access-policy"><a class="self" href="#access-policy">Access policy</a></h2>
+<p>The <code>access</code> block is mandatory. Its key <code>mode</code> is <code>authzen</code> or <code>open</code>. <a href="access.html">ACCESS.md</a> gives the full rules.</p>
+<h3 id="mode-authzen">Mode authzen</h3>
+<p>The edge authenticates the person and signs an identity token. Stowr checks the token on each request. It asks a PDP (Policy Decision Point) for each operation. Stowr follows the ProcurAuth protocol.</p>
+<ul><li>Stowr accepts a token with the algorithm <code>Ed25519</code> or <code>ES256</code> only. It refuses <code>EdDSA</code>. It reads the token only from the configured header, never from <code>Authorization</code>, a cookie or a query parameter.</li><li>Stowr accepts requests only through the edge (P 9.4). Use a network rule: a firewall, a network policy or a private network. Do not publish the port of Stowr. A client that reaches Stowr without the edge skips the other checks of the edge. Stowr writes a warning at start when <code>server.listen</code> accepts requests on each network interface.</li><li>The routes <code>/healthz</code> and <code>/.well-known/procurauth/actions</code> need no token and ask the PDP nothing. Other routes hold no data of a bucket: the static files, the pages, <code>/api/build</code>, <code>OPTIONS /s3</code> and <code>/api/jobs</code> without an id. They need a token and ask the action <code>access</code> on the service node. A <code>false</code> answer gives <code>403 forbidden</code>. Each other route asks the actions of the action document.</li><li>A route that has no access rule answers 403. An action that the configuration does not serve answers 403.</li><li>Stowr fails closed. When the PDP gives no valid answer, Stowr answers <code>503 pdp_unavailable</code>. It never answers 403 and it never grants access. Stowr never sends a question again.</li><li>A kept answer of the PDP stays valid for <code>access.pdp.cache_ttl</code> at most (default 30 s). A revoked grant can stay active for this time. Set <code>cache_ttl = "0s"</code> to keep no answer.</li><li>A volume follows no symbolic link in the path of a key. A grant is on the key of an object, not on its real path.</li><li>The PDP token is a secret. The file refuses it in clear text: give <code>token_env</code> or <code>token_file</code>. Keep the network of the PDP closed, and use an https URL. The setting <code>plain_http = true</code> sends the token and the questions without TLS.</li><li>The log line <code>access.decision</code> shows the subject and the node. With <code>server.log_mode = "anonymous"</code>, it shows <code>-</code> in place of the folder ids. Keep the log under the rules of your data policy.</li></ul>
+<h3 id="mode-open">Mode open</h3>
+<p>Stowr checks no token and asks no PDP. Each request that reaches Stowr can do each operation that the process ceilings let. The ceilings are the <code>permissions</code> of the blocks and <code>server.access_mode</code>.</p>
+<p>Use this mode only behind a reverse proxy that authenticates the users. Do not publish the port of Stowr. Stowr writes a warning at start. The interface shows one notice when the reverse proxy answers 401.</p>
+<h2 id="permission-enforcement"><a class="self" href="#permission-enforcement">Permission enforcement</a></h2>
+<p>The interface adapts to the known capabilities. Each handler of the server also checks the permissions that it needs. The interface never decides.</p>
+<p>The effective access is the intersection of these things:</p>
+<ul><li>the operations that Stowr implements;</li><li>the permission ceiling of the bucket;</li><li>the decision of the PDP, in the mode <code>authzen</code>;</li><li>the policy of the credentials at the provider;</li><li>the retention, the encryption and the policy of the provider;</li><li>the access mode <code>force_read_only</code>, when it is set.</li></ul>
+<p>Stowr treats an unknown capability as usable until the provider gives an explicit denial. The observations stay in the process. A denial that one object operation learns is reported for a minute. It never blocks the requests for other objects. Only these things are enforced: the configuration, the runtime policy and the bucket-level probes that deny a permission. A probe that fails, is canceled or gives a status other than 403 leaves the capability unknown.</p>
+<h2 id="version-capability-probe"><a class="self" href="#version-capability-probe">Version capability probe</a></h2>
+<p>Stowr enables the version controls only after one successful bounded request for the list of versions at start. A <code>501</code> answer, a denial, a time-out or a parse error hides all version controls for that bucket. The probe never creates, changes or deletes an object.</p>
+<p>Restore and permanent delete of a version need the permission and an explicit confirmation in the interface.</p>
+<h2 id="upload-resume-token"><a class="self" href="#upload-resume-token">Upload resume token</a></h2>
+<p>Stowr seals the provider coordinates of an upload in an authenticated AES-GCM token. It gives the token to the client. The token is bound to the id of the <code>auth</code> block and to the bucket instance. It expires after 30 days at most. Stowr does not write it.</p>
+<p>The opaque token is enough to find the state of the provider again after a restart. Treat it as a bearer capability. A client must not log it, put it in a URL or show it to a third party.</p>
+<h2 id="provider-connections"><a class="self" href="#provider-connections">Provider connections</a></h2>
+<ul><li>An endpoint uses HTTP or HTTPS. It has no user information, no query string and no fragment.</li><li>Stowr follows no redirect.</li><li>Stowr ignores the proxies of the environment.</li><li>Stowr uses TLS 1.2 or newer.</li><li>Only an explicit attribute of the configuration can stop the check of a certificate. It is for tests.</li><li>Stowr bounds the size of the configuration file and of each credential file.</li></ul>
+<h2 id="browser-isolation"><a class="self" href="#browser-isolation">Browser isolation</a></h2>
+<p>The interface loads only assets of its own origin. It makes no request to a CDN at run time. A strict CSP stops the previews of email, EPUB, SVG, Markdown and structured data. They cannot load third-party resources.</p>
+<p>Stowr checks the origin of each request that changes data. The credentials of a provider never reach the browser.</p>
+<p>Each route that returns object bytes carries the sandbox CSP. These routes are <code>/s3</code>, <code>/open/</code>, the image previews and <code>/api/archive-entry</code>. Stowr always sends an archive member that is an active document or a script as an attachment, with a neutral content type. Such members are HTML, SVG, XML, JavaScript and WebAssembly. Thus a ZIP member never runs as a page or a script of the same origin. Stowr delivers an SVG member only as an image to an <code>&lt;img&gt;</code> request.</p>
+<h2 id="raw-private-key-preview"><a class="self" href="#raw-private-key-preview">Raw private-key preview</a></h2>
+<p>The preview of a raw key is a deliberate function. It needs the read permission. Its content stays in the application, on the same origin. A deployment that holds private keys must limit the grants of <code>object.read</code> to the folders that need them. It can also use an access control at the reverse proxy. Keep <code>server.log_mode = "anonymous"</code>.</p>
+<h2 id="complete-object-operations"><a class="self" href="#complete-object-operations">Complete-object operations</a></h2>
+<p>An integrity check and the comparison of two versions in the browser are explicit actions of a person.</p>
+<ul><li>The integrity check runs with finite budgets of provider bytes and requests. It hashes with constant memory.</li><li>The comparison reads exact bounded ranges of two immutable versions of one key. The browser keeps two small buffers.</li></ul>
+<p>Stowr has no global analysis that needs a large exact result set in memory.</p>
+<h2 id="resource-limits"><a class="self" href="#resource-limits">Resource limits</a></h2>
+<p>These limits protect the storage slots from slow or hostile clients:</p>
+<ul><li>An upload body or a download must make progress at least every 30 seconds. Else Stowr cuts the connection and frees the slot.</li><li>A request that cannot get a storage slot in 30 seconds gets <code>503 storage_busy</code>. A background job waits in a queue.</li><li>Stowr cancels a paused job after 30 minutes. It aborts an idle upload session after 30 minutes.</li><li>A SQLite preview session expires after three idle periods at most. When the table is full, Stowr evicts the oldest session.</li><li>The preview parsers bound the depth of nesting, the count of elements, the decoded sizes and the output size. The bounds cover email parts, vCard and iCalendar lines, Parquet metadata, PDF page markers, FITS headers, spreadsheet rows, cells and pages, and SQLite sorts.</li><li>The cache of prepared static answers has a limit of entries and of bytes. The depth of the base URL has a limit.</li></ul>
+<h2 id="archive-members"><a class="self" href="#archive-members">Archive members</a></h2>
+<p>An extraction of selected members refuses these cases:</p>
+<ul><li>a directory that is used as a file;</li><li>a symbolic link;</li><li>an encrypted entry;</li><li>an absolute path or a traversal;</li><li>a duplicate destination;</li><li>a destination object that already exists;</li><li>a collision of sources;</li><li>an entry whose expanded size is over the configured budget.</li></ul>
+<p>Stowr streams the content from the archive to the provider destination. It makes no temporary file. An extraction needs the read and the write permission on the target. Thus the create-only conflict check cannot show that an object exists on a write-only target.</p>
+<h2 id="logging"><a class="self" href="#logging">Logging</a></h2>
+<p>The anonymous mode is the default. It keeps object keys out of the log, also the keys in the <code>/-/</code> URLs of the browser. Stowr quotes each logged path, so a control character cannot forge a log line. Use the detailed mode only in a controlled environment. The technical inspection never shows authorization headers, cookies, tokens or credential headers.</p></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

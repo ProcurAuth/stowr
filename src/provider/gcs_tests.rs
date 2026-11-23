@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the GCS back end against a local test server.
 
 use std::sync::atomic::{AtomicUsize, Ordering};

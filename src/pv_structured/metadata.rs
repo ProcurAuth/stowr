@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The details of the structured objects for the details panel: PDF, ZIP-compatible packages, contacts,
 //! calendars, e-mail and certificates. Each reader reads a bounded part of the object through a range source.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.states: the seven state icons of a bucket or a volume, always in this order: read, write, delete, encryption,
  * Object Lock, versioning and lifecycle rules. The bucket selector (app.js) and the information page (info.js) show

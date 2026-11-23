@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route `/api/image-preview`: the JPEG preview that a camera puts in a RAW file. A Fujifilm RAF header or the
 //! IFDs of a TIFF-based RAW file give the range of the preview; the route sends that range of the object. The route
 //! never decodes an image.

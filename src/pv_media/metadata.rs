@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The metadata that the readers find, its merge, and the reader of a bounded part of a file (the dimensions of the
 //! usual images, EXIF, MP3, WAV, FLAC and Ogg).
 

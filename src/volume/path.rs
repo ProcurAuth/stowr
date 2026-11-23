@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The keys and the paths of a volume: the check of a key, the resolution of each part of a path inside the root,
 //! the refusal of the symbolic links, and the names of the temporary files.
 //!

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="The service, the network, the logs, the limits, the upgrade and the steps to find a problem.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Operations | Stowr">
+<meta property="og:description" content="The service, the network, the logs, the limits, the upgrade and the steps to find a problem.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/operations.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Operations | Stowr">
+<meta name="twitter:description" content="The service, the network, the logs, the limits, the upgrade and the steps to find a problem.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/operations.html">
+<title>Operations | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html" aria-current="page">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> Run it in production</p><h1>Operations</h1><p class="lede">The service, the network, the logs, the limits, the upgrade and the steps to find a problem.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#what-runs">What runs</a></li><li><a href="#run-stowr-with-systemd">Run Stowr with systemd</a></li><li><a href="#run-stowr-in-a-container">Run Stowr in a container</a></li><li><a href="#network">Network</a></li><li><a href="#health-check">Health check</a></li><li><a href="#start">Start</a></li><li><a href="#logs">Logs</a></li><li><a href="#limits-and-memory">Limits and memory</a></li><li><a href="#volumes">Volumes</a></li><li><a href="#versions-large-objects-and-archives">Versions, large objects and archives</a></li><li><a href="#upgrade">Upgrade</a></li><li><a href="#rotate-keys-and-secrets">Rotate keys and secrets</a></li><li><a href="#troubleshooting">Troubleshooting</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/OPERATIONS.md"><code>docs/OPERATIONS.md</code></a> in the repository.</p><p>This guide tells how to run Stowr in production: the process, the network, the logs, the limits and the upgrade. <a href="configuration.html">CONFIGURATION.md</a> and <a href="reference.html">configuration-reference.md</a> tell about the keys.</p>
+<h2 id="what-runs"><a class="self" href="#what-runs">What runs</a></h2>
+<p>Stowr is one static binary. It starts one process and no other program. It keeps no state on disk.</p>
+<ul><li>The browser interface is in the binary. The server needs no file for it.</li><li>The jobs, the preview sessions, the upload sessions and the learned permissions are in memory. A restart discards them.</li><li>A volume is the one exception: Stowr writes the files of a <code>volume</code> block, in the folder of that block.</li><li>The process reads the configuration file and the files that the configuration names (secrets, keys). It reads each of them one time, at start.</li><li>The process reads the bundle of certificate authorities of the system for TLS to a provider and to the PDP. It reads the first file that exists in this list: <code>/etc/ssl/certs/ca-certificates.crt</code>, <code>/etc/pki/tls/certs/ca-bundle.crt</code>, <code>/etc/ssl/ca-bundle.pem</code>, <code>/etc/pki/tls/cacert.pem</code>, <code>/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem</code> and <code>/etc/ssl/cert.pem</code>. An endpoint with <code>http://</code> needs none of them.</li></ul>
+<h2 id="run-stowr-with-systemd"><a class="self" href="#run-stowr-with-systemd">Run Stowr with systemd</a></h2>
+<p>This unit file is an example. Change the paths for your machine.</p>
+<div class="code-wrap"><span class="label">ini</span><pre data-copy tabindex="0" aria-label="Code example: ini"><code>[Unit]
+Description=Stowr
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/stowr -c /etc/stowr/config.hcl
+User=stowr
+Group=stowr
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+CapabilityBoundingSet=
+# Add one ReadWritePaths line for the folder of each volume block.
+# ReadWritePaths=/srv/shared
+
+[Install]
+WantedBy=multi-user.target</code></pre></div>
+<p>Put the configuration and the secrets in <code>/etc/stowr</code>. Give the user <code>stowr</code> the read right, and nobody else. A secret file is read without its last line end. Stowr stops with the status 0 on <code>SIGTERM</code> or <code>SIGINT</code>. It lets the open requests end for 10 seconds at most.</p>
+<h2 id="run-stowr-in-a-container"><a class="self" href="#run-stowr-in-a-container">Run Stowr in a container</a></h2>
+<p>The binary is static. It needs no shared library and no loader, so a <code>scratch</code> image can hold it. Follow these rules:</p>
+<ul><li>Add a bundle of certificate authorities to the image when a provider or the PDP uses <code>https://</code>.</li><li>Run the container with <code>--read-only</code>. Mount the configuration file and the secret files read-only.</li><li>Mount the folder of each <code>volume</code> block with the write right for the user of the process.</li><li>Start the process with the arguments <code>-c /config/config.hcl</code>. The default path is <code>config.hcl</code> in the current folder.</li><li>Use <code>stowr healthcheck -c /config/config.hcl</code> as the health check. The image has no shell and no <code>curl</code>.</li></ul>
+<p>The directory <code>test/</code> builds such an image for the tests, and <code>test/scratch-runtime.sh</code> checks it. The image stays on the machine that builds it. The project publishes no image: a release has binaries only.</p>
+<h2 id="network"><a class="self" href="#network">Network</a></h2>
+<p>Stowr serves plain HTTP. It has no TLS server. Put a reverse proxy in front of it for HTTPS.</p>
+<ul><li><code>server.listen</code> is the address and the port. The default <code>:8080</code> listens on each network interface. Use <code>127.0.0.1:8080</code> when the proxy runs on the same machine.</li><li>With the mode <code>authzen</code>, only the edge can reach Stowr. Use a firewall, a network policy or a private network. A client that reaches Stowr with no edge skips the check of the edge. Stowr writes a warning at start when <code>listen</code> has no host.</li><li>With the mode <code>open</code>, only a reverse proxy that signs users in can reach Stowr.</li><li>The server reads the <code>Host</code> header, never <code>X-Forwarded-Host</code>. It refuses a request that changes data when <code>Origin</code> and <code>Host</code> differ (<code>403 origin_mismatch</code>). Make the proxy send the public host name in <code>Host</code>.</li><li>Connections to the providers, to the admin APIs and to the PDP use HTTP/1.1. They use no proxy and follow no redirect.</li></ul>
+<h3 id="reverse-proxy-and-a-path-prefix">Reverse proxy and a path prefix</h3>
+<p>Stowr serves its paths from <code>/</code>. The interface uses relative URLs, so a proxy can remove a path prefix. The HCL file has no key for a public path. To publish Stowr at <code>/stowr/</code>, use this nginx rule:</p>
+<div class="code-wrap"><span class="label">nginx</span><pre data-copy tabindex="0" aria-label="Code example: nginx"><code>location /stowr/ {
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    client_max_body_size 0;
+    proxy_request_buffering off;
+    proxy_buffering off;
+    proxy_read_timeout 300s;
+}</code></pre></div>
+<p>Keep the slash at the end of the public path. The relative URLs of the browser then stay in the prefix. The upload of a file sends chunks of 16 MiB or more, so set <code>client_max_body_size</code> to at least the chunk size. The settings <code>proxy_request_buffering off</code> and <code>proxy_buffering off</code> let the bytes of a large object pass without a copy on the proxy.</p>
+<h2 id="health-check"><a class="self" href="#health-check">Health check</a></h2>
+<p><code>GET /healthz</code> answers <code>200</code> with <code>{"instances":N,"status":"ok"}</code>. It needs no token and gives no data of a bucket. The command <code>stowr healthcheck</code> sends this request and exits with 0 when the status is 200. The address comes from <code>--url</code>. Without it, the address comes from <code>server.listen</code> of the file that <code>-c</code> names. Without both, it is <code>http://127.0.0.1:8080/healthz</code>.</p>
+<h2 id="start"><a class="self" href="#start">Start</a></h2>
+<p>Stowr checks the whole configuration before it serves. A mistake stops the start, and the message names the key, the expected form and the value. Run <code>stowr print-config -c &lt;file&gt;</code> to check a file without a start.</p>
+<p>After the check, Stowr sends bounded read requests to each bucket. It asks for a list of versions, for the tags of a key that does not exist, and for a list of multipart uploads. It also reads the lifecycle rules, the Object Lock and the encryption.</p>
+<p>Stowr uses the answers to show only what the provider can do. These probes make no change in a bucket. They make the start last a few seconds. A bucket that fails a probe stays usable, without the feature of that probe.</p>
+<h2 id="logs"><a class="self" href="#logs">Logs</a></h2>
+<p>Stowr writes one line for each event on the standard error stream. A line starts with the date and the time in UTC. The request log has the method, the quoted path, the status, the size of the answer and the duration:</p>
+<div class="code-wrap"><span class="label">text</span><pre data-copy tabindex="0" aria-label="Code example: text"><code>2026/11/23 16:07:34 POST "/api/uploads" 201 765B 11ms</code></pre></div>
+<ul><li>With <code>server.log_mode = "anonymous"</code> (the default), the log has no object key. <code>detailed</code> writes the keys: use it only to find a problem.</li><li>With the mode <code>authzen</code>, each request line also has the fields <code>subject</code> and <code>request_id</code>.</li><li>The log has the events of the access policy, for example <code>access.decision</code>, <code>access.unauthenticated</code> and <code>access.pdp_failed</code>. <a href="access.html">ACCESS.md</a> lists them.</li><li>At start, the log has each effective value of the configuration. A secret shows as <code>&lt;hidden&gt;</code>.</li></ul>
+<h2 id="limits-and-memory"><a class="self" href="#limits-and-memory">Limits and memory</a></h2>
+<p>Stowr bounds its resources. The keys of the block <code>server</code> set the bounds. Their defaults are in <a href="reference.html">configuration-reference.md</a>.</p>
+<ul><li><code>max_concurrent_storage_requests</code> and <code>max_concurrent_requests_per_storage</code> bound the calls to the providers.</li><li><code>max_storage_bytes_per_request</code> and <code>max_storage_requests_per_request</code> bound the work of one interactive request.</li><li><code>max_background_storage_bytes</code> and <code>max_background_storage_requests</code> bound one background job. At most four jobs are active or queued.</li><li><code>max_range_cache_bytes</code> bounds the memory cache of one range reader.</li><li><code>memory_limit_bytes</code> is a soft limit of the memory of the process. It is not a reservation. Set the limit of the container or of the unit as well.</li></ul>
+<p>A request that cannot get a storage slot in 30 seconds gets <code>503 storage_busy</code>. An upload or a download that makes no progress for 30 seconds is cut. The section "Resource limits" of <a href="security.html">SECURITY-MODEL.md</a> lists the other bounds.</p>
+<h2 id="volumes"><a class="self" href="#volumes">Volumes</a></h2>
+<p>A <code>volume</code> block shows a folder of the server as a bucket. Use it for a Docker volume, an NFS or CephFS mount, or a FUSE mount such as <code>weed mount</code> of SeaweedFS.</p>
+<ul><li>Stowr reads and writes the files with the identity of its process.</li><li>A write goes to a temporary file in the folder of the target. One rename then replaces the target.</li><li>Stowr does not follow a symbolic link that leaves the folder. With <code>access.mode = "authzen"</code>, it follows no link.</li><li>The address of a volume in the interface is <code>/-/volume/&lt;id&gt;/</code>.</li></ul>
+<p>The sections "Volumes" of <a href="architecture.html">ARCHITECTURE.md</a> and <a href="configuration.html">CONFIGURATION.md</a> tell more.</p>
+<h2 id="versions-large-objects-and-archives"><a class="self" href="#versions-large-objects-and-archives">Versions, large objects and archives</a></h2>
+<ul><li>At start, Stowr sends one bounded request for the versions of each bucket. When the provider answers <code>501</code>, refuses the request or fails, the bucket has no version browser. The interface then shows no version control for that bucket.</li><li>When a bucket has versions, the listing shows the number of versions of each file. The details have a version selector, the restore, the permanent delete of one version, and the comparison of two versions of one object.</li><li>The comparison runs in the browser. It reads two buffers with exact ranges and stops at the first byte that differs.</li><li><strong>Verify integrity</strong> reads a full object, one object at a time, when you click the button. Stowr hashes the stream and keeps no copy of the object.</li><li><strong>Inspect</strong> uses the metadata of the object and small exact ranges at the start and at the end of the object.</li><li>Archive entries use the central directory of a ZIP file. Stowr reads only the selected regular entries that have no encryption. You can open, download or verify an entry, or copy it to an object that you name.</li><li><strong>Insights</strong> gives the result at once when it ends in 100 ms. If not, it runs as a background job in memory, with pause, resume and cancel.</li></ul>
+<p>Stowr has no global duplicate finder and no global checksum manifest. Such a result needs a large scan state, and Stowr keeps no state on disk.</p>
+<h2 id="upgrade"><a class="self" href="#upgrade">Upgrade</a></h2>
+<ol><li>Read the section of the new version in <a href="changelog.html">CHANGELOG.md</a>, with its upgrade steps.</li><li>Download the archive and <code>checksums.txt</code>. Run <code>sha256sum --check --ignore-missing checksums.txt</code>.</li><li>Run <code>stowr print-config -c &lt;file&gt;</code> with the new binary on the current file. Change each key that it refuses.</li><li>Replace the binary and restart the service. The jobs and the upload sessions in memory end at the restart. A client of the API can resume an upload with its token, when the credentials stay the same.</li><li>Run <code>stowr healthcheck</code>, then open the interface.</li></ol>
+<p>To go back, put the old binary back. A new version can refuse a file of the old version, and the reverse. Keep the old file.</p>
+<h2 id="rotate-keys-and-secrets"><a class="self" href="#rotate-keys-and-secrets">Rotate keys and secrets</a></h2>
+<p>Stowr reads each key and each secret one time, at start. To rotate a secret, change the file or the variable that the configuration names, then restart Stowr. The steps for the keys of the edge are in <a href="access.html">ACCESS.md</a>, section "Rotate a key".</p>
+<h2 id="troubleshooting"><a class="self" href="#troubleshooting">Troubleshooting</a></h2>
+<div class="tablewrap"><table><thead><tr><th scope="col">Symptom</th><th scope="col">Cause and action</th></tr></thead><tbody><tr><th scope="row">The process stops at start.</th><td data-label="Cause and action">The configuration has a mistake. The message names the key, the expected form and the value. Run <code>stowr print-config</code>.</td></tr><tr><th scope="row">The interface shows "session ended" or the API gives <code>401</code>.</th><td data-label="Cause and action">The edge sent no valid identity token. Check the issuer, the audience, the clock and the key set.</td></tr><tr><th scope="row"><code>403 forbidden</code>.</th><td data-label="Cause and action">The PDP refused the action. Check the grant of the person on the node of the key.</td></tr><tr><th scope="row"><code>403 permission_denied</code>.</th><td data-label="Cause and action">The <code>permissions</code> of the bucket or <code>server.access_mode</code> refuse the operation.</td></tr><tr><th scope="row"><code>403 origin_mismatch</code> or <code>cross_site_request_blocked</code>.</th><td data-label="Cause and action">The proxy sent a <code>Host</code> header that differs from the <code>Origin</code> of the browser.</td></tr><tr><th scope="row"><code>429 too_many_requests</code>.</th><td data-label="Cause and action">The budget <code>writes</code> of the PDP is used. Read the header <code>Retry-After</code>.</td></tr><tr><th scope="row"><code>429 resource_budget_exceeded</code>.</th><td data-label="Cause and action">One request went over a <code>server.max_*</code> bound.</td></tr><tr><th scope="row"><code>503 pdp_unavailable</code>.</th><td data-label="Cause and action">The PDP gave no valid answer. Stowr never sends a question again.</td></tr><tr><th scope="row"><code>503 storage_busy</code>.</th><td data-label="Cause and action">All storage slots were in use for 30 seconds. Raise the concurrency keys, or wait.</td></tr><tr><th scope="row"><code>502</code> on an upload.</th><td data-label="Cause and action">The provider refused a request. The body has the code of the provider error.</td></tr><tr><th scope="row">A bucket shows no versions or no tags.</th><td data-label="Cause and action">The provider does not support them, or the start probe failed. The probe never blocks the bucket.</td></tr></tbody></table></div></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

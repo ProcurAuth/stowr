@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A reader of X.509 certificates, certificate requests and keys. It gives the facts that the previews show.
 //! These are the names in the text form of RFC 2253, the serial number, the dates, the algorithms, the
 //! alternative names and the size of a key. The reader refuses a structure that a strict parser refuses.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The S3 requests of the list of the incomplete multipart uploads: `ListMultipartUploads` and `ListParts`.
 //!
 //! The list never sends a prefix to the provider: MinIO gives an empty list for a prefix that is not a full key. The

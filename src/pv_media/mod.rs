@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The details of the media and the route `/api/media-info`: the dimensions, the duration and the metadata of
 //! images, audio and video read from bounded headers and trailers (PNG, JPEG and EXIF, WebP, TIFF and RAW, HEIF,
 //! ISO base media, Matroska, MP3, FLAC, WAV, Ogg, FITS, EXR, JPEG 2000, SVG...), the embedded previews of RAW files

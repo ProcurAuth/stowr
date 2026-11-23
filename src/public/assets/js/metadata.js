@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.metadata: the metadata section of the file details.
  * - the stored values of the standard headers and of the user metadata (x-amz-meta-*), read from the provider and not

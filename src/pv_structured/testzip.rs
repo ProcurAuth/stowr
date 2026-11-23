@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A small builder of ZIP archives for the tests: stored and deflated entries, with the system and the attributes
 //! of each entry.
 

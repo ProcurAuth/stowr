@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests that use a provider back end: the configuration of an `auth` block and of a bucket, and a
 //! back end over a local test server (refer to [`super::test_server`]).
 

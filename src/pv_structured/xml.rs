@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A strict XML reader for the package manifests: a pull tokenizer and a tree of elements.
 //!
 //! The reader keeps the local part of each name. It accepts the five predefined entities and the numeric

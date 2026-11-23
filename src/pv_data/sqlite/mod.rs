@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The SQLite reader of the previews. It reads the pages of a SQLite 3 database file over exact byte ranges and never
 //! runs SQL: the header, the B-tree pages of the tables and of the `WITHOUT ROWID` tables, the overflow pages and
 //! the records (docs/PREVIEWS.md, "SQLite").

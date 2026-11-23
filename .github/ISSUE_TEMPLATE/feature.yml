@@ -1,0 +1,25 @@
+name: Feature request
+description: Propose a new function or a change of behavior.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What do you want to do? What stops you?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: Describe the behavior that you want. State how it keeps Stowr stateless and bounded.
+    validations:
+      required: false
+  - type: input
+    id: provider
+    attributes:
+      label: Storage provider
+      description: The providers that the feature concerns, for example S3 or GCS.
+    validations:
+      required: false

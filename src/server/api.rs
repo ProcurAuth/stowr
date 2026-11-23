@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes of the instances, of the build, of the permissions, of the listing, of Insights, of the copy, the
 //! rename and the delete of objects and prefixes, and of the health check.
 

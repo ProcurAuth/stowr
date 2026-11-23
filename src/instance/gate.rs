@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The concurrency gates of the provider calls: one gate for the process and one gate for each instance.
 //!
 //! A call takes one slot of each gate. An interactive request waits 30 seconds at most, then gets

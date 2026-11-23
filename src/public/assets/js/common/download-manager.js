@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Resumable same-origin downloads using bounded HTTP byte ranges. */
 (function () {
   'use strict';

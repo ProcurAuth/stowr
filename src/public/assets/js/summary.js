@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.summary: the summary strip at the top of the details of a file, and the sections that close.
  * - the strip: one row of pills: the version ("v5 of 5", only with versions), the encryption (a key, and SSE-S3,

@@ -1,4 +1,5 @@
-//! The checks of the rules that docs/ARCHITECTURE.md, docs/SECURITY.md, docs/PREVIEWS.md and docs/CONFIGURATION.md
+// SPDX-License-Identifier: MIT OR Apache-2.0
+//! The checks of the rules that docs/ARCHITECTURE.md, docs/SECURITY-MODEL.md, docs/PREVIEWS.md and docs/CONFIGURATION.md
 //! give with a number or a fixed value. Each test names the section of the document that it checks.
 
 use std::path::Path;
@@ -50,7 +51,7 @@ bucket "archive" {
     assert_eq!(bucket.root_prefix, "");
 }
 
-/// ARCHITECTURE.md, "Background jobs" and "Stateless state model"; SECURITY.md, "Resource limits".
+/// ARCHITECTURE.md, "Background jobs" and "Stateless state model"; SECURITY-MODEL.md, "Resource limits".
 #[test]
 fn the_limits_of_the_jobs_are_the_documented_values() {
     assert_eq!(crate::jobs::MAX_ACTIVE_JOBS, 4);
@@ -62,7 +63,7 @@ fn the_limits_of_the_jobs_are_the_documented_values() {
     assert_eq!(crate::instance::ops::MAX_DELETE_BATCH, 1000);
 }
 
-/// SECURITY.md, "Resource limits": the idle limits of the transfers, the wait for a storage slot and the life of an
+/// SECURITY-MODEL.md, "Resource limits": the idle limits of the transfers, the wait for a storage slot and the life of an
 /// idle upload session.
 #[test]
 fn the_limits_of_the_transfers_are_the_documented_values() {
@@ -92,7 +93,7 @@ fn the_values_of_the_copy_in_parts_are_the_documented_values() {
     assert_eq!(copy::MULTIPART_ABORT_TIMEOUT, Duration::from_secs(30));
 }
 
-/// SECURITY.md, "Browser isolation": each route that gives the bytes of an object carries the sandbox policy, also an
+/// SECURITY-MODEL.md, "Browser isolation": each route that gives the bytes of an object carries the sandbox policy, also an
 /// answer of the gateway and of the original.
 #[tokio::test]
 async fn the_routes_that_give_object_bytes_carry_the_sandbox_policy() {

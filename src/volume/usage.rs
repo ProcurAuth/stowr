@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The usage of a volume. The part of the bucket is the size of the files of the folder, from the count of its sizer
 //! (`size.rs`): the read never walks the tree. The part of the storage is the file system of the folder (`statfs`):
 //! used = size - available, total = size, free = available. These numbers are for the whole file system. They are

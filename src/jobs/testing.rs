@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The helpers of the tests of the jobs: an application over the memory back end, the call of a route and the wait
 //! for a status of a job.
 

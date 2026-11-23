@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The middlewares of each request: the security headers, the request log, the check of the identity token, the
 //! budget of the request and its trailers, the idle limit of an upload body, and the same-origin check of the
 //! mutations.

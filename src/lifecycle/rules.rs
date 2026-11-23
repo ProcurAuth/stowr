@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The lifecycle rules: the public form of a rule, the rules of the editor, their checks, their XML, and the split
 //! of a configuration into elements.
 //!

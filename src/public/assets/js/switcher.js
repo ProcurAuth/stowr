@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.switcher: the bucket selector of the header, one implementation for the listing (app.js) and the information page
  * (info.js). The two pages have the same markup, the same classes, the same facts and the same reads.

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.objectLock: the retention section of the file details.
  * - the read: the mode and the date of the retention, the legal hold and the default retention of the bucket, for one

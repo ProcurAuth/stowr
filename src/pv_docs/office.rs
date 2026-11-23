@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The properties of an Office Open XML package (Word, Excel, PowerPoint, Visio) for the details of an object.
 //!
 //! The reader opens the central directory over exact ranges and reads the small parts `docProps/core.xml`,

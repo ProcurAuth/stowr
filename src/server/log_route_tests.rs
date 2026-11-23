@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The log lines of the access policy in mode `authzen`: the request log with the subject, the refusal of a token,
 //! the refusal of a route without a rule, the ceilings that a server cannot apply, a budget as a limit, the refusal of
 //! a ceiling and the line of the options route. Each test keeps the log lines of its thread.

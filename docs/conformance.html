@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="How to run the conformance cases of ProcurAuth against Stowr, and what the result is.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stowr">
+<meta property="og:title" content="Conformance | Stowr">
+<meta property="og:description" content="How to run the conformance cases of ProcurAuth against Stowr, and what the result is.">
+<meta property="og:url" content="https://procurauth.github.io/stowr/conformance.html">
+<meta property="og:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Stowr: every bucket and folder, in one page. One static binary.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Conformance | Stowr">
+<meta name="twitter:description" content="How to run the conformance cases of ProcurAuth against Stowr, and what the result is.">
+<meta name="twitter:image" content="https://procurauth.github.io/stowr/assets/og.png">
+<meta name="twitter:image:alt" content="Stowr: every bucket and folder, in one page.">
+<link rel="canonical" href="https://procurauth.github.io/stowr/conformance.html">
+<title>Conformance | Stowr</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<meta name="theme-color" content="#fafafd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c0e15" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/site.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to the content</a>
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="index.html" aria-label="Stowr, home page"><svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect width="32" height="32" rx="8" fill="var(--accent)"/><g transform="translate(6 5.6) scale(1.11)" fill="var(--accent-ink)"><rect x="1" y="1.5" width="16" height="2.6" rx="1.3"/><path fill-rule="evenodd" d="M4 5.6h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2zM6.2 8.5h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4zM6.2 12h5.6a.7.7 0 0 1 0 1.4H6.2a.7.7 0 0 1 0-1.4z"/></g></svg><span>Stow<b>r</b></span></a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav id="site-nav" aria-label="Main"><ul><li><a href="index.html">Overview</a></li><li><a href="getting-started.html">Getting started</a></li><li><a href="configuration.html">Configuration</a></li><li><a href="architecture.html">Architecture</a></li><li><a href="access.html">Access</a></li><li><a href="security.html">Security</a></li><li><a href="operations.html">Operations</a></li><li><a href="reference.html">Reference</a></li><li><a href="changelog.html">Changelog</a></li><li class="nav-gh"><a href="https://github.com/ProcurAuth/stowr">GitHub</a></li></ul></nav>
+    <a class="gh-link" href="https://github.com/ProcurAuth/stowr" aria-label="Stowr on GitHub" title="Stowr on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><span>GitHub</span></a>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme" title="Switch colour theme"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor"/></svg></button>
+  </div>
+</header>
+<main id="main">
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> The test of the ProcurAuth runner</p><h1>Conformance</h1><p class="lede">How to run the conformance cases of ProcurAuth against Stowr, and what the result is.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#run-the-test">Run the test</a></li><li><a href="#what-the-script-does">What the script does</a></li><li><a href="#the-files">The files</a></li><li><a href="#expected-result">Expected result</a></li><li><a href="#the-file-expectedtxt">The file expected.txt</a></li><li><a href="#the-commit-of-the-runner">The commit of the runner</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/CONFORMANCE.md"><code>docs/CONFORMANCE.md</code></a> in the repository.</p><p>The ProcurAuth repository has a conformance runner, <code>access-conformance</code>. The runner tests a service (a PEP) with the series U of cases. Stowr runs this series in Docker. The behavior that the cases test is in <a href="access.html">ACCESS.md</a>.</p>
+<h2 id="run-the-test"><a class="self" href="#run-the-test">Run the test</a></h2>
+<p>The script <code>test/conformance/run.sh</code> does the whole test. It needs Docker, <code>git</code> and <code>python3</code>.</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>PROCURAUTH_DIR=/path/to/procurauth test/conformance/run.sh</code></pre></div>
+<p><code>PROCURAUTH_DIR</code> gives the checkout of the ProcurAuth repository. The default is the directory <code>procurauth</code> next to the checkout of Stowr. The checkout must be at the commit of "The commit of the runner". The script does not change the checkout.</p>
+<div class="tablewrap"><table><thead><tr><th scope="col">Option</th><th scope="col">Use</th></tr></thead><tbody><tr><th scope="row"><code>--cases U01,U02,...</code></th><td data-label="Use">Run only these cases. The check of <code>expected.txt</code> then covers only these cases.</td></tr><tr><th scope="row"><code>--format text</code> or <code>--format json</code></th><td data-label="Use">The form of the report of the runner on the standard output. The default is <code>text</code>.</td></tr><tr><th scope="row"><code>--no-build</code></th><td data-label="Use">Do not build the runner. Use the runner of the last build.</td></tr><tr><th scope="row"><code>--log FILE</code></th><td data-label="Use">Write the log of Stowr to this file at the end.</td></tr></tbody></table></div>
+<div class="tablewrap"><table><thead><tr><th scope="col">Exit code</th><th scope="col">Result</th></tr></thead><tbody><tr><th scope="row">0</th><td data-label="Result">The failed cases and the skipped cases are equal to <code>expected.txt</code>.</td></tr><tr><th scope="row">1</th><td data-label="Result">The failed cases or the skipped cases are not equal to <code>expected.txt</code>.</td></tr><tr><th scope="row">2</th><td data-label="Result">A problem of the preparation: a bad profile, a target that does not answer, no tool, another commit of ProcurAuth.</td></tr></tbody></table></div>
+<h2 id="what-the-script-does"><a class="self" href="#what-the-script-does">What the script does</a></h2>
+<ol><li>It makes sure that the ProcurAuth checkout is at the commit of the runner.</li><li>It builds the runner with <code>scripts/cargo.sh</code> of the ProcurAuth repository, unless the option <code>--no-build</code> is set. The runner goes to the directory <code>stowr-conformance</code> of the target volume of that checkout.</li><li>It builds Stowr as a static binary with <code>scripts/static.sh</code>.</li><li>It copies the test keys of ProcurAuth, the configuration and the profile to a temporary directory. It makes the fixture: one file of 12 bytes and one empty folder.</li><li>It starts Stowr in a container with no network (<code>--network none</code>) and a read-only root. The configuration is <code>test/conformance/config.hcl</code>: the mode <code>authzen</code> and one volume.</li><li>It starts the runner in the network namespace of the container of Stowr. The two programs share only the loopback address.</li><li>It compares the failed cases and the skipped cases with <code>expected.txt</code>, and removes the container.</li></ol>
+<p>The runner has three roles. It is the client. It is the edge: it signs the identity tokens with the test keys of ProcurAuth. It is the PDP, on <code>127.0.0.1:8181</code>. Stowr never reaches a real PDP. The script removes only the container that it started.</p>
+<h2 id="the-files"><a class="self" href="#the-files">The files</a></h2>
+<div class="tablewrap"><table><thead><tr><th scope="col">File</th><th scope="col">Use</th></tr></thead><tbody><tr><th scope="row"><code>test/conformance/run.sh</code></th><td data-label="Use">The script.</td></tr><tr><th scope="row"><code>test/conformance/config.hcl</code></th><td data-label="Use">The configuration of Stowr for the test. It uses <code>public_keys_file</code> and <code>token_file</code>, and a <code>cache_ttl</code> of <code>0s</code>.</td></tr><tr><th scope="row"><code>test/conformance/profile.json</code></th><td data-label="Use">The profile of the service: the service id, the token rules, the PDP, and the operations.</td></tr><tr><th scope="row"><code>test/conformance/expected.txt</code></th><td data-label="Use">The cases that do not pass, with their status and their reason.</td></tr></tbody></table></div>
+<p>The operations of the profile:</p>
+<div class="tablewrap"><table><thead><tr><th scope="col">Operation</th><th scope="col">Request</th><th scope="col">Action and node</th></tr></thead><tbody><tr><th scope="row"><code>use_plain</code></th><td data-label="Request"><code>GET /s3</code> of the file <code>reports/a.txt</code></td><td data-label="Action and node"><code>object.read</code> on <code>folder:reports</code></td></tr><tr><th scope="row"><code>use_ceiling</code></th><td data-label="Request">The same read, with the ceiling <code>max_object_size</code></td><td data-label="Action and node"><code>object.read</code> on <code>folder:reports</code></td></tr><tr><th scope="row"><code>use_budget</code></th><td data-label="Request"><code>PUT /s3</code> of <code>reports/new.txt</code></td><td data-label="Action and node"><code>object.write</code> on <code>folder:reports</code>, with usage</td></tr><tr><th scope="row"><code>use_multi</code></th><td data-label="Request"><code>POST /api/copy</code> of <code>reports/a.txt</code> to <code>reports/copy.txt</code></td><td data-label="Action and node">the use <code>object.write</code>, and the other <code>object.read</code> with <code>permission_only</code></td></tr><tr><th scope="row"><code>read_health</code></th><td data-label="Request"><code>GET /healthz</code>, with no token</td><td data-label="Action and node">no question</td></tr><tr><th scope="row"><code>use_no_action</code></th><td data-label="Request"><code>GET /</code>, a static page</td><td data-label="Action and node"><code>access</code> on the service</td></tr><tr><th scope="row"><code>read_actions</code>, <code>list_options</code></th><td data-label="Request">The defaults of the runner: the action document, and the options route with the type <code>bucket</code></td><td data-label="Action and node"></td></tr></tbody></table></div>
+<p>The profile has no operation <code>use_service</code>. In the cases, this operation is the use of an action of the action document on the node of the service. No route of Stowr uses such a permission: the routes without data of a bucket ask the action <code>access</code>, and <code>use_no_action</code> tests them. The profile has no member <code>approval_calls</code>: the runner reads it only for an MCP endpoint. The case U113 tests the answer <code>approval_cannot_wait</code> of the HTTP routes.</p>
+<p>The profile says that the service has no answer cache that the runner must count, because <code>cache_ttl</code> is <code>0s</code>.</p>
+<h2 id="expected-result"><a class="self" href="#expected-result">Expected result</a></h2>
+<p>The run of the series U gives 127 cases: 81 passed, 0 failed and 46 skipped. No case gives a warning.</p>
+<p>The runner skips these cases:</p>
+<div class="tablewrap"><table><thead><tr><th scope="col">Cases</th><th scope="col">Reason</th></tr></thead><tbody><tr><th scope="row">U18, U23, U25 to U31, U85 to U111, U114 to U117, U121 to U125 (45 cases)</th><td data-label="Reason">The service has no MCP endpoint.</td></tr><tr><th scope="row">U84</th><td data-label="Reason">The profile has no operation <code>use_service</code> (refer to "The files").</td></tr></tbody></table></div>
+<p>The cases U02, U40, U59 and U113 also have steps with the operation <code>use_service</code>. The runner skips these steps and runs the other steps of the cases. These cases pass.</p>
+<p>The new cases of ProcurAuth 1.1 that run all pass:</p>
+<ul><li>U118 tests the form of <code>iat</code> and <code>exp</code>.</li><li>U119 tests a token without <code>kid</code> and a key set with two keys.</li><li>U120 tests <code>nbf</code>.</li><li>U126 tests a reason of 17.1 for an other permission.</li><li>U127 tests the health probe and a route without action.</li></ul>
+<p>The cases U121 to U125 need an MCP endpoint.</p>
+<h2 id="the-file-expectedtxt"><a class="self" href="#the-file-expectedtxt">The file expected.txt</a></h2>
+<p>The file <code>expected.txt</code> lists each case that does not pass. Write one case id for each line, then the status <code>fail</code> or <code>skip</code>, then an optional <code>#</code> and the reason. A line with a case id only is a failed case. The file can have blank lines and comment lines.</p>
+<p>The script exits with 0 only when the failed cases and the skipped cases are equal to this list. A case that fails or skips and is not in the list is a failure of the test. A case in the list that has another result is also a failure: change the list.</p>
+<h2 id="the-commit-of-the-runner"><a class="self" href="#the-commit-of-the-runner">The commit of the runner</a></h2>
+<p>The script pins one commit of the ProcurAuth repository: <code>c820b4ac0e37c4769394876105fd549a6c8b38cc</code>, the tag <code>v1.1</code> (ProcurAuth 1.1, 127 cases in the series U). Thus a change of the runner never changes the result by itself. The library <code>procurauth-pep</code> of <code>Cargo.toml</code> has the same commit.</p>
+<p>To change the commit:</p>
+<ol><li>Check out the new commit of the ProcurAuth repository.</li><li>Write the full SHA of the new commit in <code>procurauth_commit</code> of <code>test/conformance/run.sh</code>.</li><li>Run <code>PROCURAUTH_DIR=/path/to/procurauth test/conformance/run.sh</code>.</li><li>Update <code>test/conformance/expected.txt</code> and the numbers of "Expected result" in this document.</li><li>Write the full SHA in the continuous integration and in this section.</li></ol></article></div>
+</main>
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="foot-grid">
+      <div>
+        <h2>Stowr</h2>
+        <p>Stowr browses S3-compatible storage, Google Cloud Storage and folders of the server. Version 0.3.0.</p>
+      </div>
+      <div>
+        <h2>Learn</h2>
+        <ul>
+          <li><a href="getting-started.html">Getting started</a></li>
+          <li><a href="configuration.html">Configuration</a></li>
+          <li><a href="architecture.html">Architecture</a></li>
+          <li><a href="previews.html">Previews</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Run</h2>
+        <ul>
+          <li><a href="access.html">Access and ProcurAuth</a></li>
+          <li><a href="security.html">Security model</a></li>
+          <li><a href="operations.html">Operations</a></li>
+          <li><a href="reference.html">Configuration reference</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2>Project</h2>
+        <ul>
+          <li><a href="https://github.com/ProcurAuth/stowr">Repository</a></li>
+          <li><a href="https://github.com/ProcurAuth/stowr/releases/latest">Downloads</a></li>
+          <li><a href="changelog.html">Changelog</a></li>
+          <li><a href="development.html">Development</a></li>
+          <li><a href="conformance.html">Conformance</a></li>
+          <li><a href="https://procurauth.github.io/procurauth/">ProcurAuth</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="foot-legal">
+      <p>Stowr, version 0.3.0.</p>
+      <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
+      <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

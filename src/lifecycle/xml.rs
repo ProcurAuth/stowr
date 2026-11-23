@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! A small strict XML reader for the documents of the S3 provider (tags, lifecycle rules, versioning, errors).
 //!
 //! The reader gives tokens with their byte offsets and a tree of elements. It expands no external entity and no

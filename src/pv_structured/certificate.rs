@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The details of certificates, certificate requests and keys: the PEM blocks and the DER structures.
 
 use std::collections::BTreeMap;

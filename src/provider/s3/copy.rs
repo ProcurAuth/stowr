@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The copy of an object in parts on the provider (S3 `UploadPartCopy`).
 //!
 //! `CopyObject` refuses a source above 5 GiB. From [`multipart_copy_threshold`] up, a copy, a move or a rename starts

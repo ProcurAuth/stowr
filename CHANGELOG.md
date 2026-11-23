@@ -1,35 +1,44 @@
-# Changes
+# Changelog
 
-This document uses ASD-STE100 Simplified Technical English.
+This file follows the layout of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The versions follow
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html). Before 1.0, a minor version can change a key or a route.
+The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes of the release.
+
+## Unreleased
+
+Nothing yet.
 
 ## 0.3.0 (2026-11-23)
 
-Stowr follows ProcurAuth 1.1 in the mode `authzen`. The configuration keys, the routes and the JSON of the answers stay
-the same. The release has a static binary for Linux amd64 and for Linux arm64.
+Stowr 0.3.0 is a new implementation of the product. It replaces the program of the earlier versions. The configuration
+keys, the routes and the JSON of the answers stay the same. The mode `authzen` follows ProcurAuth 1.1.
 
-### Changes of the access policy (ProcurAuth 1.1)
+### Added
+
+- The release has a static binary for Linux amd64 and for Linux arm64. The archives are `stowr_0.3.0_linux_amd64.tar.gz`
+  and `stowr_0.3.0_linux_arm64.tar.gz`, with `checksums.txt`. Neither has a dynamic loader or a shared library. To build
+  the binary from the source, refer to `docs/DEVELOPMENT.md`.
+- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` before its first question, and again after
+  one hour. It uses the endpoints and the limits of the metadata. A PDP without metadata gets the default paths.
+- The ceiling `max_object_size` of the action document has the unit `bytes`.
+
+### Changed
 
 - When the PDP answers a use with a reason of approval (`approval_required`, `approval_pending`, `approval_denied` or
   `approval_expired`), Stowr answers `403` with the body `{"error":"approval_cannot_wait"}`. No route of Stowr waits for
   an approval. The operation has no effect.
-- The questions of the other permissions of an operation have `"context":{"permission_only":true}` and no usage. Stowr
-  asks the use in a separate question. The answer cache keeps the two kinds of answers apart.
+- The questions for the other permissions of an operation have `"context":{"permission_only":true}` and no usage. Stowr asks
+  the use in a separate question. The answer cache keeps the two kinds of answers apart.
 - The interface, the pages, `GET /api/build`, `OPTIONS /s3` and `/api/jobs` without an id ask the action `access` on the
-  service node. A `false` answer gives `403 forbidden`. `/healthz` and `/.well-known/procurauth/actions` need no token
-  and ask the PDP nothing.
-- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` before its first question, and again after
-  one hour. It uses the endpoints and the limits of the metadata. A PDP without metadata gets the default paths.
+  service node. A `false` answer gives `403 forbidden`. `/healthz` and `/.well-known/procurauth/actions` need no token and
+  ask the PDP nothing.
 - The default of `access.pdp.usage_timeout` is `6s`. For a question with usage, Stowr waits for the longer of two times:
   `usage_timeout`, and the time that the PDP publishes plus 1 second.
 - `iat`, `exp` and `nbf` of the identity token must be whole numbers of seconds (JSON integers with digits only). Stowr
   refuses a fraction, an exponent and a sign.
 - Stowr checks `nbf` when the token has it, with the clock skew.
-- When `public_keys` holds more than one key, a token without `kid` is refused. With one key, a token without `kid`
-  stays valid.
-- The unit of the ceiling `max_object_size` in the action document is `bytes`.
-
-### Other changes that a client can see
-
+- When `public_keys` holds more than one key, a token without `kid` is refused. With one key, a token without `kid` stays
+  valid.
 - Stowr sends the trailers `X-Stowr-Storage-Requests`, `X-Stowr-Storage-Bytes`, `X-Stowr-Elapsed-Ms` and
   `X-Stowr-Archive-*` only when the request has the header `TE: trailers`.
 - A JSON request body must use the exact names of the members. A name with other upper and lower case letters, for
@@ -38,21 +47,15 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 - An archive entry that is a symbolic link gives `403 archive_symlink_blocked`.
 - A read of a file of a volume that is not a regular file (a device, a socket or a pipe) gives `403 volume_not_file`.
 - The details of a package show a manifest value that is a list or an object as compact JSON, for example
-  `{"email":"y","name":"x"}` or `[1,2]`. A `null` value shows as an empty text, and the list of permissions skips it. A
-  number shows in its shortest decimal form, for example `1000000` or `1.5`. Below 1e-6 and from 1e21, it shows in the
-  exponent form, for example `1e-7` or `1e21`. An attribute of a certificate name with no value shows as an empty text.
-- `stowr -h` writes one help with a table of the commands and the options. The names and the forms of the options do
-  not change. An error of an option has a new text, for example `unknown option: -x`. The exit statuses do not change.
-- Some error texts are new: the errors of a URL in the configuration, the errors of `stowr healthcheck`, and the
-  errors of a CSV or XML preview. The error codes and the HTTP statuses do not change.
+  `{"email":"y","name":"x"}` or `[1,2]`. A `null` value shows as an empty text. A number shows in its shortest decimal
+  form, for example `1000000` or `1.5`. Below 1e-6 and from 1e21, it shows in the exponent form, for example `1e-7`.
+- `stowr -h` writes one help with a table of the commands and the options.
+- The conformance test runs the series U of ProcurAuth 1.1 against the static build (`docs/CONFORMANCE.md`).
+- An error of an option has a new text, for example `unknown option: -x`. The names and the forms of the options and the
+  exit statuses do not change.
+- Some error texts are new. They are the errors of a URL in the configuration, of `stowr healthcheck`, and of a CSV or XML preview. The error codes and the HTTP statuses do not change.
 - `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
   accepts the value and shows it.
-
-### Build
-
-- The release has one static binary for each architecture, with no dynamic loader and no shared library. The archives
-  are `stowr_0.3.0_linux_amd64.tar.gz` and `stowr_0.3.0_linux_arm64.tar.gz`, with `checksums.txt`.
-- To build the binary from the source, refer to `docs/DEVELOPMENT.md`.
 
 ### Upgrade steps from 0.2.1
 
@@ -66,54 +69,56 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 
 ## 0.2.1 (2026-11-08)
 
-### Changes
+### Changed
 
-- `access.identity.public_keys` accepts PEM text again, as ClickHouse Dash does. A text that starts with `{` is a JWK Set.
-  Other text is PEM: 1 to 16 `-----BEGIN PUBLIC KEY-----` blocks, Ed25519 or P-256 with an uncompressed point. The `kid`
-  of a PEM key is its RFC 7638 thumbprint. Refer to `docs/ACCESS.md`, "Public keys".
-- `iat` and `exp` of the identity token are NumericDate numbers (RFC 7519), as in ClickHouse Dash. A fraction, an
-  exponent and a sign are valid. Stowr rounds the value down to a whole second. Before, Stowr refused a token whose `iat`
-  or `exp` was not a whole number, for example `1800000290.0`.
-- A JWK follows the rules of ClickHouse Dash too: the `alg` `EdDSA` of an `OKP` key is accepted, and the members `use` and
-  `key_ops` have no effect. A token header with the `alg` `EdDSA` stays refused.
+- `access.identity.public_keys` accepts PEM text again. A text that starts with `{` is a JWK Set. Other text is PEM: 1 to 16
+  `-----BEGIN PUBLIC KEY-----` blocks, Ed25519 or P-256 with an uncompressed point. The `kid` of a PEM key is its RFC 7638
+  thumbprint. Refer to `docs/ACCESS.md`, "Public keys".
+- `iat` and `exp` of the identity token are NumericDate numbers (RFC 7519). A fraction, an exponent and a sign are valid.
+  Stowr rounds the value down to a whole second. Before, Stowr refused a token whose `iat` or `exp` was not a whole number,
+  for example `1800000290.0`.
+- A JWK follows these rules: the `alg` `EdDSA` of an `OKP` key is accepted, and the members `use` and `key_ops` have no
+  effect. A token header with the `alg` `EdDSA` stays refused.
 - No configuration of 0.2.0 stops the start.
 
 ## 0.2.0 (2026-11-08)
 
 Stowr follows the protocol ProcurAuth for the access of people. The `access` block is mandatory again.
 
-### Changes
+### Added
 
-- The `access` block is mandatory. A file without it stops the start. Its key `mode` is `authzen` or `open`. Mode `open`
-  checks no token and asks no PDP. Mode `authzen` needs the blocks `identity` and `pdp`.
 - ProcurAuth, mode `authzen`:
   - The identity token: Stowr accepts `Ed25519` and `ES256` only, and refuses `EdDSA`. The keys are a JWK Set. The key
     `clock_skew` is new.
-  - The PDP client: the default paths `/access/v1/evaluation` and `/access/v1/evaluations`, a usage question for the use of
-    each action that lists a budget, no retry, and an answer cache that `cache_ttl` bounds.
-  - The action document is at `/.well-known/procurauth/actions`. It publishes five actions: `object.read`, `object.write`,
+  - The PDP client. It has the default paths `/access/v1/evaluation` and `/access/v1/evaluations`. It asks a usage question for each use of an action that lists a budget. It never retries. An answer cache that `cache_ttl` bounds keeps the answers.
+  - The action document at `/.well-known/procurauth/actions`. It publishes five actions: `object.read`, `object.write`,
     `object.delete`, `object.lock` and `bucket.admin`.
-  - The resource tree is service, bucket, folder and subfolder. The node of a key is the deepest folder that holds it.
-  - The options route `/.well-known/procurauth/resources` lists the buckets and the folders that a person can see.
-  - The budget `writes`: each use of an action that changes objects takes one unit. A used budget gives `429 too_many_requests`
-    with `Retry-After`.
+  - The resource tree: service, bucket, folder and subfolder. The node of a key is the deepest folder that holds it.
+  - The options route `/.well-known/procurauth/resources`. It lists the buckets and the folders that a person can see.
+  - The budget `writes`: each use of an action that changes objects takes one unit. A used budget gives
+    `429 too_many_requests` with `Retry-After`.
   - The ceiling `max_object_size` bounds each object that an operation reads or writes. A size over it gives
     `403 ceiling_exceeded`.
-  - The interface lists only the buckets where the person holds one action. `/api/list` gives the `access` of the node and a
-    navigation list of the folders on the path to a folder that the person can read.
-  - A route with no access rule gives 403. A PDP failure gives `503 pdp_unavailable`, never 403.
+- The new document `docs/ACCESS.md` gives the access policy.
+- The conformance test `test/conformance/run.sh` runs the series U of the ProcurAuth runner against Stowr in Docker. A
+  workflow runs it on a pull request. Refer to `docs/CONFORMANCE.md`.
+
+### Changed
+
+- The `access` block is mandatory. A file without it stops the start. Its key `mode` is `authzen` or `open`. The mode `open`
+  checks no token and asks no PDP. The mode `authzen` needs the blocks `identity` and `pdp`.
+- The interface lists only the buckets where the person holds one action. `/api/list` gives the `access` of the node and a
+  navigation list of the folders on the path to a folder that the person can read.
+- A route with no access rule gives 403. A PDP failure gives `503 pdp_unavailable`, never 403.
 - With `access.mode = "authzen"`, a volume follows no symbolic link in the path of a key. Each link gives
   `403 volume_link_refused`.
-- The conformance test `test/conformance/run.sh` runs the series U of the ProcurAuth runner against Stowr in Docker. A workflow
-  runs it on a pull request. Refer to `docs/CONFORMANCE.md`.
-- The new document `docs/ACCESS.md` gives the access policy.
 
 ### Upgrade steps from 0.1.2
 
 1. Add the `access` block to the configuration file. A file without it stops the start.
 2. To keep the behavior of 0.1.2, write `access { mode = "open" }` and keep the reverse proxy that authenticates the users.
 3. To use the access policy, write `mode = "authzen"` with the blocks `identity` and `pdp`. Refer to `docs/ACCESS.md`.
-4. In mode `authzen`, limit the network so that only the edge reaches Stowr.
+4. In the mode `authzen`, limit the network so that only the edge reaches Stowr.
 
 ### Upgrade steps from the access block of 0.1.0
 
@@ -129,59 +134,56 @@ Stowr follows the protocol ProcurAuth for the access of people. The `access` blo
 
 ## 0.1.2 (2026-11-08)
 
-### Changes
+### Fixed
 
-- The list page has no "Back to site" link. Stowr behind a reverse proxy path prefix, for example `/s3/`, showed it on
-  its home page. A reverse proxy or the address bar gives the way back to the site.
+- The list page has no "Back to site" link. Stowr behind a reverse proxy path prefix, for example `/s3/`, showed it on its
+  home page. A reverse proxy or the address bar gives the way back to the site.
 
 ## 0.1.1 (2026-10-23)
 
-Stowr has one browser interface and no authentication of its own. The API, the routes, the other keys and the
-behaviour of the storage operations do not change.
+Stowr has one browser interface and no authentication of its own. The API, the routes, the other keys and the behavior of
+the storage operations do not change.
 
-### Changes
+### Changed
 
-- The binary embeds one browser interface: the newer of the two interfaces of 0.1.0, with the dense tables, the
-  bucket selector and the information page. The interface `default` and the key `server.frontend` are removed.
-- The `access` block is removed: the modes `authzen` and `open`, the verification of the identity token, the client
-  of the AuthZEN PDP and the route `/.well-known/access-actions`. The permissions of the buckets and the volumes, and
-  `server.access_mode`, do not change.
-- The vendored styles that only the removed interface used (Buefy, github-markdown-css and the style of highlight.js)
-  are removed. PDF.js, highlight.js and marked stay.
-- The browser keeps its settings under new keys that start with `stowr.`. The settings of 0.1.0 (the theme, the
-  columns of the listing, the open sections of the details and the tags of the uploads) go back to their defaults
-  one time.
+- The binary embeds one browser interface: the newer of the two interfaces of 0.1.0, with the dense tables, the bucket
+  selector and the information page.
+- The browser keeps its settings under new keys that start with `stowr.`. The settings of 0.1.0 go back to their defaults one time. They are the theme, the columns of the listing, the open sections of the details and the tags of the uploads.
 - The browser tests are in `test/frontend/`.
+
+### Removed
+
+- The interface `default` and the key `server.frontend`.
+- The `access` block: the modes `authzen` and `open`, the check of the identity token, the client of the AuthZEN PDP and the
+  route `/.well-known/access-actions`. The permissions of the buckets and the volumes, and `server.access_mode`, do not
+  change.
+- The vendored styles that only the removed interface used (Buefy, github-markdown-css and the style of highlight.js).
+  PDF.js, highlight.js and marked stay.
 
 ### Upgrade steps from 0.1.0
 
 1. Delete the line `frontend = "..."` from the `server` block. A file with this key stops the server at start:
    `unknown attribute "frontend" in server block`.
-2. Delete the `access { ... }` block. A file with this block stops the server at start:
-   `unknown block type "access"`.
-3. Put a reverse proxy that authenticates the users in front of Stowr, and do not publish the port of Stowr. Each
-   request that reaches Stowr can do each operation that the permissions of the buckets and the volumes let.
+2. Delete the `access { ... }` block. A file with this block stops the server at start: `unknown block type "access"`.
+3. Put a reverse proxy that authenticates the users in front of Stowr, and do not publish the port of Stowr. Each request
+   that reaches Stowr can do each operation that the permissions of the buckets and the volumes let.
 
 ## 0.1.0 (2026-10-23)
 
-The first release of Stowr: one static binary that browses S3-compatible buckets, Google Cloud Storage buckets and the
-folders of the server (volumes), with an embedded browser interface.
+The first release of Stowr. It is one static binary with an embedded browser interface. It browses S3-compatible buckets, Google Cloud Storage buckets and folders of the server (volumes).
 
-- Storage: S3-compatible providers (AWS S3, MinIO, SeaweedFS, Garage), Google Cloud Storage, and volumes (a folder of
-  the server, such as a Docker volume or a FUSE mount). Shared `auth` blocks serve many `bucket` blocks.
-- Configuration: one HCL file with a closed schema. An error stops the start and names the key. Secrets come only
-  from `_env` or `_file`. `print-config` shows the value and the source of each key. The reference comes from the
-  table of keys in the code.
+### Added
+
+- Storage: S3-compatible providers (AWS S3, MinIO, SeaweedFS, Garage), Google Cloud Storage, and volumes. A volume is a folder of the server, such as a Docker volume or a FUSE mount. Shared `auth` blocks serve many `bucket` blocks.
+- Configuration: one HCL file with a closed schema. An error stops the start and names the key. Secrets come only from
+  `_env` or `_file`. `print-config` shows the value and the source of each key. The reference comes from the table of keys
+  in the code.
 - Listing: dense tables, folders, search, sort, tags, versions, and the settings of the columns.
-- Previews of many file types with bounded byte ranges: text, code, Markdown, JSON, CSV, Parquet, SQLite, Excel,
-  Word, PDF, images, audio, video, archives and email.
-- Operations: upload with resume and SHA-256 checksums, download, copy, move, rename and delete of files and folders,
-  archive download and extraction, edit of the metadata and of the tags, restore and delete of versions, comparison
-  of two versions.
-- Bucket functions: lifecycle rules, Object Lock (retention and legal hold), encryption (SSE-S3, SSE-KMS and SSE-C),
-  cleanup of incomplete multipart uploads, and the usage and the quota of a bucket.
+- Previews of many file types with bounded byte ranges: text, code, Markdown, JSON, CSV, Parquet, SQLite, Excel, Word, PDF,
+  images, audio, video, archives and email.
+- Operations: upload with resume and SHA-256 checksums, download, copy, move, rename and delete of files and folders. Also archive download and extraction, edit of the metadata and of the tags, restore and delete of versions, and comparison of two versions.
+- Bucket functions: lifecycle rules, Object Lock (retention and legal hold), and encryption (SSE-S3, SSE-KMS and SSE-C). Also the cleanup of incomplete multipart uploads, and the usage and the quota of a bucket.
 - Information page of a bucket or a volume (`?info`): the permissions, the functions and the storage.
-- Permissions: a ceiling of read, write and delete for each bucket and volume, and `server.access_mode =
-  "force_read_only"`.
-- Runtime: no local state, bounded memory, provider requests and transfers, a read-only root file system, and a
-  static binary in a scratch image.
+- Permissions: a ceiling of read, write and delete for each bucket and volume, and `server.access_mode = "force_read_only"`.
+- Runtime: no local state, bounded memory, bounded provider requests and transfers, a read-only root file system, and a
+  static binary.

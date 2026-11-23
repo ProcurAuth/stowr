@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Local CSV/JSON Lines viewer plus a lazy, range-based Apache Parquet reader. */
 (function () {
   'use strict';

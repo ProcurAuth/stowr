@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The permissions of an instance: their states, the states at start, the merge of a discovery, and the states of
-//! the operations of the interface (docs/SECURITY.md, "Permission enforcement").
+//! the operations of the interface (docs/SECURITY-MODEL.md, "Permission enforcement").
 
 use std::collections::BTreeMap;
 

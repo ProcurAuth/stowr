@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Server-side encryption (SSE) of the objects.
 //!
 //! The display: a HEAD answer gives the encryption of an object. `x-amz-server-side-encryption` is `AES256` for

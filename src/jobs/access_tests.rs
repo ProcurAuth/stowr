@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the access policy of the job routes in mode `authzen`: a read and a control of a job ask the
 //! operation of the job again as a continuation, a refusal gives the answer of an unknown job, and Insights asks
 //! each request.

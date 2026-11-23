@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The storage interfaces: the values of a listing and of an object, and the traits of a storage back end.
 //!
 //! A back end (S3, GCS, a volume) implements [`Backend`]. The optional functions of a back end are traits; the

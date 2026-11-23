@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the `usage` block of an `auth` block and of `bucket.quota_bytes`.
 
 use crate::common::config::{Config, UsageSource};

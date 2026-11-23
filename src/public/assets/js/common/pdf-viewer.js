@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Native PDF embedding is intentionally disabled.
  * PDF preview is handled by preview.js through the local PDF.js canvas renderer
  * and a strict PDFDataRangeTransport. Keeping this namespace avoids breaking

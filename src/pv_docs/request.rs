@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The start of each route of this folder: the method, the instance, the permission, the key and the access policy.
 
 use std::sync::Arc;

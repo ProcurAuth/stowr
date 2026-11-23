@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The usage reader of Garage: one request to the admin API (v2), with the admin token as a bearer token.
 //!
 //! Measured on Garage v2.4.1: `GET /v2/GetBucketInfo?globalAlias=<bucket>` gives `objects`, `bytes`,

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The resumable uploads of a volume. An upload writes its chunks to a temporary file in the folder of the target:
 //! the name is the temporary prefix, a random part and, when it fits, the name of the target. The next chunk starts
 //! at the size of the temporary file, so a client can resume after a lost connection. The last chunk synchronizes

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The two steps that each provider call of this folder takes: wait for a slot, and learn the permission from the
 //! result. The instance has the same steps for its own calls; the calls of this folder use these copies.
 

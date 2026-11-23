@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 set -eu
 
 # One SeaweedFS process for the tests: master, volume, filer and S3 API. The identity comes from the HCL file of the

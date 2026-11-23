@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the provider clients that write a key file in a temporary folder: the shared state of an `auth`
 //! block and the service account of GCS.
 

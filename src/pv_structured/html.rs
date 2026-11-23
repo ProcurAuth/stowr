@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The text of an HTML fragment: the tags, the scripts and the styles go away, the line breaks stay, the character
 //! references become characters.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The configuration files of real deployments, and a file with each kind of key: they parse, and print-config gives
 //! the text of the `.print` file next to them. The secrets are test values in a temporary folder.
 
@@ -29,14 +30,17 @@ fn check_fixture(config: &str, expected: &str) {
 
 #[test]
 fn the_compose_deployment_prints_as_expected() {
-    check_fixture(include_str!("fixtures/home.hcl"), include_str!("fixtures/home.print"));
+    check_fixture(
+        include_str!("fixtures/compose.hcl"),
+        include_str!("fixtures/compose.print"),
+    );
 }
 
 #[test]
 fn the_cluster_deployment_prints_as_expected() {
     check_fixture(
-        include_str!("fixtures/home-k3s.hcl"),
-        include_str!("fixtures/home-k3s.print"),
+        include_str!("fixtures/kubernetes.hcl"),
+        include_str!("fixtures/kubernetes.print"),
     );
 }
 

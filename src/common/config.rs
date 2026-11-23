@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The typed configuration.
 //!
 //! The module `config` reads the HCL file one time at start into these structures. The rest of the program

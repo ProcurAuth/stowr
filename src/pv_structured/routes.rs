@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The routes `/api/structured-preview` and `/api/archive-preview`.
 
 use std::collections::BTreeMap;

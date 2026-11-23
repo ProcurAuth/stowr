@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /*
  * BB.encryption: the encryption section of the file details. It is read only.
  * - the object: the headers of the HEAD answer (SSE-S3, SSE-KMS and its key), or an object with a key of the client

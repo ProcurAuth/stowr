@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the routes `/api/media-info` and `/api/image-preview` over the memory back end, and of the bounded
 //! readers of EXIF and MP3.
 

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the archive routes and of the archive jobs, over the memory back end.
 
 use std::collections::BTreeMap;

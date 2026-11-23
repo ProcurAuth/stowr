@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the SHA-256 checksums: the header, the composite checksum, the chunks of an upload and the direct upload.
 
 use std::sync::Arc;

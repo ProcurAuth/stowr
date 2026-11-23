@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The resume token `stowr1`: the provider coordinates of an upload, sealed with an authenticated cipher.
 //!
 //! The server never writes the token to a disk or to the connected object store. The client keeps it. The key comes

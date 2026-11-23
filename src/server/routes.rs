@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The route table of the service: each module gives its routes, and the server registers them one time.
 //!
 //! A pattern that ends with `/` is a subtree (`/api/jobs/`); another pattern is an exact path; `/` takes each other

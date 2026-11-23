@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the operations of the change routes, of the jobs and of the continuations.
 
 use serde_json::json;

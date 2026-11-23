@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The previews of JSON: the raw text, the beautified text, the summary and the tree.
 //!
 //! Each route reads an object in order, from a byte offset, with exact ranges. A page has at most 256 KiB or 2000

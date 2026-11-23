@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The decoder of the configuration: the blocks `server`, `auth` (with `usage`) and `bucket`, the order of the checks,
 //! the checks between the blocks, and the typed result. `access_block` and `volume_block` decode the other blocks.
 

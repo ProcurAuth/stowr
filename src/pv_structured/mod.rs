@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The previews of structured text and of packages (docs/PREVIEWS.md, "Structured text" and
 //! "ZIP-compatible packages").
 //!

@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* User-facing object and prefix actions. */
 (function () {
   const BB = (window.BB = window.BB || {});

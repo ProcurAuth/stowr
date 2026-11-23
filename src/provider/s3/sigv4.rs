@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The AWS Signature Version 4 of a request (service `s3`).
 //!
 //! The signature covers the method, the escaped path, the query in its canonical form, the host, and these headers:

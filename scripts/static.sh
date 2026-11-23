@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Build the program as a static Linux file with the musl target of the host architecture (x86_64 or aarch64), inside
 # Docker.
 # Use: scripts/static.sh            (build)

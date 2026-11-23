@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the `access` block: the values and the defaults, the refusals, the secrets, the environment, the
 //! limits of the resources, print-config and the warnings.
 
@@ -29,7 +30,7 @@ bucket \"logs\" {
 
 const GOOD_IDENTITY: &str = "
     issuer           = \"https://edge.example\"
-    audience         = \"infra-s3\"
+    audience         = \"stowr\"
     public_keys_file = \"jwks.json\"
 ";
 
@@ -81,8 +82,8 @@ fn authzen_values_and_defaults() {
     let identity = identity_of(&config);
     assert_eq!(identity.header, "X-Identity-Token");
     assert_eq!(identity.issuer, "https://edge.example");
-    assert_eq!(identity.audience, "infra-s3");
-    assert_eq!(config.access.audience(), "infra-s3");
+    assert_eq!(identity.audience, "stowr");
+    assert_eq!(config.access.audience(), "stowr");
     assert_eq!(identity.key_names, vec!["Ed25519 kid=edge-1", "P-256 kid=edge-2"]);
     assert_eq!(identity.max_age, Duration::from_secs(300));
     assert_eq!(identity.clock_skew, Duration::from_secs(60));
@@ -375,22 +376,22 @@ fn refusals() {
         ),
         (
             "no audience",
-            authzen_text(&ident("audience         = \"infra-s3\"", ""), GOOD_PDP),
+            authzen_text(&ident("audience         = \"stowr\"", ""), GOOD_PDP),
             "access.identity.audience is required".to_owned(),
         ),
         (
             "audience empty",
-            authzen_text(&ident("\"infra-s3\"", "\"\""), GOOD_PDP),
+            authzen_text(&ident("\"stowr\"", "\"\""), GOOD_PDP),
             "access.identity.audience must have 1 to 256 bytes".to_owned(),
         ),
         (
             "audience 257 bytes",
-            authzen_text(&ident("\"infra-s3\"", &format!("\"{}\"", long(257))), GOOD_PDP),
+            authzen_text(&ident("\"stowr\"", &format!("\"{}\"", long(257))), GOOD_PDP),
             "access.identity.audience must have 1 to 256 bytes".to_owned(),
         ),
         (
             "audience with control",
-            authzen_text(&ident("\"infra-s3\"", "\"a\\u0007b\""), GOOD_PDP),
+            authzen_text(&ident("\"stowr\"", "\"a\\u0007b\""), GOOD_PDP),
             "access.identity.audience must have 1 to 256 bytes".to_owned(),
         ),
         (
@@ -1047,7 +1048,7 @@ fn print_config_in_authzen_mode() {
             "access.mode = \"authzen\"  # file".to_owned(),
             "access.identity.header = \"X-Identity-Token\"  # default".to_owned(),
             "access.identity.issuer = \"https://edge.example\"  # file".to_owned(),
-            "access.identity.audience = \"infra-s3\"  # file".to_owned(),
+            "access.identity.audience = \"stowr\"  # file".to_owned(),
             format!(
                 "access.identity.public_keys = [\"Ed25519 kid=edge-1\", \"P-256 kid=edge-2\"]  # file:{}",
                 dir.join("jwks.json")

@@ -1,0 +1,55 @@
+name: Defect
+description: Stowr does not do what the documents say.
+labels: ["bug"]
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `stowr version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Storage
+      options:
+        - AWS S3
+        - MinIO
+        - SeaweedFS
+        - Garage
+        - Another S3-compatible service
+        - Google Cloud Storage
+        - Volume (a folder of the server)
+    validations:
+      required: true
+  - type: dropdown
+    id: access
+    attributes:
+      label: Access mode
+      options:
+        - open
+        - authzen
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: The blocks that matter. Remove each secret and each real host name.
+      render: hcl
+    validations:
+      required: false
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to repeat the problem
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: What you expected, and what happened
+      description: Add the lines of the log, with the secrets removed.
+    validations:
+      required: true

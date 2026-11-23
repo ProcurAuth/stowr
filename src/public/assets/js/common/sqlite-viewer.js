@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 /* Read-only SQLite viewer backed by bounded remote page reads. */
 (function () {
   'use strict';

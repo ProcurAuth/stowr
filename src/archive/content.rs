@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The content types and the headers of the bytes of an archive entry.
 //!
 //! The module gives the media type of a file name and the rules of inline display. It also gives the active types

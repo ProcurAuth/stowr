@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The command line: `stowr -c <path>` (or `--config`), `--print-config`, and the commands `print-config`,
 //! `config-reference`, `healthcheck` and `version` (also `--version` and `-version`).
 //!

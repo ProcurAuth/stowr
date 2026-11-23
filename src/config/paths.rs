@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The paths of the configuration: the clean form of a path, the start of a relative path at the folder of the
 //! configuration file, and the bounded read of a file.
 

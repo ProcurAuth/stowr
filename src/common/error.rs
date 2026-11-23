@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The error type of the program and the error envelope of the answers.
 //!
 //! Every function that can fail returns [`Result`]. An [`Error`] gives the HTTP status, the code and the public

@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: MIT OR Apache-2.0 */
 /* Stowr: the preview page.
    The header is one row of 45 px, as the header of ClickHouse Dash: the way back at the left,
    then the file name, its size and its path from the bucket root on one line, and the tools and the theme control at

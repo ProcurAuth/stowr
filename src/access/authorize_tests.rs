@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! The tests of the check of the token, of the access rule of a route and of the questions of an operation.
 
 use std::sync::Arc;

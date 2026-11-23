@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //! Small helpers that each part of the program uses: random identifiers, the log line, the cancellation token.
 
 use std::fmt;

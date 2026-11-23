@@ -1,4 +1,5 @@
 #!/bin/sh
+# SPDX-License-Identifier: MIT OR Apache-2.0
 set -eu
 
 # The FUSE mount of SeaweedFS, then Stowr with the volume "sw" on it (config.hcl). weed mount reads and writes the
