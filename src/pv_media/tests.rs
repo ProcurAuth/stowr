@@ -808,6 +808,10 @@ async fn the_preview_of_a_tiff_based_raw_file_sends_its_embedded_jpeg() {
     assert_eq!(head.status, 200);
     assert!(head.body.is_empty());
     assert_eq!(head.header("content-type"), "image/jpeg");
+    assert_eq!(
+        head.header("content-length"),
+        synthetic_jpeg(4000, 3000).len().to_string()
+    );
 }
 
 #[tokio::test]

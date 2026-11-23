@@ -915,15 +915,28 @@ async fn the_details_of_svg_and_pnm_images_read_a_growing_prefix() {
     svg.extend_from_slice(b" -->\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"48\" height=\"24\"></svg>");
     let size = svg.len();
     let backend = memory();
-    backend.insert("tenant/icon.svg", svg, "image/svg+xml");
+    // An `.svg` key gets the details of a text: a key without extension and the media type of the listing reach the
+    // reader of SVG.
+    backend.insert("tenant/icon", svg, "image/svg+xml");
     backend.insert(
         "tenant/two.ppm",
         b"P6\n2 1\n255\n\xff\x00\x00\x00\xff\x00".to_vec(),
         "image/x-portable-pixmap",
     );
     let app = test_app(backend.clone());
-    let response = request_media_info(&app, "icon.svg").await;
-    assert_eq!((number(&response, "width"), number(&response, "height")), (48, 24));
+    let called = call(
+        &app,
+        "GET",
+        "/api/media-info?instance=rw&key=icon&mime=image%2Fsvg%2Bxml",
+    )
+    .await;
+    let response = called.json();
+    assert_eq!(
+        (number(&response, "width"), number(&response, "height")),
+        (48, 24),
+        "{response}"
+    );
+    assert!(response.get("container").is_none(), "{response}");
     assert_eq!(
         read_counts(&backend).2,
         ["bytes=0-4095".to_owned(), format!("bytes=4096-{}", size - 1)]
