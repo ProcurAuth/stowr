@@ -195,16 +195,34 @@ impl Instance {
     /// The first text is `AES256`, `aws:kms` or `aws:kms:dsse`, or empty when the bucket has none. The second text is
     /// `yes`, `no` or `unknown`, or empty for an instance without the key. The page shows a lock from these two facts.
     pub fn encryption_state(&self) -> (String, String) {
-        self.encryption
-            .state
+        let algorithm = self
+            .encryption
+            .probed
             .lock()
-            .map(|state| state.clone())
-            .unwrap_or_default()
+            .ok()
+            .and_then(|probed| probed.clone())
+            .and_then(|(_, configuration)| configuration)
+            .map(|configuration| configuration.algorithm)
+            .unwrap_or_default();
+        let applied = self
+            .encryption
+            .applied
+            .lock()
+            .map(|applied| applied.clone())
+            .unwrap_or_default();
+        (algorithm, applied)
     }
 
     /// True when the page can read the default encryption of the bucket. Until the probe has run, the answer is no.
     pub fn bucket_encryption_available(&self) -> bool {
-        self.backend.encryption_reader().is_some() && self.encryption.on.load(std::sync::atomic::Ordering::SeqCst)
+        self.backend.encryption_reader().is_some() && self.encryption_probe_supported()
+    }
+
+    fn encryption_probe_supported(&self) -> bool {
+        self.encryption
+            .probed
+            .lock()
+            .is_ok_and(|probed| probed.as_ref().is_some_and(|(supported, _)| *supported))
     }
 
     /// The provider of the instance. The lifecycle probe keeps it; without it, the back end tells it.
@@ -234,13 +252,12 @@ impl Instance {
         }
         let probe = ctx.with_timeout(PROBE_TIMEOUT);
         let result = probe.run(reader.bucket_encryption(&probe)).await;
-        self.encryption
-            .on
-            .store(result.is_ok(), std::sync::atomic::Ordering::SeqCst);
-        let algorithm = match &result {
-            Ok(Some(configuration)) => configuration.algorithm.clone(),
-            _ => String::new(),
-        };
+        if let Ok(mut probed) = self.encryption.probed.lock() {
+            *probed = Some(match &result {
+                Ok(configuration) => (true, configuration.clone()),
+                Err(_) => (false, None),
+            });
+        }
         let mut applied = String::new();
         if self.cfg.encryption == Encryption::SseS3 {
             let flavour = self.probe_flavour(&probe).await;
@@ -256,8 +273,8 @@ impl Instance {
                 );
             }
         }
-        if let Ok(mut state) = self.encryption.state.lock() {
-            *state = (algorithm, applied);
+        if let Ok(mut slot) = self.encryption.applied.lock() {
+            *slot = applied;
         }
     }
 
@@ -266,7 +283,7 @@ impl Instance {
         let Some(reader) = self.backend.encryption_reader() else {
             return Err(bucket_encryption_unsupported());
         };
-        if !self.encryption.on.load(std::sync::atomic::Ordering::SeqCst) {
+        if !self.encryption_probe_supported() {
             return Err(bucket_encryption_unsupported());
         }
         let _slot = begin_request(self, ctx).await?;

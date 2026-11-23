@@ -221,19 +221,18 @@ pub trait BucketUsageReader: Send + Sync {
 /// The state of Object Lock of an instance.
 #[derive(Debug, Default)]
 pub struct ObjectLockCapability {
-    /// Set when the probe found a bucket with Object Lock.
-    pub on: AtomicBool,
-    /// The configuration that the probe read, for a bucket with Object Lock.
-    pub bucket_default: Mutex<Option<ObjectLockConfiguration>>,
+    /// The configuration that the start probe read. It is `Some` only when the bucket has Object Lock.
+    pub probed: Mutex<Option<ObjectLockConfiguration>>,
 }
 
 /// The state of the default encryption of an instance.
 #[derive(Debug, Default)]
 pub struct EncryptionCapability {
-    /// Set when the probe read the default encryption of the bucket, or found that the bucket has none.
-    pub on: AtomicBool,
-    /// The default encryption of the bucket at start, and what the provider does with the encryption of the writes.
-    pub state: Mutex<(String, String)>,
+    /// `(supported, the default encryption)` from the start probe. `supported` is true when the probe read the
+    /// default encryption of the bucket, or found that the bucket has none.
+    pub probed: Mutex<Option<(bool, Option<BucketEncryption>)>>,
+    /// What the provider does with `encryption = "sse-s3"`: `yes`, `no`, `unknown`, or empty without the key.
+    pub applied: Mutex<String>,
 }
 
 /// The state of the edit of the metadata of an instance.

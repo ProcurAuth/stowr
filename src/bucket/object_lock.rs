@@ -19,7 +19,6 @@
 //! `object_locked`. Only the S3 back end has Object Lock. The GCS back end answers 501.
 
 use std::sync::Arc;
-use std::sync::atomic::Ordering;
 use std::time::Duration;
 
 use http::Method;
@@ -481,7 +480,17 @@ fn object_lock_write_error(error: Error, part: &str) -> Error {
 impl Instance {
     /// True when the bucket of the instance has Object Lock. Until the probe has run, the answer is no.
     pub fn object_lock_available(&self) -> bool {
-        self.backend.object_lock().is_some() && self.object_lock.on.load(Ordering::SeqCst)
+        self.backend.object_lock().is_some() && self.probed_lock_configuration().is_some()
+    }
+
+    /// The configuration of a bucket with Object Lock that the probe read.
+    fn probed_lock_configuration(&self) -> Option<ObjectLockConfiguration> {
+        self.object_lock
+            .probed
+            .lock()
+            .ok()
+            .and_then(|probed| probed.clone())
+            .filter(|configuration| configuration.enabled)
     }
 
     /// Read the Object Lock configuration of the bucket. Only `Enabled` shows the function. The request is a read.
@@ -495,12 +504,8 @@ impl Instance {
         }
         let probe = ctx.with_timeout(PROBE_TIMEOUT);
         let result = probe.run(manager.configuration(&probe)).await;
-        let enabled = matches!(&result, Ok(configuration) if configuration.enabled);
-        self.object_lock.on.store(enabled, Ordering::SeqCst);
-        if let (true, Ok(configuration)) = (enabled, result)
-            && let Ok(mut slot) = self.object_lock.bucket_default.lock()
-        {
-            *slot = Some(configuration);
+        if let Ok(mut slot) = self.object_lock.probed.lock() {
+            *slot = result.ok().filter(|configuration| configuration.enabled);
         }
     }
 
@@ -510,13 +515,12 @@ impl Instance {
         if !self.object_lock_available() {
             return None;
         }
-        let configuration = self.object_lock.bucket_default.lock().ok()?.clone()?;
-        default_json(&configuration)
+        default_json(&self.probed_lock_configuration()?)
     }
 
     fn lock_manager(&self) -> Result<&dyn ObjectLockManager> {
         match self.backend.object_lock() {
-            Some(manager) if self.object_lock.on.load(Ordering::SeqCst) => Ok(manager),
+            Some(manager) if self.probed_lock_configuration().is_some() => Ok(manager),
             _ => Err(object_lock_unsupported()),
         }
     }
