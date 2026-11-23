@@ -15,8 +15,8 @@ use crate::common::storage::{CapabilityState, CapabilityStateName};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
 use crate::instance::gate::{self, Slot};
-use crate::provider::s3::{S3Answer, S3Request};
 use crate::provider::S3Backend;
+use crate::provider::s3::{S3Answer, S3Request};
 
 /// The namespace of the S3 documents.
 pub const S3_NAMESPACE: &str = "http://s3.amazonaws.com/doc/2006-03-01/";
@@ -92,7 +92,8 @@ pub fn aws_uri_encode(value: &str, encode_slash: bool) -> String {
     const DIGITS: &[u8; 16] = b"0123456789ABCDEF";
     let mut out = String::with_capacity(value.len());
     for &byte in value.as_bytes() {
-        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') || (byte == b'/' && !encode_slash) {
+        if byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_' | b'.' | b'~') || (byte == b'/' && !encode_slash)
+        {
             out.push(char::from(byte));
         } else {
             out.push('%');

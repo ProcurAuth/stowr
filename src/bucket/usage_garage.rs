@@ -10,8 +10,8 @@
 
 use std::sync::Arc;
 
-use http::header::{ACCEPT, AUTHORIZATION, HeaderValue};
 use http::HeaderMap;
+use http::header::{ACCEPT, AUTHORIZATION, HeaderValue};
 use serde::Deserialize;
 
 use super::usage::{STORAGE_SCOPE_CLUSTER, USAGE_SOURCE_GARAGE};

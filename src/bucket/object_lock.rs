@@ -27,13 +27,13 @@ use http::header::{CONTENT_TYPE, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 
 use super::support::{
-    MAX_ANSWER_BYTES, S3_NAMESPACE, S3Call, begin_request, decode_document, embedded_error, is_success, md5, observe_permission,
-    printable_ascii, provider_refused_feature, quote, upstream_status_text, xml_integer,
+    MAX_ANSWER_BYTES, S3_NAMESPACE, S3Call, begin_request, decode_document, embedded_error, is_success, md5,
+    observe_permission, printable_ascii, provider_refused_feature, quote, upstream_status_text, xml_integer,
 };
 use super::{ObjectLockConfiguration, ObjectLockDefaultJson, ObjectLockManager, Retention};
 use crate::access;
-use crate::common::app::App;
 use crate::common::BoxFuture;
+use crate::common::app::App;
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, decode_json, json, method_not_allowed};
@@ -248,8 +248,12 @@ pub async fn read_retention(s3: &dyn S3Call, ctx: &OpCtx, key: &str, version: &s
     if mode.is_empty() && date.is_empty() {
         return Ok(None);
     }
-    let until = Timestamp::parse_rfc3339(&date)
-        .ok_or_else(|| Error::internal(format!("decode s3 retain-until date {}: not an RFC 3339 date", quote(&date))))?;
+    let until = Timestamp::parse_rfc3339(&date).ok_or_else(|| {
+        Error::internal(format!(
+            "decode s3 retain-until date {}: not an RFC 3339 date",
+            quote(&date)
+        ))
+    })?;
     Ok(Some(Retention {
         mode,
         retain_until: Some(until.utc()),
@@ -275,7 +279,10 @@ pub async fn write_retention(
     retention: &Retention,
     bypass_governance: bool,
 ) -> Result<()> {
-    let until = retention.retain_until.map(|value| value.utc().rfc3339()).unwrap_or_default();
+    let until = retention
+        .retain_until
+        .map(|value| value.utc().rfc3339())
+        .unwrap_or_default();
     let body = format!(
         "<Retention xmlns=\"{S3_NAMESPACE}\"><Mode>{}</Mode><RetainUntilDate>{until}</RetainUntilDate></Retention>",
         retention.mode
@@ -353,7 +360,10 @@ fn lock_refusal_candidate(error: &Error) -> bool {
     let Some(upstream) = error.as_upstream() else {
         return false;
     };
-    if matches!(upstream.code.as_str(), "AccessDenied" | "InvalidRequest" | "ObjectLocked") {
+    if matches!(
+        upstream.code.as_str(),
+        "AccessDenied" | "InvalidRequest" | "ObjectLocked"
+    ) {
         return true;
     }
     let message = upstream.message.to_lowercase();
@@ -380,9 +390,14 @@ pub fn object_locked_error(key: &str, version: &str, state: &ObjectLockState, no
     }
     if let Some(retention) = state.retention.as_ref().filter(|value| value.active(now)) {
         let until = retention.retain_until.map(lock_date).unwrap_or_default();
-        reasons.push(format!("a {} retention keeps it until {until}", mode_name(&retention.mode)));
+        reasons.push(format!(
+            "a {} retention keeps it until {until}",
+            mode_name(&retention.mode)
+        ));
         if retention.mode == COMPLIANCE {
-            actions.push("wait for the end of the Compliance retention (nobody can remove it before this date)".to_owned());
+            actions.push(
+                "wait for the end of the Compliance retention (nobody can remove it before this date)".to_owned(),
+            );
         } else {
             actions.push(
                 "wait for the end of the Governance retention, or shorten it with the bypass in the details of the file"
@@ -542,7 +557,13 @@ impl Instance {
 
     /// Read the lock of the version, check the change against the rules, and send it: first the retention, then
     /// the legal hold. A part that changes nothing is not sent.
-    pub async fn change_object_lock(&self, ctx: &OpCtx, key: &str, version: &str, change: &ObjectLockChange) -> Result<()> {
+    pub async fn change_object_lock(
+        &self,
+        ctx: &OpCtx,
+        key: &str,
+        version: &str,
+        change: &ObjectLockChange,
+    ) -> Result<()> {
         let manager = self.object_lock_manager()?;
         let current = self.read_object_lock(ctx, key, version).await?;
         let now = Timestamp::now();
@@ -772,7 +793,10 @@ pub async fn object_lock_response_for(
         version,
         retention: state.retention.as_ref().map(|retention| ObjectLockRetentionJson {
             mode: retention.mode.clone(),
-            retain_until: retention.retain_until.map(|value| value.utc().rfc3339()).unwrap_or_default(),
+            retain_until: retention
+                .retain_until
+                .map(|value| value.utc().rfc3339())
+                .unwrap_or_default(),
             active: retention.active(now),
         }),
         legal_hold: state.legal_hold,
@@ -848,7 +872,10 @@ async fn change_route(app: &App, req: Req) -> Result<Response> {
     let request: ObjectLockRequest = decode_json(body).await?;
     let key = clean_relative_key(&request.key);
     let instance = app.instance_of(&request.instance, query.get("instance"))?.clone();
-    for permission in [crate::common::config::PERMISSION_READ, crate::common::config::PERMISSION_WRITE] {
+    for permission in [
+        crate::common::config::PERMISSION_READ,
+        crate::common::config::PERMISSION_WRITE,
+    ] {
         instance.require_permission(permission)?;
     }
     if key.is_empty() {

@@ -101,7 +101,10 @@ impl SeaweedFsUsageReader {
         )
         .await?;
         let mut sizes: BTreeMap<u32, i64> = BTreeMap::new();
-        let centers = answer.volumes.and_then(|volumes| volumes.data_centers).unwrap_or_default();
+        let centers = answer
+            .volumes
+            .and_then(|volumes| volumes.data_centers)
+            .unwrap_or_default();
         for racks in centers.values() {
             for nodes in racks.values() {
                 for volumes in nodes.values().flatten() {

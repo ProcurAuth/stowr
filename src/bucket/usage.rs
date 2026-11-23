@@ -238,7 +238,10 @@ async fn read_usage(reader: Arc<dyn BucketUsageReader>, bucket: String, id: Stri
         ..UsageResult::default()
     };
     if let Some(error) = &result.storage_error {
-        crate::log!("usage.error bucket={} source={source} part=storage: {error}", quote(&id));
+        crate::log!(
+            "usage.error bucket={} source={source} part=storage: {error}",
+            quote(&id)
+        );
     }
     match usage {
         Ok(mut value) => {
@@ -587,7 +590,11 @@ pub fn usage_answer(instance: &Instance, value: &BucketUsage) -> UsageResponse {
 /// Make the answer of `GET /api/usage` from the two parts of a read. A failed part gives its error, and the other
 /// part stays. `percent`, `level` and `constraint` are the part with the larger used part.
 pub fn usage_answer_of(instance: &Instance, result: &UsageResult) -> UsageResponse {
-    let noun = if instance.cfg.provider == PROVIDER_VOLUME { "volume" } else { "bucket" };
+    let noun = if instance.cfg.provider == PROVIDER_VOLUME {
+        "volume"
+    } else {
+        "bucket"
+    };
     let mut answer = match &result.error {
         Some(error) => UsageResponse {
             supported: true,

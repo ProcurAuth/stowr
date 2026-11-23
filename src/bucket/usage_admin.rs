@@ -149,7 +149,11 @@ pub async fn get_usage_json<T: DeserializeOwned>(
             lower: Option<String>,
         }
         let document: ErrorDocument = serde_json::from_slice(&answer.body).unwrap_or_default();
-        let code = document.upper.filter(|value| !value.is_empty()).or(document.lower).unwrap_or_default();
+        let code = document
+            .upper
+            .filter(|value| !value.is_empty())
+            .or(document.lower)
+            .unwrap_or_default();
         return Err(AdminError::Http {
             step: step.to_owned(),
             status: answer.status,
@@ -180,10 +184,14 @@ impl AdminUrl {
     /// Read and check an endpoint: `http` or `https`, a host, no user information, no query, no fragment.
     pub fn parse(provider: &str, raw: &str) -> Result<Self> {
         let Some((scheme, rest)) = raw.split_once("://") else {
-            return Err(Error::internal(format!("{provider} endpoint scheme must be http or https")));
+            return Err(Error::internal(format!(
+                "{provider} endpoint scheme must be http or https"
+            )));
         };
         if scheme != "http" && scheme != "https" {
-            return Err(Error::internal(format!("{provider} endpoint scheme must be http or https")));
+            return Err(Error::internal(format!(
+                "{provider} endpoint scheme must be http or https"
+            )));
         }
         let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
         let (authority, tail) = rest.split_at(end);

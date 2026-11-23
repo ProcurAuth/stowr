@@ -27,9 +27,9 @@ mod testing;
 #[cfg(test)]
 mod tests;
 
+use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
 
 use http::HeaderMap;
 use serde::Serialize;
@@ -279,8 +279,16 @@ pub fn new_usage_reader(
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/metadata", RouteAccess::HandlerAsks, metadata::handle_metadata),
-        route("/api/encryption", RouteAccess::HandlerAsks, encryption::handle_encryption),
+        route(
+            "/api/encryption",
+            RouteAccess::HandlerAsks,
+            encryption::handle_encryption,
+        ),
         route("/api/usage", RouteAccess::HandlerAsks, usage::handle_usage),
-        route("/api/object-lock", RouteAccess::HandlerAsks, object_lock::handle_object_lock),
+        route(
+            "/api/object-lock",
+            RouteAccess::HandlerAsks,
+            object_lock::handle_object_lock,
+        ),
     ]
 }

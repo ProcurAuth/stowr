@@ -23,11 +23,11 @@ use http::header::{ACCEPT, HeaderValue};
 use serde::Deserialize;
 use tokio::task::JoinSet;
 
-use super::usage::{STORAGE_SCOPE_DISKS};
+use super::StorageCapacity;
+use super::usage::STORAGE_SCOPE_DISKS;
 use super::usage_admin::{AdminError, AdminTransport, get_usage_json, join_host_port, split_host_port};
 use super::usage_minio::MinioUsageReader;
 use super::usage_seaweedfs::SeaweedFsUsageReader;
-use super::StorageCapacity;
 use crate::common::ctx::OpCtx;
 use crate::common::time::Timestamp;
 
@@ -127,7 +127,10 @@ impl SeaweedFsUsageReader {
         .await?;
         let mut servers = Vec::new();
         let mut seen = BTreeSet::new();
-        let centers = answer.topology.and_then(|topology| topology.data_centers).unwrap_or_default();
+        let centers = answer
+            .topology
+            .and_then(|topology| topology.data_centers)
+            .unwrap_or_default();
         for center in centers {
             for rack in center.racks.unwrap_or_default() {
                 for node in rack.data_nodes.unwrap_or_default() {
@@ -138,7 +141,11 @@ impl SeaweedFsUsageReader {
                     if port.is_empty() {
                         continue;
                     }
-                    let host = if is_loopback_host(host) { self.master.hostname() } else { host };
+                    let host = if is_loopback_host(host) {
+                        self.master.hostname()
+                    } else {
+                        host
+                    };
                     let address = join_host_port(host, port);
                     if seen.insert(address.clone()) {
                         servers.push(address);

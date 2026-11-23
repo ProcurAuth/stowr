@@ -18,8 +18,8 @@ use std::sync::Arc;
 
 use http::HeaderMap;
 use http::header::{AUTHORIZATION, HeaderName, HeaderValue};
-use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 
 use super::sign::{SigningInput, amz_date, authorization, sha256_hex};
 use super::usage::USAGE_SOURCE_MINIO;
@@ -142,7 +142,10 @@ impl MinioUsageReader {
     /// The usage and the quota of the bucket.
     pub async fn usage(&self, ctx: &OpCtx, bucket: &str) -> std::result::Result<BucketUsage, AdminError> {
         let query = vec![("bucket".to_owned(), bucket.to_owned())];
-        let quota = match self.get::<Quota>(ctx, "get-bucket-quota", &query, MAX_MINIO_QUOTA_BYTES).await {
+        let quota = match self
+            .get::<Quota>(ctx, "get-bucket-quota", &query, MAX_MINIO_QUOTA_BYTES)
+            .await
+        {
             Ok(quota) => quota,
             Err(AdminError::Http { status: 404, code, .. }) if code == "XMinioAdminBucketQuotaNotConfigured" => {
                 Quota::default()

@@ -27,9 +27,7 @@ use http::header::{HeaderName, HeaderValue};
 use http::{HeaderMap, Method};
 use serde::Serialize;
 
-use super::support::{
-    MAX_ANSWER_BYTES, S3Call, begin_request, decode_document, is_success, observe_permission, quote,
-};
+use super::support::{MAX_ANSWER_BYTES, S3Call, begin_request, decode_document, is_success, observe_permission, quote};
 use super::{BucketEncryption, EncryptionReader};
 use crate::access;
 use crate::common::BoxFuture;
@@ -126,7 +124,10 @@ fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 pub fn kept_encryption_headers(headers: &HeaderMap) -> HeaderMap {
     let mut kept = HeaderMap::new();
     for name in [SSE_HEADER, SSE_KMS_KEY_HEADER, SSE_BUCKET_KEY_HEADER] {
-        let Some(value) = header_text(headers, name).map(str::trim).filter(|value| !value.is_empty()) else {
+        let Some(value) = header_text(headers, name)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        else {
             continue;
         };
         if let Ok(value) = HeaderValue::from_str(value) {
@@ -217,10 +218,7 @@ impl Instance {
             return String::new();
         };
         let probe = ctx.with_timeout(PROBE_TIMEOUT);
-        probe
-            .run(rules.provider_flavour(&probe))
-            .await
-            .unwrap_or_default()
+        probe.run(rules.provider_flavour(&probe)).await.unwrap_or_default()
     }
 
     /// Read the default encryption of the bucket. An answer (a configuration, or "no configuration") shows it. A

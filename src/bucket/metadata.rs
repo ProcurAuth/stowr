@@ -18,13 +18,13 @@ use http::header::{HeaderName, HeaderValue};
 use http::{HeaderMap, Method};
 use serde::{Deserialize, Serialize};
 
+use super::MetadataEditor;
 use super::encryption::{kept_encryption_headers, write_encryption_headers};
 use super::object_lock::null_default;
 use super::support::{
     MAX_ANSWER_BYTES, S3Call, begin_request, copy_source_header, embedded_error, is_success, observe_permission,
     printable_ascii, provider_refused_feature, quote,
 };
-use super::MetadataEditor;
 use crate::access;
 use crate::common::BoxFuture;
 use crate::common::app::App;
@@ -155,7 +155,9 @@ fn is_token_char(character: char) -> bool {
 
 /// The leading token of a text and the rest.
 fn consume_token(text: &str) -> (&str, &str) {
-    let end = text.find(|character: char| !is_token_char(character)).unwrap_or(text.len());
+    let end = text
+        .find(|character: char| !is_token_char(character))
+        .unwrap_or(text.len());
     text.split_at(end)
 }
 
@@ -661,7 +663,12 @@ impl Instance {
             _ => return Err(metadata_edit_unsupported()),
         };
         if !version.is_empty() {
-            let (supported, checked) = self.versioning.probe.lock().map(|state| *state).unwrap_or((false, false));
+            let (supported, checked) = self
+                .versioning
+                .probe
+                .lock()
+                .map(|state| *state)
+                .unwrap_or((false, false));
             if self.backend.version_store().is_none() || (checked && !supported) {
                 return Err(versioning_unavailable());
             }
@@ -918,7 +925,14 @@ async fn replace_route(app: &App, req: Req) -> Result<Response> {
     access::authorize_use(app, &ctx, access::ACTION_WRITE, &instance, &key).await?;
     let metadata = metadata_request_headers(&request.headers, &request.metadata);
     instance
-        .replace_metadata(&ctx, &instance.full_key(&key), version, &request.etag, modified, &metadata)
+        .replace_metadata(
+            &ctx,
+            &instance.full_key(&key),
+            version,
+            &request.etag,
+            modified,
+            &metadata,
+        )
         .await?;
     let state = metadata_state(&ctx, &instance, &key, "").await?;
     Ok(json(200, &state))
