@@ -47,7 +47,7 @@ hits="$(search '(fs|std::fs)::(write|create_dir|create_dir_all|remove_file|remov
 $hits"
 
 # 5. Unsafe code only in src/volume/statfs.rs (one call to statfs).
-hits="$(search '\bunsafe\b|allow\(unsafe_code\)' volume/statfs.rs | grep -vE '^[^:]+:[0-9]+:\s*//' || true)"
+hits="$(search '\bunsafe\b([^-]|$)|allow\(unsafe_code\)' volume/statfs.rs | grep -vE '^[^:]+:[0-9]+:\s*//' || true)"
 [ -z "$hits" ] || fail "unsafe code is allowed only in src/volume/statfs.rs:
 $hits"
 
