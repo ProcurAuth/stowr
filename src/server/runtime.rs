@@ -238,7 +238,8 @@ pub async fn finalize(method: &Method, response: Response) -> Response {
             .size_hint()
             .exact()
             .is_some_and(|size| size as usize <= BUFFER_BEFORE_CHUNKING);
-        if small && (needs_type || (!has_length && !trailers && !has_encoding)) {
+        // The bytes that the handler wrote for `HEAD` count in the log, give the type and give a short length.
+        if small {
             let (head, _, _, _) = read_head(&mut body, BUFFER_BEFORE_CHUNKING).await;
             if needs_type && !head.is_empty() {
                 parts
