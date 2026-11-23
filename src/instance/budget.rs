@@ -55,12 +55,21 @@ impl Budget {
         )
     }
 
-    /// The budget of one background job that reads complete objects (`max_background_storage_*`).
+    /// The budget of one background job that reads complete objects (`max_background_storage_*`). A limit of 0 or
+    /// less gets the default limit.
     pub fn for_background(policy: &RuntimePolicy) -> Self {
-        Self::new(
-            policy.max_background_storage_requests,
-            policy.max_background_storage_bytes,
-        )
+        let defaults = RuntimePolicy::default();
+        let requests = if policy.max_background_storage_requests > 0 {
+            policy.max_background_storage_requests
+        } else {
+            defaults.max_background_storage_requests
+        };
+        let bytes = if policy.max_background_storage_bytes > 0 {
+            policy.max_background_storage_bytes
+        } else {
+            defaults.max_background_storage_bytes
+        };
+        Self::new(requests, bytes)
     }
 
     /// Count one provider call. `Err(Error::Budget)` above the limit.
