@@ -122,7 +122,7 @@ fn read_value(der: &mut Der<'_>) -> Option<(String, bool)> {
 }
 
 /// The DER form of a time: UTCTime for the years 1950 to 2049, else GeneralizedTime.
-fn marshal_time(time: &DateTime) -> Vec<u8> {
+fn encode_time(time: &DateTime) -> Vec<u8> {
     let (tag, text) = if (1950..2050).contains(&time.year) {
         (
             super::der::UTC_TIME,
@@ -202,7 +202,7 @@ fn read_lenient_value(der: &mut Der<'_>) -> Option<AttrValue> {
         OCTET_STRING => Some(AttrValue::Der(full.to_vec())),
         super::der::UTC_TIME | super::der::GENERALIZED_TIME => {
             let time = read_time(&mut Der(full))?;
-            Some(AttrValue::Der(marshal_time(&time)))
+            Some(AttrValue::Der(encode_time(&time)))
         }
         _ => Some(AttrValue::Nothing),
     }
