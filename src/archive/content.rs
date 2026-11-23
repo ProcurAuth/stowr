@@ -1,6 +1,7 @@
-//! The content types and the headers of the bytes of an archive entry: the media type of a file name, the rules of
-//! inline display, the active types that never display inline, the sandbox headers and the `Content-Disposition`
-//! value.
+//! The content types and the headers of the bytes of an archive entry.
+//!
+//! The module gives the media type of a file name and the rules of inline display. It also gives the active types
+//! that never display inline, the sandbox headers and the value of `Content-Disposition`.
 
 use http::HeaderMap;
 use http::header::{HeaderName, HeaderValue};
@@ -204,9 +205,10 @@ fn is_token(value: &[u8]) -> bool {
             .all(|byte| *byte > 0x20 && *byte < 0x7f && !is_tspecial(*byte))
 }
 
-/// The value `disposition; filename=...` of a `Content-Disposition` header (RFC 2045, RFC 2231): a token as it is, a
-/// quoted string with `"` and `\` escaped, or `filename*=utf-8''` with percent escapes when the name has a byte
-/// outside the printable ASCII set. `None` when the disposition is not a token.
+/// The value `disposition; filename=...` of a `Content-Disposition` header (RFC 2045, RFC 2231). A token name stays
+/// as it is. Another printable ASCII name becomes a quoted string with `"` and `\` escaped. A name with a byte
+/// outside the printable ASCII set becomes `filename*=utf-8''` with percent escapes. `None`: the disposition is not
+/// a token.
 pub fn format_disposition(disposition: &str, filename: &[u8]) -> Option<String> {
     if !is_token(disposition.as_bytes()) {
         return None;

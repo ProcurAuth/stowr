@@ -1,11 +1,13 @@
-//! One entry of an archive: `GET|HEAD /api/archive-entry` (the bytes of one entry), `POST /api/archive-extract`
-//! (the job `extract_archive`) and `POST /api/archive-entry/integrity` (the job `archive_entry_integrity`), and the
-//! runners of the two jobs.
+//! One entry of an archive, and the runners of two jobs:
+//! - `GET|HEAD /api/archive-entry`: the bytes of one entry.
+//! - `POST /api/archive-extract`: the job `extract_archive`.
+//! - `POST /api/archive-entry/integrity`: the job `archive_entry_integrity`.
 //!
-//! Each route opens the central directory with the limit `max_archive_entries`, finds the entry by its exact name
-//! and refuses a folder, an unsafe path, a symbolic link, an encrypted entry and an entry larger than the limit of
-//! bytes (`max_storage_bytes_per_request` for the route, `max_background_storage_bytes` for the jobs). The bytes of
-//! an entry move from the archive to the client or to the destination object as a stream: no temporary file.
+//! Each route opens the central directory with the limit `max_archive_entries` and finds the entry by its exact
+//! name. It refuses a folder, an unsafe path, a symbolic link and an encrypted entry. It also refuses an entry above
+//! the limit of bytes: `max_storage_bytes_per_request` for the route, `max_background_storage_bytes` for the jobs.
+//! The bytes of an entry move from the archive to the client or to the destination object as a stream. No
+//! temporary file holds them.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -126,10 +128,11 @@ fn archive_extension(key: &str) -> String {
     extension.strip_prefix('.').unwrap_or(extension).to_lowercase()
 }
 
-/// Read the central directory of an archive for the selection of entries. A key without a ZIP-compatible extension
-/// gives `415 unsupported_archive`; more entries than the limit (0: the default limit) give
-/// `413 archive_too_many_entries`; a refusal for a ceiling keeps its answer; any other failure gives
-/// `422 invalid_zip`.
+/// Read the central directory of an archive for the selection of entries. The answers of a failure:
+/// - a key without a ZIP-compatible extension: `415 unsupported_archive`;
+/// - more entries than the limit (0: the default limit): `413 archive_too_many_entries`;
+/// - a refusal for a ceiling: the refusal;
+/// - any other failure: `422 invalid_zip`.
 pub async fn open_archive_reader(
     ctx: &OpCtx,
     instance: &Arc<Instance>,
@@ -180,8 +183,8 @@ pub fn exact_archive_entry<'a, S: ByteSource>(reader: &'a ZipReader<S>, name: &s
     Ok(found)
 }
 
-/// Refuse an entry that cannot be opened or extracted as a file: a folder, an unsafe path, a symbolic link, an
-/// encrypted entry, or an entry larger than `maximum` bytes (0 or less: no limit).
+/// Refuse an entry that a person cannot open or extract as a file: a folder, an unsafe path, a symbolic link, an
+/// encrypted entry. Also refuse an entry larger than `maximum` bytes (0 or less: no limit).
 pub fn validate_selectable_archive_entry(entry: &ZipEntry, maximum: i64) -> Result<()> {
     if entry.is_dir() {
         return Err(Error::api(
@@ -621,8 +624,8 @@ pub async fn run_extraction(run: &JobRun, job: &mut JobState) -> Result<()> {
     target.require_permission(PERMISSION_WRITE)?;
     // A create-only write tells whether a destination exists: the target must also let the reads.
     target.require_permission(PERMISSION_READ)?;
-    // The upload of an entry holds a storage slot while it reads the archive: the reads of the archive take no
-    // second slot, else two extractions can wait on each other for ever.
+    // The upload of an entry holds a storage slot while it reads the archive. The reads of the archive take no
+    // second slot: else two extractions can wait on each other for ever.
     let reader_ctx = run.ctx.gated(GateMode::Exempt);
     let reader = open_archive_reader(
         &reader_ctx,

@@ -1,6 +1,6 @@
-//! The names of the archives: the safe name of an entry, the unique name of a member of the ZIP of a folder, the
-//! file name of the ZIP of a folder, the selection of entries of an extraction, and the quoted form of a name in a
-//! message.
+//! The names of the archives: the safe name of an entry and the unique name of a member of the ZIP of a folder.
+//! The module also gives the file name of the ZIP of a folder, the selection of an extraction and the quoted form of
+//! a name in a message.
 
 use std::collections::{BTreeSet, HashMap};
 
@@ -45,9 +45,9 @@ pub fn normalize_prefix(value: &str) -> String {
     format!("{}/", value.trim_end_matches('/'))
 }
 
-/// The safe relative name of an archive entry. `\` becomes `/`; the name loses its empty elements; a control character becomes
-/// `_`; a first element with `:` as its second byte (a drive letter) gets a `_` before it. A name with a NUL byte, a
-/// `.` or `..` element, or no element at all gives `None`. A name that ends with `/` keeps it.
+/// The safe relative name of an archive entry. `\` becomes `/` and the name loses its empty elements. A control
+/// character becomes `_`. A first element with `:` as its second byte (a drive letter) gets a `_` before it. A name
+/// with a NUL byte, a `.` or `..` element, or no element gives `None`. A name that ends with `/` keeps it.
 pub fn safe_archive_entry_name(value: &str) -> Option<String> {
     if value.is_empty() || value.contains('\0') {
         return None;
@@ -108,9 +108,9 @@ pub fn unique_archive_entry_name(name: &str, seen: &mut HashMap<String, u64>) ->
     result
 }
 
-/// The file name of the ZIP of a folder: the requested name, else the last folder of the prefix, else the name of
-/// the instance, else `archive`. A control character and `/\:*?"<>|` become `_`; the name loses the spaces and the
-/// dots at its ends; the name ends with `.zip`; a name of more than 180 bytes keeps its first 176 bytes and `.zip`.
+/// The file name of the ZIP of a folder: the requested name, else the last folder of the prefix. Else the name of
+/// the instance, else `archive`. A control character and `/\:*?"<>|` become `_`. The name loses the spaces and the
+/// dots at its ends, and ends with `.zip`. A name of more than 180 bytes keeps its first 176 bytes and `.zip`.
 pub fn archive_filename(requested: &str, prefix: &str, instance_name: &str) -> Vec<u8> {
     let mut name = requested.trim().to_owned();
     if name.is_empty() {

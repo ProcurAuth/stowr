@@ -5,10 +5,13 @@
 //! and no data descriptor. The central directory comes after the entries. The ZIP64 fields and records appear only
 //! when a size, an offset or the count of the entries needs them.
 //!
-//! Each header has these fields: the version 2.0 (4.5 in the central directory for an entry of 4 GiB or more), the
-//! system Unix, the flag UTF-8 when the name has a character outside the safe ASCII set, the DOS date and time and
-//! an extended timestamp when the entry has a time, and the Unix mode of a regular file. The writer keeps no data
-//! of an entry: [`ZipWriter::take_output`] gives the bytes to send.
+//! The fields of each header:
+//! - the version 2.0, or 4.5 in the central directory for an entry of 4 GiB or more;
+//! - the system Unix and the Unix mode of a regular file;
+//! - the flag UTF-8 when the name has a character outside the safe ASCII set;
+//! - the DOS date and time and an extended timestamp, when the entry has a time.
+//!
+//! The writer keeps no data of an entry: [`ZipWriter::take_output`] gives the bytes to send.
 
 use bytes::{BufMut, Bytes, BytesMut};
 use flate2::Crc;

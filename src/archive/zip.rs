@@ -410,8 +410,8 @@ pub(crate) fn civil_from_days(days: i64) -> (i64, i64, i64) {
     (year, month, day)
 }
 
-/// The seconds since 1970 of a DOS date and time, in UTC. A field out of its range moves to the next unit: the
-/// month 0 is the last month of the year before, the day 0 is the last day of the month before.
+/// The seconds since 1970 of a DOS date and time, in UTC. A field out of its range moves to the next unit. For
+/// example, the month 0 is the last month of the year before, and the day 0 is the last day of the month before.
 pub fn dos_seconds(date: u16, time: u16) -> i64 {
     let year = i64::from(date >> 9) + 1980;
     let month = i64::from((date >> 5) & 0xf) - 1;

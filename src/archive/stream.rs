@@ -1,11 +1,11 @@
 //! The streamed bodies of the archive routes.
 //!
 //! [`stream`] gives a body that a task fills through a [`StreamSender`]. Each send waits at most the idle time for
-//! the client: a client that stops to read stops the task, and the task gives back its storage slot. A sender that
-//! the task drops before [`StreamSender::finish`] stops the body with an error, so a cut archive never looks complete.
+//! the client. A client that stops to read stops the task, and the task gives back its storage slot. A sender that
+//! the task drops before [`StreamSender::finish`] stops the body with an error: a cut archive never looks complete.
 //!
-//! [`EntryBody`] gives the bytes of an archive entry as the body of a write: it reads the next bytes only when the
-//! writer asks for them, checks the context before each read, and counts the bytes.
+//! [`EntryBody`] gives the bytes of an archive entry as the body of a write. It reads the next bytes only when the
+//! writer asks for them. It checks the context before each read, and counts the bytes.
 
 use std::future::Future;
 use std::pin::Pin;
