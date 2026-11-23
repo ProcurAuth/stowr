@@ -5,12 +5,35 @@
 //! The manager admits four active or queued jobs at most, runs two at the same time, keeps `job_history_limit`
 //! finished jobs, and cancels a job that stays paused for 30 minutes. The runners of the jobs of the other work
 //! packages are functions of those packages: `crate::archive::run_extraction`, `crate::archive::run_entry_integrity`,
-//! `crate::lifecycle::run_tag_job`, `crate::uploads::run_abort_multiparts_job`.
+//! `crate::lifecycle::run_tag_job`, `crate::uploads::run_abort_multiparts_job`. A runner that walks the objects of a
+//! prefix can use the shared walk of this folder: [`ObjectWalk`] and [`run_object_walk`].
+//!
+//! A route gives a job to the client with [`job_answer`] (or [`JobState::public`]): the public form of a job.
 
-use std::sync::{Arc, Weak};
-use std::time::Duration;
+mod digest;
+mod inspect;
+mod integrity;
+mod manager;
+mod public;
+mod routes;
+mod seam;
+mod sniff;
+mod stats;
+mod versions;
+mod walk;
 
-use serde::Serialize;
+#[cfg(test)]
+mod analysis_tests;
+#[cfg(test)]
+mod manager_tests;
+#[cfg(test)]
+mod stats_tests;
+#[cfg(test)]
+mod testing;
+#[cfg(test)]
+mod walk_tests;
+
+use std::sync::Arc;
 
 use crate::common::app::App;
 use crate::common::ctx::OpCtx;
@@ -18,6 +41,23 @@ use crate::common::error::{Error, Result};
 use crate::common::http::{Route, RouteAccess, route};
 use crate::common::time::Timestamp;
 use crate::instance::ceiling::Ceilings;
+
+pub use inspect::{InspectProbe, InspectResources, InspectResponse, handle_inspect};
+pub use integrity::{
+    IntegrityEntry, IntegrityRequest, IntegrityResult, checksum_matches, compute_object_integrity, handle_integrity,
+};
+pub use manager::{
+    JobManager, MAX_ACTIVE_JOBS, PAUSED_JOB_TTL, STATS_INLINE_WAIT, STATS_RESULT_REUSE_TTL, terminal_status,
+};
+pub use public::{PublicJob, job_answer};
+pub use routes::{handle_job_collection, handle_jobs, handle_stats};
+pub use stats::{
+    Aggregate, DEFAULT_MAX_STATS_FOLDERS, MAX_STATS_FOLDER_DEPTH, MAX_STATS_LARGEST_ENTRIES, MAX_STATS_RECENT_ENTRIES,
+    STATS_LAYOUT_VERSION, StatsEntry, StatsResponse, StatsTreemapNode, add_largest_stats_entry, add_recent_stats_entry,
+    add_stats_folder_aggregates, build_stats_treemap, new_stats_response, stats_treemap_threshold,
+};
+pub use versions::{handle_version_counts, handle_version_restore, handle_versions};
+pub use walk::{ObjectStep, ObjectWalk, WALK_PAGE_SIZE, WalkHost, run_object_walk};
 
 /// The types of the jobs.
 pub mod job_type {
@@ -45,29 +85,30 @@ pub mod job_type {
     pub const ABORT_MULTIPARTS: &str = "abort_multiparts";
 }
 
-/// The Insights statistics of a prefix (the work package `jobs` gives the members).
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct StatsResponse {
-    /// The instance.
-    pub instance: String,
-    /// The prefix.
-    pub prefix: String,
+/// The states of a job.
+pub mod job_status {
+    /// The job waits for a worker.
+    pub const QUEUED: &str = "queued";
+    /// A worker runs the job.
+    pub const RUNNING: &str = "running";
+    /// A person paused the job. It keeps its place in the four active jobs.
+    pub const PAUSED: &str = "paused";
+    /// The job ended without an error.
+    pub const COMPLETED: &str = "completed";
+    /// The job ended with an error.
+    pub const FAILED: &str = "failed";
+    /// A person canceled the job, or the job stayed paused too long.
+    pub const CANCELED: &str = "canceled";
 }
 
-/// The request of an integrity job.
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct IntegrityRequest {
-    /// The relative key.
-    pub key: String,
-    /// The version.
-    pub version: String,
-}
-
-/// The result of an integrity job.
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct IntegrityResult {}
+/// The most keys that a job keeps in `locked_keys`.
+pub const MAX_LOCKED_KEYS: usize = 20;
 
 /// A job in the memory of the process.
+///
+/// In a copy job, `copied_bytes` counts the bytes of the copied objects, and `copying_bytes` counts the copied parts
+/// of the object in progress: a pause or an error drops them. `total_bytes` is the size of the source of a
+/// `copy_object` or a `move_object` job.
 #[derive(Clone, Debug, Default)]
 pub struct JobState {
     /// The id (`job_...`).
@@ -88,7 +129,7 @@ pub struct JobState {
     pub entries: Vec<String>,
     /// The prefix.
     pub prefix: String,
-    /// `queued`, `running`, `paused`, `completed`, `failed` or `canceled`.
+    /// `queued`, `running`, `paused`, `completed`, `failed` or `canceled` (see [`job_status`]).
     pub status: String,
     /// The processed objects.
     pub processed: i64,
@@ -126,9 +167,9 @@ pub struct JobState {
     pub locked: i64,
     /// The first 20 locked keys.
     pub locked_keys: Vec<String>,
-    /// The refusal for a ceiling that stopped the job.
+    /// The refusal for a ceiling that stopped the job. A route that waits for the job gives it as it is.
     pub refusal: Option<Error>,
-    /// The ceilings of the request that made the job.
+    /// The ceilings of the request that made the job. The job applies them in its own context.
     pub ceilings: Option<Arc<Ceilings>>,
     /// The public error.
     pub error: String,
@@ -142,80 +183,80 @@ pub struct JobState {
     pub ended_at: Option<Timestamp>,
 }
 
+impl JobState {
+    /// Count a key that Object Lock kept, and keep the first [`MAX_LOCKED_KEYS`] keys to show them.
+    pub fn add_locked(&mut self, key: &str) {
+        self.locked += 1;
+        if self.locked_keys.len() < MAX_LOCKED_KEYS {
+            self.locked_keys.push(key.to_owned());
+        }
+    }
+
+    /// The public form of the job, as the routes give it.
+    pub fn public(&self) -> PublicJob {
+        public::public_job(self)
+    }
+}
+
 /// The handle of a running job: the application, the context of its storage calls and its id.
 pub struct JobRun {
     /// The application.
     pub app: Arc<App>,
-    /// The context: the budget, the unbounded gate wait, the ceilings of the job, the cancellation.
+    /// The context: the budget, the unbounded gate wait, the ceilings of the job, the cancellation. A pause, a
+    /// cancel and the stop of the manager cancel it.
     pub ctx: OpCtx,
     /// The id of the job.
     pub id: String,
 }
 
 impl JobRun {
-    /// Save the progress of the job.
+    /// Save the progress of the job: the manager keeps a copy of it.
     pub fn save(&self, job: &JobState) -> Result<()> {
-        let _ = job;
-        Err(Error::not_served("the progress of a job"))
+        self.app.jobs.put(job.clone())
     }
 
-    /// `Err(Error::Interrupted)` when a person paused or canceled the job.
+    /// `Err(Error::Interrupted)` when a person paused or canceled the job, `Err(Error::Canceled)` when the manager
+    /// stops or the job is gone.
     pub fn check_control(&self) -> Result<()> {
-        self.ctx.check()
-    }
-}
-
-/// The jobs of the process.
-#[derive(Debug, Default)]
-pub struct JobManager {
-    app: Weak<App>,
-    history_limit: u32,
-}
-
-impl JobManager {
-    /// A manager with its workers and its reaper.
-    pub fn new(app: Weak<App>, history_limit: u32) -> Self {
-        Self { app, history_limit }
+        self.app.jobs.control_state(&self.id)
     }
 
-    /// Create and queue a job. `429 job_limit_reached` with four active or queued jobs.
-    pub fn create(&self, job: JobState) -> Result<JobState> {
-        let _ = (job, &self.app, self.history_limit);
-        Err(Error::not_served("the background jobs"))
+    /// The reason why a long loop of the job must stop: the control of the job, else the cancellation of its
+    /// context.
+    pub fn interrupted(&self) -> Result<()> {
+        if let Err(error) = self.ctx.check() {
+            self.check_control()?;
+            return Err(error);
+        }
+        self.check_control()
     }
 
-    /// A copy of a job.
-    pub fn get(&self, id: &str) -> Option<JobState> {
-        let _ = id;
-        None
+    /// The job as the manager has it now.
+    pub fn latest(&self) -> Option<JobState> {
+        self.app.jobs.get(&self.id)
     }
 
-    /// Wait until the job ends, at most `maximum`.
-    pub async fn wait_for_terminal(&self, id: &str, maximum: Duration) -> Option<JobState> {
-        let _ = (id, maximum);
-        None
+    /// Take the status and the end of the job that the manager has now. A resume can change `paused` to `queued`
+    /// before the worker sees the pause. The worker already runs the job, so the status becomes `running`.
+    pub fn refresh_status(&self, job: &mut JobState) {
+        if let Some((status, ended_at)) = self.app.jobs.status_of(&self.id) {
+            job.status = if status == job_status::QUEUED {
+                job_status::RUNNING.to_owned()
+            } else {
+                status
+            };
+            job.ended_at = ended_at;
+        }
     }
 
-    /// Stop the workers and the reaper.
-    pub fn close(&self) {}
-}
-
-crate::stub_handler!(handle_jobs, "the route /api/jobs/");
-crate::stub_handler!(handle_versions, "the route /api/versions");
-crate::stub_handler!(handle_version_counts, "the route /api/version-counts");
-crate::stub_handler!(handle_version_restore, "the route /api/versions/restore");
-crate::stub_handler!(handle_integrity, "the route /api/integrity");
-crate::stub_handler!(handle_inspect, "the route /api/inspect");
-
-/// The handler of `/api/jobs` without an id: always 404.
-pub fn handle_job_collection(
-    app: Arc<App>,
-    req: crate::common::http::Req,
-) -> crate::common::BoxFuture<'static, crate::common::http::Response> {
-    Box::pin(async move {
-        let _ = (app, req);
-        crate::common::http::not_found()
-    })
+    /// `Err(Error::Interrupted)` when the status of the job is `paused` or `canceled`.
+    pub fn stop_on_control_status(job: &JobState) -> Result<()> {
+        match job.status.as_str() {
+            job_status::PAUSED => Err(Error::Interrupted(crate::common::error::Interrupt::Paused)),
+            job_status::CANCELED => Err(Error::Interrupted(crate::common::error::Interrupt::Canceled)),
+            _ => Ok(()),
+        }
+    }
 }
 
 /// The routes of this work package.
