@@ -21,7 +21,15 @@ pub mod seams;
 pub mod serve_content;
 
 #[cfg(test)]
+mod access_route_tests;
+#[cfg(test)]
 mod access_tests;
+#[cfg(test)]
+mod ceiling_route_tests;
+#[cfg(test)]
+mod documented_rules_tests;
+#[cfg(test)]
+mod preview_route_tests;
 #[cfg(test)]
 pub mod testing;
 #[cfg(test)]
