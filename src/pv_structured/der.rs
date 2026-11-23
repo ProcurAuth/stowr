@@ -133,6 +133,50 @@ impl<'a> Der<'a> {
         }
     }
 
+    /// Read an optional field with an explicit tag the way a lenient reader does: the length of the wrapper is not
+    /// checked against the data, and the field counts as absent when the wrapper has another tag or the element
+    /// inside has not the expected tag. `None` when the wrapper has no element inside or the element is not valid.
+    pub fn read_explicit_lenient(&mut self, wrapper_tag: u8, inner_tag: u8) -> Option<Option<&'a [u8]>> {
+        if !self.peek_tag(wrapper_tag) {
+            return Some(None);
+        }
+        let data = self.0;
+        let length_byte = *data.get(1)?;
+        let header = if length_byte & 0x80 == 0 {
+            2
+        } else {
+            let count = usize::from(length_byte & 0x7f);
+            if count == 0 || data.len() < 2 + count {
+                return None;
+            }
+            let mut length: usize = 0;
+            for byte in &data[2..2 + count] {
+                if length >= 1 << 23 {
+                    return None;
+                }
+                length = (length << 8) | usize::from(*byte);
+                if length == 0 {
+                    return None;
+                }
+            }
+            if length < 0x80 {
+                return None;
+            }
+            2 + count
+        };
+        let inside = data.get(header..)?;
+        if inside.is_empty() {
+            return None;
+        }
+        if inside[0] != inner_tag {
+            return Some(None);
+        }
+        let mut inner = Der(inside);
+        let content = inner.read(inner_tag)?;
+        self.0 = inner.0;
+        Some(Some(content))
+    }
+
     /// Skip an optional element. False when the element is present and not valid.
     pub fn skip_optional(&mut self, tag: u8) -> bool {
         self.read_optional(tag).is_some()

@@ -246,7 +246,7 @@ fn print_value(value: &serde_json::Value) -> String {
 /// The text of a number with the shortest digits: the exponent form when the exponent is below -4 or at least 6.
 fn print_float(value: f64) -> String {
     if value == 0.0 {
-        return "0".to_owned();
+        return if value.is_sign_negative() { "-0" } else { "0" }.to_owned();
     }
     let scientific = format!("{value:e}");
     let (mantissa, exponent) = scientific.split_once('e').unwrap_or((&scientific, "0"));
@@ -258,12 +258,77 @@ fn print_float(value: f64) -> String {
     format!("{value}")
 }
 
+/// The value of four hexadecimal digits at the start of the bytes.
+fn hex4(bytes: &[u8]) -> Option<u32> {
+    if bytes.len() < 4 {
+        return None;
+    }
+    let mut value = 0u32;
+    for byte in &bytes[..4] {
+        value = value << 4 | (*byte as char).to_digit(16)?;
+    }
+    Some(value)
+}
+
+/// Replace each escape `\uXXXX` of a surrogate that is not part of a valid pair with the escape of U+FFFD, as
+/// a JSON reader that accepts such text does.
+fn replace_lone_surrogates(text: &str) -> String {
+    let bytes = text.as_bytes();
+    let mut out = String::with_capacity(text.len());
+    let mut in_string = false;
+    let mut index = 0;
+    let mut copied = 0;
+    while index < bytes.len() {
+        let byte = bytes[index];
+        if !in_string {
+            if byte == b'"' {
+                in_string = true;
+            }
+            index += 1;
+            continue;
+        }
+        match byte {
+            b'"' => {
+                in_string = false;
+                index += 1;
+            }
+            b'\\' => {
+                if bytes.get(index + 1) == Some(&b'u')
+                    && let Some(code) = hex4(&bytes[index + 2..])
+                    && (0xd800..=0xdfff).contains(&code)
+                {
+                    let pair = code <= 0xdbff
+                        && bytes.get(index + 6) == Some(&b'\\')
+                        && bytes.get(index + 7) == Some(&b'u')
+                        && hex4(&bytes[(index + 8).min(bytes.len())..])
+                            .is_some_and(|low| (0xdc00..=0xdfff).contains(&low));
+                    if pair {
+                        index += 12;
+                    } else {
+                        out.push_str(&text[copied..index]);
+                        out.push_str("\\ufffd");
+                        index += 6;
+                        copied = index;
+                    }
+                } else {
+                    index += 2;
+                }
+            }
+            _ => index += 1,
+        }
+    }
+    out.push_str(&text[copied.min(text.len())..]);
+    out
+}
+
 /// The details of a manifest in JSON (browser extensions).
 fn json_manifest_metadata(data: &[u8]) -> Option<BTreeMap<String, String>> {
     if data.is_empty() {
         return None;
     }
-    let serde_json::Value::Object(manifest) = serde_json::from_slice::<serde_json::Value>(data).ok()? else {
+    let serde_json::Value::Object(manifest) =
+        serde_json::from_str::<serde_json::Value>(&replace_lone_surrogates(&super::text::lossy(data))).ok()?
+    else {
         return None;
     };
     let labels: [(&str, &str); 10] = [

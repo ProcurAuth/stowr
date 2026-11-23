@@ -7,7 +7,7 @@ use serde::Serialize;
 
 use super::html;
 use super::mime::{
-    Headers, MultipartReader, canonical_key_str, decode_quoted_printable, first_header_value, header_get,
+    HeaderMode, Headers, MultipartReader, canonical_key_str, decode_quoted_printable, first_header_value, header_get,
     parse_media_type, read_header_block,
 };
 use super::pem::decode_base64;
@@ -275,7 +275,7 @@ impl Walker<'_> {
 
 /// The preview of a message.
 pub fn parse_email_preview(data: &[u8]) -> EmailPreview {
-    let block = read_header_block(data, i64::MAX, i64::MAX);
+    let block = read_header_block(data, HeaderMode::Message, i64::MAX, i64::MAX);
     let failed = match block.error {
         Some(super::mime::HeaderError::EndOfData) => block.headers.is_empty(),
         Some(_) => true,

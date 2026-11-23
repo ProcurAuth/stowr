@@ -6,17 +6,26 @@ use std::fmt::Write as _;
 
 use super::bignum::Uint;
 use super::der::{
-    BOOLEAN, BitString, DateTime, Der, INTEGER, OBJECT_IDENTIFIER, OCTET_STRING, Oid, SEQUENCE, SET, context,
-    context_constructed, read_time,
+    BIT_STRING, BOOLEAN, BitString, DateTime, Der, INTEGER, OBJECT_IDENTIFIER, OCTET_STRING, Oid, SEQUENCE, SET,
+    context, context_constructed, read_time,
 };
 
-/// One attribute of a name: the type and the text of the value.
+/// The value of an attribute of a name.
+#[derive(Clone, Debug)]
+enum AttrValue {
+    /// A string. `invalid` is true when the bytes are not valid UTF-8: each invalid byte shows as U+FFFD.
+    Text { text: String, invalid: bool },
+    /// A value of a type that the reader does not know. It has no text.
+    Nothing,
+    /// A value of another known type, with its DER bytes.
+    Der(Vec<u8>),
+}
+
+/// One attribute of a name: the type and the value.
 #[derive(Clone, Debug)]
 struct Attribute {
     oid: Oid,
-    value: String,
-    /// True when the value is not valid UTF-8: each invalid byte shows as U+FFFD.
-    invalid: bool,
+    value: AttrValue,
 }
 
 impl Attribute {
@@ -112,6 +121,93 @@ fn read_value(der: &mut Der<'_>) -> Option<(String, bool)> {
     Some((text, invalid))
 }
 
+/// The DER form of a time: UTCTime for the years 1950 to 2049, else GeneralizedTime.
+fn marshal_time(time: &DateTime) -> Vec<u8> {
+    let (tag, text) = if (1950..2050).contains(&time.year) {
+        (
+            super::der::UTC_TIME,
+            format!(
+                "{:02}{:02}{:02}{:02}{:02}{:02}Z",
+                time.year % 100,
+                time.month,
+                time.day,
+                time.hour,
+                time.minute,
+                time.second
+            ),
+        )
+    } else {
+        (
+            super::der::GENERALIZED_TIME,
+            format!(
+                "{:04}{:02}{:02}{:02}{:02}{:02}Z",
+                time.year, time.month, time.day, time.hour, time.minute, time.second
+            ),
+        )
+    };
+    let mut out = vec![tag, text.len() as u8];
+    out.extend_from_slice(text.as_bytes());
+    out
+}
+
+/// Read a value of any type: a string gives its text, a number, a bit string, an identifier, an octet string or a
+/// time gives its DER bytes, and any other type gives nothing. A value that is not valid for its type is an error.
+fn read_lenient_value(der: &mut Der<'_>) -> Option<AttrValue> {
+    let (tag, full, content) = der.read_any_element()?;
+    // Only the primitive types of the universal class have a meaning.
+    if tag & 0xe0 != 0 {
+        return Some(AttrValue::Nothing);
+    }
+    match tag {
+        super::der::PRINTABLE_STRING
+        | super::der::NUMERIC_STRING
+        | super::der::IA5_STRING
+        | super::der::UTF8_STRING => {
+            let text = parse_string(tag, content)?;
+            Some(AttrValue::Text { text, invalid: false })
+        }
+        super::der::T61_STRING => Some(AttrValue::Text {
+            text: super::text::lossy(content),
+            invalid: std::str::from_utf8(content).is_err(),
+        }),
+        super::der::BMP_STRING => {
+            if !content.len().is_multiple_of(2) {
+                return None;
+            }
+            let mut bytes = content;
+            if bytes.len() >= 2 && bytes[bytes.len() - 1] == 0 && bytes[bytes.len() - 2] == 0 {
+                bytes = &bytes[..bytes.len() - 2];
+            }
+            let units: Vec<u16> = bytes
+                .chunks(2)
+                .map(|pair| u16::from(pair[0]) << 8 | u16::from(pair[1]))
+                .collect();
+            Some(AttrValue::Text {
+                text: String::from_utf16_lossy(&units),
+                invalid: false,
+            })
+        }
+        INTEGER => {
+            Der(full).read_i64()?;
+            Some(AttrValue::Der(full.to_vec()))
+        }
+        super::der::BIT_STRING => {
+            Der(full).read_bit_string()?;
+            Some(AttrValue::Der(full.to_vec()))
+        }
+        OBJECT_IDENTIFIER => {
+            Oid::from_der_content(content)?;
+            Some(AttrValue::Der(full.to_vec()))
+        }
+        OCTET_STRING => Some(AttrValue::Der(full.to_vec())),
+        super::der::UTC_TIME | super::der::GENERALIZED_TIME => {
+            let time = read_time(&mut Der(full))?;
+            Some(AttrValue::Der(marshal_time(&time)))
+        }
+        _ => Some(AttrValue::Nothing),
+    }
+}
+
 impl Name {
     /// Read a name from a whole SEQUENCE element.
     pub fn parse(raw: &[u8]) -> Option<Self> {
@@ -126,16 +222,41 @@ impl Name {
                 let attribute = set.read(SEQUENCE)?;
                 let mut attribute = Der(attribute);
                 let oid = attribute.read_oid()?;
-                let (value, invalid) = read_value(&mut attribute)?;
-                name.add(Attribute { oid, value, invalid });
+                let (text, invalid) = read_value(&mut attribute)?;
+                name.add(Attribute {
+                    oid,
+                    value: AttrValue::Text { text, invalid },
+                });
+            }
+        }
+        Some(name)
+    }
+
+    /// Read a name the way a lenient reader does: a value of a type that the reader does not know does not make
+    /// the name invalid, and a value that is not a string has no text. This is the reader of the name of a
+    /// certificate request.
+    pub fn parse_lenient(raw: &[u8]) -> Option<Self> {
+        let mut outer = Der(raw);
+        let content = outer.read(SEQUENCE)?;
+        let mut sequence = Der(content);
+        let mut name = Name::default();
+        while !sequence.is_empty() {
+            let set = sequence.read(SET)?;
+            let mut set = Der(set);
+            while !set.is_empty() {
+                let attribute = set.read(SEQUENCE)?;
+                let mut attribute = Der(attribute);
+                let oid = attribute.read_oid()?;
+                let value = read_lenient_value(&mut attribute)?;
+                name.add(Attribute { oid, value });
             }
         }
         Some(name)
     }
 
     fn add(&mut self, attribute: Attribute) {
-        if let Some(last) = attribute.named_field() {
-            let value = attribute.value.clone();
+        if let (Some(last), AttrValue::Text { text, .. }) = (attribute.named_field(), &attribute.value) {
+            let value = text.clone();
             match last {
                 3 => self.common_name = value,
                 5 => self.serial_number = value,
@@ -243,11 +364,27 @@ fn escape_value(value: &str) -> String {
 /// The type name is the identifier. The value is the hexadecimal form of its DER bytes.
 /// The DER value is a PrintableString when its characters allow it, else a UTF8String.
 fn describe_other(attribute: &Attribute) -> Rendered {
-    if attribute.invalid {
+    let oid = attribute.oid.dotted();
+    let (text, invalid) = match &attribute.value {
+        AttrValue::Text { text, invalid } => (text, *invalid),
+        AttrValue::Nothing => return Rendered::text(&oid, "<nil>"),
+        AttrValue::Der(bytes) => {
+            let mut hex = String::with_capacity(bytes.len() * 2);
+            for byte in bytes {
+                let _ = write!(hex, "{byte:02x}");
+            }
+            return Rendered {
+                name: oid,
+                value: hex,
+                hex: true,
+            };
+        }
+    };
+    if invalid {
         // The bytes are not UTF-8: no DER form exists for the text, so the text stays.
-        return Rendered::text(&attribute.oid.dotted(), &attribute.value);
+        return Rendered::text(&oid, text);
     }
-    let printable = attribute.value.bytes().all(|byte| {
+    let printable = text.bytes().all(|byte| {
         byte.is_ascii_alphanumeric()
             || matches!(
                 byte,
@@ -255,7 +392,7 @@ fn describe_other(attribute: &Attribute) -> Rendered {
             )
     });
     let tag = if printable { 0x13 } else { 0x0c };
-    let content = attribute.value.as_bytes();
+    let content = text.as_bytes();
     let mut der: Vec<u8> = vec![tag];
     if content.len() < 128 {
         der.push(content.len() as u8);
@@ -271,7 +408,7 @@ fn describe_other(attribute: &Attribute) -> Rendered {
         let _ = write!(hex, "{byte:02x}");
     }
     Rendered {
-        name: attribute.oid.dotted(),
+        name: oid,
         value: hex,
         hex: true,
     }
@@ -430,32 +567,6 @@ fn coordinate_length(curve: &str) -> usize {
         "P-256" => 32,
         "P-384" => 48,
         _ => 66,
-    }
-}
-
-/// The order of the group of a curve, big-endian.
-fn curve_order(curve: &str) -> &'static [u8] {
-    match curve {
-        "P-224" => &[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x16, 0xa2, 0xe0, 0xb8,
-            0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45, 0x5c, 0x5c, 0x2a, 0x3d,
-        ],
-        "P-256" => &[
-            0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6,
-            0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
-        ],
-        "P-384" => &[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc7, 0x63, 0x4d, 0x81, 0xf4, 0x37, 0x2d, 0xdf, 0x58, 0x1a, 0x0d, 0xb2,
-            0x48, 0xb0, 0xa7, 0x7a, 0xec, 0xec, 0x19, 0x6a, 0xcc, 0xc5, 0x29, 0x73,
-        ],
-        _ => &[
-            0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfa, 0x51, 0x86, 0x87, 0x83,
-            0xbf, 0x2f, 0x96, 0x6b, 0x7f, 0xcc, 0x01, 0x48, 0xf7, 0x09, 0xa5, 0xd0, 0x3b, 0xb5, 0xc9, 0xb8, 0x89, 0x9c,
-            0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38, 0x64, 0x09,
-        ],
     }
 }
 
@@ -710,10 +821,7 @@ fn process_extension(extension: &Extension<'_>, facts: &mut Certificate) -> Opti
                     is_ca = der.read_boolean()?;
                 }
                 if der.peek_tag(INTEGER) {
-                    let value = der.read_i64()?;
-                    if value < 0 {
-                        return None;
-                    }
+                    der.read_i64()?;
                 }
                 facts.is_ca = is_ca;
             }
@@ -846,6 +954,62 @@ fn read_crl_distribution_points(value: &[u8]) -> Option<()> {
     Some(())
 }
 
+/// True when the base of a name constraint is valid for its type: a domain, an address with a mask, a mailbox or
+/// a domain of URIs. A type that the reader does not know is valid.
+fn constraint_is_valid(tag: u8, value: &[u8]) -> bool {
+    let domain_ok = |domain: &[u8]| {
+        let trimmed = domain.strip_prefix(b".").unwrap_or(domain);
+        super::urlcheck::valid_labels(trimmed)
+    };
+    match tag {
+        0x82 => value.is_ascii() && domain_ok(value),
+        0x87 => {
+            let mask = match value.len() {
+                8 => &value[4..],
+                32 => &value[16..],
+                _ => return false,
+            };
+            let mut seen_zero = false;
+            for byte in mask {
+                if seen_zero {
+                    if *byte != 0 {
+                        return false;
+                    }
+                    continue;
+                }
+                match byte {
+                    0x00 | 0x80 | 0xc0 | 0xe0 | 0xf0 | 0xf8 | 0xfc | 0xfe => seen_zero = true,
+                    0xff => {}
+                    _ => return false,
+                }
+            }
+            true
+        }
+        0x81 => {
+            if !value.is_ascii() {
+                return false;
+            }
+            let text = String::from_utf8_lossy(value);
+            if text.contains('@') {
+                super::urlcheck::mailbox_is_valid(&text)
+            } else {
+                domain_ok(value)
+            }
+        }
+        0x86 => {
+            if !value.is_ascii() {
+                return false;
+            }
+            let text = String::from_utf8_lossy(value);
+            if text.parse::<std::net::IpAddr>().is_ok() {
+                return false;
+            }
+            domain_ok(value)
+        }
+        _ => true,
+    }
+}
+
 fn read_name_constraints(value: &[u8]) -> Option<()> {
     let mut outer = Der(value);
     let toplevel = outer.read(SEQUENCE)?;
@@ -868,7 +1032,10 @@ fn read_name_constraints(value: &[u8]) -> Option<()> {
         while !subtrees.is_empty() {
             let sequence = subtrees.read(SEQUENCE)?;
             let mut sequence = Der(sequence);
-            sequence.read_any()?;
+            let (tag, value) = sequence.read_any()?;
+            if !constraint_is_valid(tag, value) {
+                return None;
+            }
         }
     }
     Some(())
@@ -897,7 +1064,7 @@ fn read_alternative_names(value: &[u8], facts: &mut Certificate) -> Option<()> {
                 dns.push(String::from_utf8_lossy(data).into_owned());
             }
             6 => {
-                if !data.is_ascii() {
+                if !data.is_ascii() || !super::urlcheck::uri_is_valid(&String::from_utf8_lossy(data)) {
                     return None;
                 }
             }
@@ -1024,7 +1191,7 @@ pub fn parse_certificate_request(der: &[u8]) -> Option<CertificateRequest> {
     } else {
         algorithm_name(&identifier.oid)
     };
-    let subject = Name::parse(subject_element)?;
+    let subject = Name::parse_lenient(subject_element)?;
     let mut dns_names = Vec::new();
     let mut seen: Vec<String> = Vec::new();
     let mut attributes = Der(attributes);
@@ -1036,8 +1203,18 @@ pub fn parse_certificate_request(der: &[u8]) -> Option<CertificateRequest> {
         let mut attribute = Der(attribute_content);
         let Some(oid) = attribute.read_oid() else { continue };
         let Some(values) = attribute.read(SET) else { continue };
+        // The values must all be elements, and the attribute must have one value at least.
         let mut values = Der(values);
-        let Some((_, first, _)) = values.read_any_element() else {
+        let mut first: Option<&[u8]> = None;
+        let mut valid = true;
+        while !values.is_empty() {
+            let Some((_, full, _)) = values.read_any_element() else {
+                valid = false;
+                break;
+            };
+            first.get_or_insert(full);
+        }
+        let (true, Some(first)) = (valid, first) else {
             continue;
         };
         if !oid.is(&[1, 2, 840, 113_549, 1, 9, 14]) {
@@ -1093,6 +1270,18 @@ pub fn parse_certificate_request(der: &[u8]) -> Option<CertificateRequest> {
         public_key_label,
         dns_names,
     })
+}
+
+/// The DER form of a length.
+fn der_length(length: usize) -> Vec<u8> {
+    if length < 128 {
+        return vec![length as u8];
+    }
+    let bytes = length.to_be_bytes();
+    let start = bytes.iter().position(|byte| *byte != 0).unwrap_or(bytes.len() - 1);
+    let mut out = vec![0x80 | (bytes.len() - start) as u8];
+    out.extend_from_slice(&bytes[start..]);
+    out
 }
 
 /// The bits of the modulus of an RSA private key (PKCS #1). The key must be consistent: the primes multiply to the
@@ -1177,12 +1366,16 @@ fn parse_ec_private_key(der: &[u8], wrapped_curve: Option<&'static str>) -> Opti
     let mut der = Der(content);
     let version = der.read_i32()?;
     let scalar = der.read(OCTET_STRING)?;
-    let curve_oid = match der.read_optional(context_constructed(0))? {
-        Some(inner) => Some(Der(inner).read_oid()?),
+    let curve_oid = match der.read_explicit_lenient(context_constructed(0), OBJECT_IDENTIFIER)? {
+        Some(content) => Some(Oid::from_der_content(content)?),
         None => None,
     };
-    if let Some(inner) = der.read_optional(context_constructed(1))? {
-        Der(inner).read_bit_string()?;
+    if let Some(content) = der.read_explicit_lenient(context_constructed(1), BIT_STRING)? {
+        let mut element = Vec::with_capacity(content.len() + 4);
+        element.push(BIT_STRING);
+        element.extend_from_slice(&der_length(content.len()));
+        element.extend_from_slice(content);
+        Der(&element).read_bit_string()?;
     }
     if version != 1 {
         return None;
@@ -1191,8 +1384,8 @@ fn parse_ec_private_key(der: &[u8], wrapped_curve: Option<&'static str>) -> Opti
         Some(curve) => curve,
         None => named_curve(&curve_oid?)?,
     };
-    let order = curve_order(curve);
-    let size = order.len();
+    let order = super::bignum::curve_order(curve);
+    let size = order.bit_length().div_ceil(8);
     let mut scalar = scalar;
     while scalar.len() > size {
         if scalar[0] != 0 {
@@ -1200,9 +1393,7 @@ fn parse_ec_private_key(der: &[u8], wrapped_curve: Option<&'static str>) -> Opti
         }
         scalar = &scalar[1..];
     }
-    let mut padded = vec![0u8; size - scalar.len()];
-    padded.extend_from_slice(scalar);
-    if padded.as_slice() >= order {
+    if Uint::from_be_bytes(scalar) >= order {
         return None;
     }
     Some(curve)

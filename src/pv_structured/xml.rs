@@ -161,7 +161,7 @@ impl<'a> Tokenizer<'a> {
         let Ok(raw) = std::str::from_utf8(&rest[..end]) else {
             return self.fail();
         };
-        let Some(text) = decode_text(raw, false) else {
+        let Some(text) = decode_text(raw) else {
             return self.fail();
         };
         self.position += end;
@@ -280,7 +280,7 @@ impl<'a> Tokenizer<'a> {
             if raw.contains('<') {
                 return self.fail();
             }
-            let Some(value) = decode_text(raw, true) else {
+            let Some(value) = decode_text(raw) else {
                 return self.fail();
             };
             index += value_end + 1;
@@ -297,47 +297,52 @@ fn normalize_line_ends(text: &str) -> String {
     text.replace("\r\n", "\n").replace('\r', "\n")
 }
 
-/// Check the declaration `<?xml ...?>`: the version must be 1.0 and the encoding UTF-8.
-fn check_declaration(content: &[u8]) -> bool {
-    let Ok(content) = std::str::from_utf8(content) else {
-        return false;
+/// The value of a parameter of a declaration: the text between the quotes after `name=`. An empty text when the
+/// declaration has no such parameter.
+fn declaration_parameter(name: &str, content: &str) -> String {
+    let key = format!("{name}=");
+    let Some(index) = content.find(&key) else {
+        return String::new();
     };
-    let target_end = content
-        .find(|character: char| character.is_whitespace())
-        .unwrap_or(content.len());
-    if &content[..target_end] != "xml" {
+    let value = &content[index + key.len()..];
+    let Some(quote) = value.chars().next().filter(|quote| *quote == '"' || *quote == '\'') else {
+        return String::new();
+    };
+    let inner = &value[1..];
+    match inner.find(quote) {
+        Some(end) => inner[..end].to_owned(),
+        None => String::new(),
+    }
+}
+
+/// Check a processing instruction: its target must be a name. The declaration `xml` must have the version 1.0
+/// (or no version) and the encoding UTF-8 (or no encoding).
+fn check_declaration(data: &[u8]) -> bool {
+    let target_end = data
+        .iter()
+        .position(|byte| !(byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b':' | b'.' | b'-') || *byte >= 0x80))
+        .unwrap_or(data.len());
+    if target_end == 0 {
+        return false;
+    }
+    let target = String::from_utf8_lossy(&data[..target_end]).into_owned();
+    if !target.chars().next().is_some_and(is_name_start) || !target.chars().all(is_name_char) {
+        return false;
+    }
+    if target != "xml" {
         return true;
     }
-    let value_of = |name: &str| -> Option<String> {
-        let mut search = content;
-        while let Some(index) = search.find(name) {
-            let after = &search[index + name.len()..];
-            let after_trim = after.trim_start();
-            if let Some(after_equals) = after_trim.strip_prefix('=') {
-                let after_equals = after_equals.trim_start();
-                let quote = after_equals.chars().next()?;
-                if quote == '"' || quote == '\'' {
-                    let inner = &after_equals[1..];
-                    let end = inner.find(quote)?;
-                    return Some(inner[..end].to_owned());
-                }
-            }
-            search = after;
-        }
-        None
-    };
-    if let Some(version) = value_of("version")
-        && version != "1.0"
-    {
+    let content_start = data[target_end..]
+        .iter()
+        .position(|byte| !byte.is_ascii_whitespace())
+        .map_or(data.len(), |offset| target_end + offset);
+    let content = String::from_utf8_lossy(&data[content_start..]).into_owned();
+    let version = declaration_parameter("version", &content);
+    if !version.is_empty() && version != "1.0" {
         return false;
     }
-    if let Some(encoding) = value_of("encoding")
-        && !encoding.is_empty()
-        && !encoding.eq_ignore_ascii_case("utf-8")
-    {
-        return false;
-    }
-    true
+    let encoding = declaration_parameter("encoding", &content);
+    encoding.is_empty() || encoding.eq_ignore_ascii_case("utf-8")
 }
 
 /// The length of a directive `<!...>` (with brackets and quotes), or `None` when it does not end.
@@ -373,11 +378,11 @@ fn skip_directive(data: &[u8]) -> Option<usize> {
 }
 
 /// Expand the references of a text and check its characters. `None` for a reference that the reader refuses.
-fn decode_text(raw: &str, attribute: bool) -> Option<String> {
+fn decode_text(raw: &str) -> Option<String> {
     if !raw.chars().all(is_xml_char) {
         return None;
     }
-    if !attribute && raw.contains("]]>") {
+    if raw.contains("]]>") {
         return None;
     }
     let mut out = String::with_capacity(raw.len());

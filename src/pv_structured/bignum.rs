@@ -217,3 +217,15 @@ pub fn point_on_curve(curve: &str, x: &[u8], y: &[u8]) -> bool {
     let right = cube.add(&constant).add(&prime).sub(&three_x).rem(&prime);
     left == right
 }
+
+/// The order of the group of a curve.
+pub fn curve_order(curve: &str) -> Uint {
+    Uint::from_hex(match curve {
+        "P-224" => "ffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d",
+        "P-256" => "ffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551",
+        "P-384" => "ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973",
+        _ => {
+            "1fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffa51868783bf2f966b7fcc0148f709a5d03bb5c9b8899c47aebb6fb71e91386409"
+        }
+    })
+}

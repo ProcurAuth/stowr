@@ -18,6 +18,7 @@ mod pdf;
 mod pem;
 mod routes;
 mod text;
+mod urlcheck;
 mod x509;
 mod xml;
 

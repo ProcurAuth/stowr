@@ -145,9 +145,26 @@ pub struct HeaderBlock {
     pub error: Option<HeaderError>,
 }
 
+/// A byte that a header value may hold: a printable character, a blank, a tab or a byte above 0x7f.
+fn is_header_value_byte(byte: u8) -> bool {
+    (0x21..0x7f).contains(&byte) || byte == b' ' || byte == b'\t' || byte >= 0x80
+}
+
+/// The kind of reader of a header block.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum HeaderMode {
+    /// The header of a message: a line with a name that no name may hold keeps the name as it is, a line with no
+    /// name does not count, and a value has any byte.
+    Message,
+    /// The header of a part of a multipart body: a name that no name may hold, a missing name and a control byte
+    /// in a value make the block not valid. The block has bounds.
+    Part,
+}
+
 /// Read the header block at the start of the data: lines `Name: value` with continuation lines, to a blank line.
-/// `max_memory` and `max_headers` bound the block.
-pub fn read_header_block(data: &[u8], max_memory: i64, max_headers: i64) -> HeaderBlock {
+/// `max_memory` and `max_headers` bound the block of a part.
+pub fn read_header_block(data: &[u8], mode: HeaderMode, max_memory: i64, max_headers: i64) -> HeaderBlock {
+    let strict = mode == HeaderMode::Part;
     let mut reader = LineReader { data, position: 0 };
     let mut headers = Headers::new();
     let mut max_memory = max_memory;
@@ -174,7 +191,7 @@ pub fn read_header_block(data: &[u8], max_memory: i64, max_headers: i64) -> Head
         if first.is_empty() {
             finish!(None);
         }
-        if !first.contains(&b':') {
+        if strict && !first.contains(&b':') {
             finish!(Some(HeaderError::Malformed));
         }
         if first.len() as i64 > max_memory {
@@ -197,12 +214,28 @@ pub fn read_header_block(data: &[u8], max_memory: i64, max_headers: i64) -> Head
             }
             line.extend_from_slice(trim_blanks(continued));
         }
+        if !strict && line.is_empty() {
+            // A line of blanks ends the block of a message.
+            finish!(None);
+        }
         let Some(colon) = line.iter().position(|byte| *byte == b':') else {
             finish!(Some(HeaderError::Malformed));
         };
         let (name, value) = (&line[..colon], &line[colon + 1..]);
-        let Some(key) = canonical_key(name) else {
-            finish!(Some(HeaderError::Malformed));
+        let key = if strict {
+            let Some(key) = canonical_key(name).filter(|key| !key.is_empty()) else {
+                finish!(Some(HeaderError::Malformed));
+            };
+            if !value.iter().all(|byte| is_header_value_byte(*byte)) {
+                finish!(Some(HeaderError::Malformed));
+            }
+            key
+        } else {
+            let key = canonical_key(name).unwrap_or_else(|| lossy(name));
+            if key.is_empty() {
+                continue;
+            }
+            key
         };
         max_headers -= 1;
         if max_headers < 0 {
@@ -600,12 +633,16 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// True when the text after a prefix of a boundary ends the boundary.
-/// A dash, a blank, a tab or a line end must follow, or the data must end.
+/// A blank, a tab or a line end must follow, or two dashes, or the data must end.
 fn matches_after_prefix(buffer: &[u8], prefix_length: usize) -> bool {
     if buffer.len() == prefix_length {
         return true;
     }
-    matches!(buffer[prefix_length], b' ' | b'\t' | b'\r' | b'\n' | b'-')
+    match buffer[prefix_length] {
+        b' ' | b'\t' | b'\r' | b'\n' => true,
+        b'-' => buffer.get(prefix_length + 1) == Some(&b'-'),
+        _ => false,
+    }
 }
 
 fn skip_blanks(bytes: &[u8]) -> &[u8] {
@@ -763,7 +800,12 @@ impl<'a> MultipartReader<'a> {
     }
 
     fn new_part(&mut self) -> Option<Part<'a>> {
-        let block = read_header_block(&self.data[self.position..], MAX_PART_HEADER_BYTES, MAX_PART_HEADERS);
+        let block = read_header_block(
+            &self.data[self.position..],
+            HeaderMode::Part,
+            MAX_PART_HEADER_BYTES,
+            MAX_PART_HEADERS,
+        );
         if block.error.is_some() {
             return None;
         }
