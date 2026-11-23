@@ -68,18 +68,6 @@ fn header_version(prefix: &[u8]) -> Option<String> {
     None
 }
 
-/// The position of the last `obj` in a window.
-fn last_obj(window: &[u8]) -> Option<usize> {
-    let mut end = window.len();
-    while let Some(index) = window[..end].iter().rposition(|byte| *byte == b'j') {
-        if index >= 2 && &window[index - 2..=index] == b"obj" {
-            return Some(index - 2);
-        }
-        end = index;
-    }
-    None
-}
-
 /// The `/Type /Pages` markers: the start and the end of each, without overlap, at most `limit`.
 fn pages_markers(data: &[u8], limit: usize) -> Vec<(usize, usize)> {
     let mut markers = Vec::new();
@@ -105,17 +93,41 @@ fn pages_markers(data: &[u8], limit: usize) -> Vec<(usize, usize)> {
     markers
 }
 
-/// The numbers of the matches `/Count <digits>` in the data.
-fn counts_in(data: &[u8]) -> Vec<i64> {
-    let mut counts = Vec::new();
-    let marker = b"/Count";
+/// The start of each copy of a needle in the data, in order. Two copies can overlap.
+fn positions(data: &[u8], needle: &[u8]) -> Vec<usize> {
+    let mut found = Vec::new();
     let mut from = 0;
-    while let Some(offset) = find(&data[from..], marker) {
-        let start = from + offset;
-        let after = start + marker.len();
-        let digits_start = skip_spaces(data, after);
+    while let Some(offset) = find(&data[from..], needle) {
+        found.push(from + offset);
+        from += offset + 1;
+    }
+    found
+}
+
+/// The numbers of the matches `/Count <digits>` in `data[start..end]`, from the positions of `/Count` in the data.
+/// A match does not overlap the match before it, and its digits stop at `end`.
+fn counts_in(data: &[u8], count_positions: &[usize], start: usize, end: usize) -> Vec<i64> {
+    let marker_length = b"/Count".len();
+    let mut counts = Vec::new();
+    let mut from = start;
+    let first = count_positions.partition_point(|position| *position < start);
+    for &position in &count_positions[first..] {
+        if position + marker_length > end {
+            break;
+        }
+        if position < from {
+            continue;
+        }
+        let after = position + marker_length;
+        let mut digits_start = after;
+        while digits_start < end && is_space(data[digits_start]) {
+            digits_start += 1;
+        }
         if digits_start > after {
-            let digits_end = skip_digits(data, digits_start);
+            let mut digits_end = digits_start;
+            while digits_end < end && data[digits_end].is_ascii_digit() {
+                digits_end += 1;
+            }
             if digits_end > digits_start {
                 if let Ok(value) = String::from_utf8_lossy(&data[digits_start..digits_end]).parse::<i64>() {
                     counts.push(value);
@@ -124,7 +136,7 @@ fn counts_in(data: &[u8]) -> Vec<i64> {
                 continue;
             }
         }
-        from = start + 1;
+        from = position + 1;
     }
     counts
 }
@@ -132,25 +144,38 @@ fn counts_in(data: &[u8]) -> Vec<i64> {
 /// The page count that the page tree markers give. Zero when no marker gives a count.
 pub fn page_count(data: &[u8]) -> i64 {
     let mut counts: Vec<i64> = Vec::new();
-    for (marker_start, marker_end) in pages_markers(data, MAX_PAGES_MARKERS) {
+    let markers = pages_markers(data, MAX_PAGES_MARKERS);
+    if markers.is_empty() {
+        return 0;
+    }
+    // One pass over the data finds each word that a marker needs. Each marker then reads only its own window.
+    let objects = positions(data, b"obj");
+    let ends = positions(data, b"endobj");
+    let count_positions = positions(data, b"/Count");
+    for (marker_start, marker_end) in markers {
         let mut start = marker_start;
         // Only the 4096 bytes before the marker can hold the start of its object.
         let window_start = marker_start.saturating_sub(4096);
-        let window = &data[window_start..marker_start];
-        if let Some(index) = last_obj(window) {
-            start = window_start + index;
-        } else if start > 512 {
-            start -= 512;
-        } else {
-            start = 0;
+        let before = objects.partition_point(|position| position + 3 <= marker_start);
+        match before.checked_sub(1).map(|index| objects[index]) {
+            Some(position) if position >= window_start => start = position,
+            _ if start > 512 => start -= 512,
+            _ => start = 0,
         }
         let mut end = marker_end + 4096;
         let limit = data.len().min(marker_end + 4096);
-        if let Some(relative) = find(&data[marker_end..limit], b"endobj") {
-            end = marker_end + relative;
+        let next = ends.partition_point(|position| *position < marker_end);
+        if let Some(&position) = ends.get(next)
+            && position + 6 <= limit
+        {
+            end = position;
         }
         let end = end.min(data.len());
-        counts.extend(counts_in(&data[start..end]).into_iter().filter(|value| *value > 0));
+        counts.extend(
+            counts_in(data, &count_positions, start, end)
+                .into_iter()
+                .filter(|value| *value > 0),
+        );
     }
     if counts.is_empty() {
         return 0;
