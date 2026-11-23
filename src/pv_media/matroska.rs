@@ -172,7 +172,7 @@ fn parse_matroska_info(data: &[u8], scale: f64, duration: f64, metadata: &mut Me
     (scale, duration)
 }
 
-/// The track entries of the Tracks element. An entry without a known type is not kept.
+/// The track entries of the Tracks element. The reader does not keep an entry without a known type.
 fn parse_matroska_tracks(data: &[u8]) -> Vec<MediaTrackInfo> {
     let mut tracks = Vec::new();
     walk_simple_ebml(data, |id, value| {
@@ -215,7 +215,7 @@ fn parse_matroska_track_entry(data: &[u8]) -> MediaTrackInfo {
     track
 }
 
-/// An EBML unsigned integer of any length (the high bytes of a value longer than 8 bytes are lost).
+/// An EBML unsigned integer of any length. A value longer than 8 bytes loses its high bytes.
 fn ebml_unsigned(data: &[u8]) -> u64 {
     data.iter().fold(0u64, |value, byte| (value << 8) | u64::from(*byte))
 }

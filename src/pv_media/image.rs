@@ -425,8 +425,8 @@ pub(crate) fn parse_svg_start_tag(tag: &[u8]) -> (i64, i64) {
     (width, height)
 }
 
-/// The attributes of a start tag, by lower-case name. The reader accepts any text: an attribute without a quoted
-/// value is skipped.
+/// The attributes of a start tag, by lower-case name. The reader accepts any text: it skips an attribute without a
+/// quoted value.
 pub(crate) fn parse_loose_xml_attributes(tag: &[u8]) -> HashMap<String, Vec<u8>> {
     let mut attributes = HashMap::new();
     let length = tag.len();

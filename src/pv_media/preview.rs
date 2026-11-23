@@ -94,8 +94,8 @@ fn range_not_supported(message: &str) -> Error {
     Error::api(502, "range_not_supported", message)
 }
 
-/// Send `length` bytes of the object from `offset` as a JPEG image. A provider that sends the complete object for
-/// the range is refused: a small preview must not become a download of a large RAW file.
+/// Send `length` bytes of the object from `offset` as a JPEG image. The function refuses a provider that sends the
+/// complete object for the range: a small preview must not become a download of a large RAW file.
 async fn serve_embedded_image_range(
     ctx: &OpCtx,
     instance: &Arc<Instance>,

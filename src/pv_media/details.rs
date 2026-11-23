@@ -307,6 +307,11 @@ async fn document_details(
             Err(error) if error.has_code(CODE_NOT_SERVED) => return Ok(None),
             Err(error) => return Err(error),
         };
+    // The pattern names each member of the details: a new member must get its place in the answer here.
+    let crate::pv_data::DocumentDetails { container, properties } = details;
+    if container.is_empty() {
+        return Ok(None);
+    }
     let mut response = MediaInfoResponse {
         instance: instance.cfg.id.clone(),
         key: key.to_owned(),
@@ -314,8 +319,8 @@ async fn document_details(
     };
     let head = instance.head(ctx, &instance.full_key(key)).await?;
     populate_media_storage_fields(&mut response, &head.headers, listed.size);
-    response.container = details.container;
-    response.properties = details.properties;
+    response.container = container;
+    response.properties = properties;
     Ok(Some(response))
 }
 

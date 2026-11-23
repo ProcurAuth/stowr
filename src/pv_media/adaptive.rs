@@ -3,8 +3,8 @@
 //! Each reader makes the first range request of its format and then follows the lengths and the offsets that the
 //! format declares: PNG reads its fixed header and its chunk headers, JPEG reads to the start of scan, TIFF follows
 //! its IFD offsets, ISO base media skips to its `moov` box, Matroska reads to the first cluster, and the audio
-//! readers read their metadata blocks. A guard of 128 MiB stops a corrupt or hostile structure. The decoding of a
-//! large part runs on a blocking thread.
+//! readers read their metadata blocks. A guard of 128 MiB stops a corrupt or hostile structure. A separate thread
+//! decodes a large part.
 
 use std::collections::{HashSet, VecDeque};
 
@@ -41,7 +41,7 @@ pub const METADATA_GROWTH_FLOOR: i64 = 64 << 10;
 /// The largest FITS header that the reader scans: 1 MiB.
 const MAX_FITS_HEADER_BYTES: i64 = 1 << 20;
 
-/// Bytes up to this size are decoded on the thread of the request; a larger part goes to a blocking thread.
+/// The largest part that the task of the request decodes itself. A separate thread decodes a larger part.
 const INLINE_PARSE_BYTES: usize = 256 << 10;
 
 /// The length of a read of `desired` bytes from `start`: 0 at or after the end of the object, else at most the
@@ -111,7 +111,7 @@ async fn read_exact(source: &RangeSource, start: i64, length: i64) -> Result<Byt
     }
 }
 
-/// Decode bytes: on this thread for a small part, else on a blocking thread.
+/// Decode bytes. The task of the request decodes a small part, and a separate thread decodes a larger part.
 async fn compute<T: Send + 'static>(data: Bytes, work: impl FnOnce(&[u8]) -> T + Send + 'static) -> Result<T> {
     if data.len() <= INLINE_PARSE_BYTES {
         return Ok(work(&data));
@@ -336,7 +336,7 @@ async fn inspect_png_metadata(source: &RangeSource) -> Result<MediaMetadata> {
     Ok(result)
 }
 
-/// Keep the keyword and the text of a PNG text chunk. A compressed `iTXt` chunk is not decoded.
+/// Keep the keyword and the text of a PNG text chunk. The reader does not decode a compressed `iTXt` chunk.
 pub(crate) fn parse_png_text_metadata(metadata: &mut MediaMetadata, chunk_type: &[u8], payload: &[u8]) {
     if payload.is_empty() {
         return;
@@ -466,8 +466,8 @@ async fn inspect_radiance_hdr_metadata(source: &RangeSource) -> Result<MediaMeta
     inspect_growing_text_header(source, parse_radiance_hdr_dimensions).await
 }
 
-/// The FITS reader: the 2880-byte blocks of 80-byte cards, read in parts that double in size, until the `END` card.
-/// The reader never reads the image data.
+/// The FITS reader. A header has 2880-byte blocks of 80-byte cards. The reader reads the header in parts that double
+/// in size, until the `END` card. It never reads the image data.
 async fn inspect_fits_metadata(source: &RangeSource) -> Result<MediaMetadata> {
     const BLOCK: i64 = 2880;
     let mut result = MediaMetadata::default();

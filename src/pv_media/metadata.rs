@@ -28,7 +28,7 @@ pub(crate) struct MediaMetadata {
 }
 
 impl MediaMetadata {
-    /// Keep a property. The value loses the spaces at its two ends; an empty value is not kept.
+    /// Keep a property. The value loses the spaces at its two ends. The function ignores an empty value.
     pub fn set(&mut self, label: &str, value: &str) {
         let value = value.trim();
         if !value.is_empty() {

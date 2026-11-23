@@ -29,7 +29,7 @@ pub(crate) fn latin1(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| char::from(*byte)).collect()
 }
 
-/// The lower case of a text: each character gets its simple lower-case mapping.
+/// The lower case of a text: each character gets its simple lower-case form.
 pub(crate) fn fold_lower(text: &str) -> String {
     if text.is_ascii() {
         return text.to_ascii_lowercase();
@@ -39,7 +39,7 @@ pub(crate) fn fold_lower(text: &str) -> String {
         .collect()
 }
 
-/// The upper case of a text: each character with a one-character upper-case mapping gets it, the others stay.
+/// The upper case of a text: each character with an upper-case form of one character gets it. The others stay.
 pub(crate) fn fold_upper(text: &str) -> String {
     if text.is_ascii() {
         return text.to_ascii_uppercase();
@@ -138,7 +138,7 @@ pub(crate) fn format_fixed(value: f64, decimals: usize) -> String {
     format!("{value:.decimals$}")
 }
 
-/// A number with at most `precision` significant digits and no trailing zeros. The exponent form applies when the
+/// A number with at most `precision` significant digits and no zero at the end. The exponent form applies when the
 /// exponent is below -4 or not below the precision (`1.23e+03`).
 pub(crate) fn format_general(value: f64, precision: usize) -> String {
     if value.is_nan() {
