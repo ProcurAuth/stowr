@@ -721,9 +721,10 @@ async fn a_readable_folder_gives_the_access_member_and_the_whole_listing() {
         })
         .collect();
     assert_eq!(items, vec!["prefix:nested/", "content:direct.txt"]);
+    // The three display questions go in three requests, one after the other (docs/ACCESS.md).
     let questions = env.fake.questions();
     assert_eq!(questions.len(), 3, "{questions:?}");
-    assert_eq!(env.fake.requests(), 1);
+    assert_eq!(env.fake.requests(), 3);
     for (question, action) in questions.iter().zip([ACTION_READ, ACTION_WRITE, ACTION_DELETE]) {
         assert_eq!(question.action, action, "{question:?}");
         assert_eq!(question.path, FOLDER, "{question:?}");
@@ -770,7 +771,8 @@ async fn a_navigation_listing_shows_the_readable_folders_and_answers_head() {
         .collect();
     subtree.sort();
     assert_eq!(subtree, vec![format!("{BUCKET}/folder:a"), FOLDER.to_owned()]);
-    assert_eq!(env.fake.requests(), 2);
+    // Three requests for the questions of the node, then one batch for the folder items.
+    assert_eq!(env.fake.requests(), 4);
 
     // HEAD gives the same status.
     let answer = send(&env, "HEAD", "/api/list?instance=rw").await;

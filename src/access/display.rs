@@ -187,10 +187,10 @@ impl AccessLayer {
     }
 
     /// The display questions at the node of a listed prefix (match `node`, no usage): `object.read` and, when the
-    /// document publishes them, `object.write` and `object.delete`, in one batch. In mode `open` it asks nothing and
-    /// gives no member `access`. A failed answer gives `503`. When the person cannot read the node, a bucket or a
-    /// folder gives a navigation listing, and a subfolder gives `403`. A read that needs an approval gives
-    /// `403 approval_cannot_wait`.
+    /// document publishes them, `object.write` and `object.delete`. Each question goes in its own request. In mode
+    /// `open` it asks nothing and gives no member `access`. A failed answer gives `503`. When the person cannot read
+    /// the node, a bucket or a folder gives a navigation listing, and a subfolder gives `403`. A read that needs an
+    /// approval gives `403 approval_cannot_wait`.
     pub async fn list_display(&self, ctx: &OpCtx, instance: &Instance, prefix: &str) -> Result<ListDisplay> {
         if !self.enforced() {
             return Ok(ListDisplay::default());
