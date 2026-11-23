@@ -89,6 +89,11 @@ impl http_body::Body for GuardedBody {
     }
 }
 
+/// True for the status of a read that worked: 2xx or 304.
+pub fn is_successful_read_status(status: u16) -> bool {
+    (200..300).contains(&status) || status == 304
+}
+
 /// An error for an answer 401 or 403 of a read: the provider denied the read.
 fn access_denied(status: u16) -> Error {
     Error::upstream(status, "AccessDenied", "")
@@ -157,7 +162,7 @@ impl Instance {
     /// [`Instance::without_empty_prefixes`]).
     pub async fn list(&self, ctx: &OpCtx, options: &ListOptions) -> Result<ListPage> {
         let slot = self.begin_storage_request(ctx).await?;
-        let result = self.backend.list(ctx, options).await;
+        let result = ctx.run(self.backend.list(ctx, options)).await;
         drop(slot);
         self.observe_permission(PERMISSION_READ, result.as_ref().err());
         let mut page = result?;
@@ -193,7 +198,7 @@ impl Instance {
                     max_results: 1,
                     ..ListOptions::default()
                 };
-                matches!(self.backend.list(ctx, &options).await, Ok(page) if page.objects.is_empty())
+                matches!(ctx.run(self.backend.list(ctx, &options)).await, Ok(page) if page.objects.is_empty())
             })
             .collect::<Vec<_>>();
         let empty = run_bounded(probes, PREFIX_PROBE_PARALLEL).await;
@@ -216,7 +221,7 @@ impl Instance {
 
     async fn head_current(&self, ctx: &OpCtx, key: &str) -> Result<ObjectResponse> {
         let _slot = self.begin_storage_request(ctx).await?;
-        let result = match self.backend.head(ctx, key).await {
+        let result = match ctx.run(self.backend.head(ctx, key)).await {
             Ok(response) if response.status == 401 || response.status == 403 => Err(access_denied(response.status)),
             other => other,
         };
@@ -232,7 +237,7 @@ impl Instance {
             return self.get_stored_version(ctx, key, version, headers).await;
         }
         let slot = self.begin_storage_request(ctx).await?;
-        let result = self.backend.get(ctx, key, headers).await;
+        let result = ctx.run(self.backend.get(ctx, key, headers)).await;
         self.finish_read(ctx, slot, result)
     }
 
@@ -675,7 +680,7 @@ impl Instance {
             .part_lister()
             .ok_or_else(|| Error::internal("storage backend does not support multipart part reconciliation"))?;
         let _slot = self.begin_storage_request(ctx).await?;
-        let result = lister.list_parts(ctx, key, upload_id).await;
+        let result = ctx.run(lister.list_parts(ctx, key, upload_id)).await;
         self.observe_permission(PERMISSION_WRITE, result.as_ref().err());
         result
     }
@@ -722,7 +727,7 @@ impl Instance {
     pub async fn query_resumable(&self, ctx: &OpCtx, session: &str, total: i64) -> Result<(i64, bool)> {
         let api = self.backend.resumable().ok_or_else(no_resumable)?;
         let _slot = self.begin_storage_request(ctx).await?;
-        let result = api.query_resumable(ctx, session, total).await;
+        let result = ctx.run(api.query_resumable(ctx, session, total)).await;
         self.observe_permission(PERMISSION_WRITE, result.as_ref().err());
         result
     }

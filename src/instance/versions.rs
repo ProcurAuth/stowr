@@ -54,7 +54,7 @@ impl Instance {
     ) -> Result<ObjectVersionPage> {
         let store = self.version_store()?;
         let _slot = self.begin_storage_request(ctx).await?;
-        let result = store.list_versions(ctx, key, page_token, maximum).await;
+        let result = ctx.run(store.list_versions(ctx, key, page_token, maximum)).await;
         self.observe_permission(PERMISSION_READ, result.as_ref().err());
         result
     }
@@ -71,7 +71,7 @@ impl Instance {
     pub(crate) async fn head_stored_version(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectResponse> {
         let store = self.version_store()?;
         let _slot = self.begin_storage_request(ctx).await?;
-        let result = match store.head_version(ctx, key, version).await {
+        let result = match ctx.run(store.head_version(ctx, key, version)).await {
             Ok(response) if response.status == 401 || response.status == 403 => {
                 Err(Error::upstream(response.status, "AccessDenied", ""))
             }
@@ -107,7 +107,7 @@ impl Instance {
         let store = self.version_store()?;
         let slot = self.begin_storage_request(ctx).await?;
         let headers = without_version_preconditions(headers);
-        let result = store.get_version(ctx, key, version, &headers).await;
+        let result = ctx.run(store.get_version(ctx, key, version, &headers)).await;
         self.finish_read(ctx, slot, result)
     }
 

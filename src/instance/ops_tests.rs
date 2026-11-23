@@ -1124,3 +1124,127 @@ async fn bounded_futures_keep_their_order() {
         .collect();
     assert_eq!(ops::run_bounded(futures, 3).await, (0..10).collect::<Vec<_>>());
 }
+
+// ---- the checks of many objects and the start of a bucket ----
+
+#[tokio::test]
+async fn a_prefix_with_one_object_over_the_ceiling_is_refused_before_the_first_effect() {
+    let memory = Arc::new(MemoryBackend::new());
+    for (key, size) in [("a.txt", 3), ("b.txt", 5), ("z.txt", 30)] {
+        memory.insert(&format!("tenant/folder/set/{key}"), vec![b'x'; size], "");
+    }
+    memory.insert("tenant/folder/other.txt", vec![b'x'; 300], "");
+    let instance = read_write_instance(memory.clone());
+    let actions = [ACTION_READ, ACTION_WRITE];
+    let ctx = ctx_with_ceiling(ACTION_READ, 10, "rid-prefix");
+    let error = ceiling::check_listed_sizes(&ctx, &instance, "folder/set/", &actions)
+        .await
+        .err()
+        .unwrap();
+    assert!(is_ceiling(&error));
+    assert!(error.public_message().contains("action object.read"));
+    let ctx = ctx_with_ceiling(ACTION_WRITE, 30, "rid-prefix");
+    ceiling::check_listed_sizes(&ctx, &instance, "folder/set/", &actions)
+        .await
+        .unwrap();
+    // Without a ceiling, the check lists nothing.
+    let calls = memory.state().list_calls;
+    ceiling::check_listed_sizes(&OpCtx::default(), &instance, "folder/", &actions)
+        .await
+        .unwrap();
+    assert_eq!(memory.state().list_calls, calls);
+    // A job context keeps its own copy of the ceilings.
+    let mut map = ceiling::CeilingMap::new();
+    map.entry(ACTION_WRITE.to_owned())
+        .or_default()
+        .insert(MAX_OBJECT_SIZE.to_owned(), 10);
+    let job = ceiling::with_access_ceilings(&OpCtx::default(), &map);
+    let error = ceiling::check_listed_sizes(&job, &instance, "folder/set/", &actions)
+        .await
+        .err()
+        .unwrap();
+    assert!(error.public_message().contains("action object.write"));
+    assert!(
+        ceiling::with_access_ceilings(&OpCtx::default(), &ceiling::CeilingMap::new())
+            .ceilings
+            .is_none()
+    );
+}
+
+#[tokio::test]
+async fn a_bucket_needs_its_auth_block() {
+    let cfg = bucket_config("rw", "", &[PERMISSION_READ]);
+    let error = Instance::for_bucket(cfg, None, Arc::new(Default::default()), super::gate::Gate::new(4))
+        .err()
+        .unwrap();
+    assert_eq!(
+        error.to_string(),
+        "bucket \"rw\" references an unavailable authentication"
+    );
+}
+
+#[test]
+fn a_read_works_with_a_success_or_not_modified() {
+    for status in [200, 206, 204, 304] {
+        assert!(ops::is_successful_read_status(status), "{status}");
+    }
+    for status in [199, 300, 301, 404, 500] {
+        assert!(!ops::is_successful_read_status(status), "{status}");
+    }
+}
+
+#[tokio::test]
+async fn the_cache_tells_which_bytes_it_holds() {
+    let memory = Arc::new(MemoryBackend::new());
+    memory.insert("tenant/k", vec![b'x'; 100], "");
+    let instance = read_write_instance(memory);
+    let source = range::RangeSource::open(&OpCtx::default(), &instance, "k")
+        .await
+        .unwrap();
+    assert!(!source.has_byte(5));
+    source.read_range(0, 10).await.unwrap();
+    assert!(source.has_byte(5) && source.has_byte(9));
+    assert!(!source.has_byte(10));
+}
+
+/// A back end whose reads never end.
+struct StalledReads {
+    memory: MemoryBackend,
+}
+
+impl MemoryLayer for StalledReads {
+    fn memory(&self) -> &MemoryBackend {
+        &self.memory
+    }
+    fn get<'a>(
+        &'a self,
+        _ctx: &'a OpCtx,
+        _key: &'a str,
+        _headers: &'a HeaderMap,
+    ) -> BoxFuture<'a, Result<ObjectResponse>> {
+        Box::pin(std::future::pending())
+    }
+}
+
+#[tokio::test]
+async fn a_canceled_job_stops_a_read_that_waits_for_the_provider() {
+    let instance = read_write_instance(Arc::new(StalledReads {
+        memory: MemoryBackend::new(),
+    }));
+    let ctx = OpCtx::default().gated(GateMode::Unbounded);
+    let token = ctx.cancel.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        token.cancel();
+    });
+    let error = instance.get(&ctx, "tenant/x", &HeaderMap::new()).await.err().unwrap();
+    assert_eq!(error, Error::Canceled);
+    assert_eq!(instance.gate.held(), 0);
+    let deadline = OpCtx::default().with_timeout(Duration::from_millis(20));
+    let error = instance
+        .get(&deadline, "tenant/x", &HeaderMap::new())
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(error, Error::Timeout);
+}

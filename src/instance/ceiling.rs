@@ -226,6 +226,66 @@ pub fn check_read_answer(ctx: &OpCtx, status: u16, headers: &HeaderMap) -> Resul
     check_read_ceiling(ctx, read_answer_size(status, headers))
 }
 
+/// The same context with a copy of the ceilings of a job. The ceilings replace those that the context carried. An
+/// empty map gives the context unchanged.
+pub fn with_access_ceilings(ctx: &OpCtx, ceilings: &CeilingMap) -> OpCtx {
+    if ceilings.is_empty() {
+        return ctx.clone();
+    }
+    OpCtx {
+        ceilings: Some(std::sync::Arc::new(Ceilings::from_map(ceilings))),
+        ..ctx.clone()
+    }
+}
+
+/// List each object under a relative prefix and check its size against the ceilings of the actions, before the
+/// first effect of an operation on many objects (a copy of a prefix reads and writes each object). The check stops
+/// at the first object over a ceiling. Without a ceiling of the actions, it lists nothing.
+pub async fn check_listed_sizes(
+    ctx: &OpCtx,
+    instance: &crate::instance::Instance,
+    prefix: &str,
+    actions: &[&str],
+) -> Result<()> {
+    if !ceiling_applies(ctx, actions) {
+        return Ok(());
+    }
+    const PAGE: u32 = 1000;
+    let full_prefix = instance.full_key(prefix);
+    let mut last_key = String::new();
+    loop {
+        let options = crate::common::storage::ListOptions {
+            prefix: full_prefix.clone(),
+            max_results: PAGE,
+            start_after: if last_key.is_empty() {
+                String::new()
+            } else {
+                instance.full_key(&last_key)
+            },
+            ..Default::default()
+        };
+        let mut page = instance.list(ctx, &options).await?;
+        page.objects.sort_by(|left, right| left.key.cmp(&right.key));
+        let mut progressed = false;
+        for object in &page.objects {
+            let Some(relative) = instance.relative_key(&object.key) else {
+                continue;
+            };
+            if relative.is_empty() || !relative.starts_with(prefix) || (!last_key.is_empty() && relative <= last_key) {
+                continue;
+            }
+            for action in actions {
+                check_object_ceiling(ctx, action, object.size)?;
+            }
+            last_key = relative;
+            progressed = true;
+        }
+        if !progressed || (page.next_page_token.is_empty() && page.objects.len() < PAGE as usize) {
+            return Ok(());
+        }
+    }
+}
+
 /// The trimmed text of a header, or an empty text.
 pub(crate) fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> &'a str {
     headers

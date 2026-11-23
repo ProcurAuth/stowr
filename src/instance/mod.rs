@@ -151,6 +151,41 @@ impl Instance {
         }
     }
 
+    /// The instance of a bucket block over the shared client of its auth block: the S3 or the GCS back end, and
+    /// the usage reader of the auth block when it has a `usage` block. An error stops the start.
+    pub fn for_bucket(
+        cfg: BucketConfig,
+        auth: Option<Arc<crate::provider::SharedAuth>>,
+        policy: Arc<RuntimePolicy>,
+        global_gate: gate::Gate,
+    ) -> Result<Self> {
+        let Some(auth) = auth else {
+            return Err(Error::internal(format!(
+                "bucket {:?} references an unavailable authentication",
+                cfg.id
+            )));
+        };
+        if auth.cfg.id != cfg.auth_id || auth.cfg.provider.as_str() != cfg.provider {
+            return Err(Error::internal(format!(
+                "bucket {:?} authentication does not match its resolved configuration",
+                cfg.id
+            )));
+        }
+        let backend: Arc<dyn Backend> = match cfg.provider.as_str() {
+            "s3" => Arc::new(crate::provider::S3Backend::new(cfg.clone(), auth.clone())?),
+            "gcs" => Arc::new(crate::provider::GcsBackend::new(cfg.clone(), auth.clone())?),
+            other => return Err(Error::internal(format!("unsupported provider {other:?}"))),
+        };
+        let instance = Self::new(cfg, backend, policy, global_gate);
+        if auth.cfg.usage.is_some()
+            && let Some(reader) = &auth.usage
+            && let Ok(mut slot) = instance.usage.reader.lock()
+        {
+            *slot = Some(reader.clone());
+        }
+        Ok(instance)
+    }
+
     /// The full key of a relative key: the root prefix and the key, without the `/` at the start of the key.
     pub fn full_key(&self, relative: &str) -> String {
         format!("{}{}", self.cfg.root_prefix, relative.trim_start_matches('/'))
@@ -326,6 +361,6 @@ impl Instance {
 
     async fn discover_capabilities(&self, ctx: &OpCtx) -> Result<crate::common::storage::DiscoveredCapabilities> {
         let _slot = self.begin_storage_request(ctx).await?;
-        self.backend.discover_capabilities(ctx).await
+        ctx.run(self.backend.discover_capabilities(ctx)).await
     }
 }

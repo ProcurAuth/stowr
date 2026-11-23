@@ -563,6 +563,11 @@ impl RangeSource {
         Some(span)
     }
 
+    /// True when the cache holds the byte at `offset`: a read of it makes no provider request.
+    pub fn has_byte(&self, offset: i64) -> bool {
+        self.cached_span_at(offset).is_some()
+    }
+
     /// The start of the first cached span after `offset` and before `limit`, else `limit`.
     fn next_cached_start(&self, offset: i64, limit: i64) -> i64 {
         let state = self.lock();
