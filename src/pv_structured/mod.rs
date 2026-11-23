@@ -1,31 +1,52 @@
-//! The previews of structured text and of packages: vCard, iCalendar, email (EML, MIME, MHTML), certificates,
-//! certificate requests and keys (a small DER reader), PDF metadata, and the ZIP-compatible packages (ZIP, JAR,
-//! APK, XPI, CRX, VSIX, EPUB) through the reader of `crate::archive::zip` (docs/PREVIEWS.md, "Structured text",
+//! The previews of structured text and of packages (docs/PREVIEWS.md, "Structured text" and
 //! "ZIP-compatible packages").
+//!
+//! The text formats are vCard, iCalendar and email (EML, MIME, MHTML). The key formats are certificates, certificate
+//! requests and keys: a small DER reader gives their details. The reader also gives the details of PDF files.
+//! The ZIP-compatible packages (ZIP, JAR, APK, XPI, CRX, VSIX, EPUB) use the reader of `crate::archive::zip`.
 
-use std::collections::BTreeMap;
-use std::sync::Arc;
+mod bignum;
+mod certificate;
+mod der;
+mod email;
+mod entities;
+mod html;
+mod metadata;
+mod mime;
+mod package;
+mod pdf;
+mod pem;
+mod routes;
+mod text;
+mod urlcheck;
+mod x509;
+mod xml;
 
-use crate::common::ctx::OpCtx;
-use crate::common::error::{Error, Result};
+#[cfg(test)]
+mod certificate_tests;
+#[cfg(test)]
+mod email_tests;
+#[cfg(test)]
+mod fixtures;
+#[cfg(test)]
+mod html_tests;
+#[cfg(test)]
+mod metadata_tests;
+#[cfg(test)]
+mod package_tests;
+#[cfg(test)]
+mod pdf_tests;
+#[cfg(test)]
+mod routes_tests;
+#[cfg(test)]
+mod testzip;
+#[cfg(test)]
+mod text_tests;
+
 use crate::common::http::{Route, RouteAccess, route};
-use crate::instance::Instance;
 
-/// The structured metadata of an object for the details: the container and its properties.
-pub async fn inspect_structured_metadata(
-    ctx: &OpCtx,
-    instance: &Arc<Instance>,
-    key: &str,
-    extension: &str,
-    content_type: &str,
-    listed: &crate::pv_media::MediaSourceMetadata,
-) -> Result<(String, BTreeMap<String, String>)> {
-    let _ = (ctx, instance, key, extension, content_type, listed);
-    Err(Error::not_served("the structured metadata"))
-}
-
-crate::stub_handler!(handle_structured_preview, "the route /api/structured-preview");
-crate::stub_handler!(handle_archive_preview, "the route /api/archive-preview");
+pub use metadata::{StructuredMetadata, inspect_structured_metadata};
+pub use routes::{handle_archive_preview, handle_structured_preview};
 
 /// The routes of this work package.
 pub fn routes() -> Vec<Route> {
