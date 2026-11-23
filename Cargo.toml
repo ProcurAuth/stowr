@@ -44,6 +44,10 @@ base64 = "=0.22.1"
 # statfs, O_NOFOLLOW and the error numbers of the volume back end.
 libc = "=0.2.191"
 
+# The guard of the mode authzen uses the library procurauth-pep. The feature stays off until the dependency exists.
+[features]
+procurauth-pep = []
+
 [profile.release]
 opt-level = 3
 lto = true

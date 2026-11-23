@@ -13,6 +13,10 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// The code of a function that is not served yet. A stub returns it with the status 501.
 pub const CODE_NOT_SERVED: &str = "not_served";
 
+/// The code of an action that needs the approval of its owner (ProcurAuth 17.7a). No route can wait for the
+/// approval. The answer is 403 with exactly the body `{"error":"approval_cannot_wait"}`.
+pub const CODE_APPROVAL_CANNOT_WAIT: &str = "approval_cannot_wait";
+
 /// A typed answer: the status, the code and the message that the client gets.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ApiError {
