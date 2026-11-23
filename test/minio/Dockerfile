@@ -1,6 +1,7 @@
 # The MinIO of the browser test stack: one server with one drive. The MinIO project does not publish a server image or
-# a server binary now, and its repository is archived. The image builds the last release from its Git tag. The build
-# checks the commit of the tag, and go.sum checks each module.
+# a server binary now, and its repository is archived. The image builds the last release from its Git tag, with the
+# toolchain image of the MinIO source. The build checks the commit of the tag, and the lock file of that source checks
+# each dependency.
 FROM golang:1.24-alpine AS build
 
 ARG MINIO_VERSION=RELEASE.2025-10-15T17-29-55Z

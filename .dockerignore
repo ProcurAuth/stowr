@@ -1,13 +1,22 @@
-# Local build outputs.
-src/stowr
+# The build context of the test images (test/browser/Dockerfile, test/volume-fuse/Dockerfile) is the repository.
+# The images need Cargo.toml, Cargo.lock, build.rs, src/ and the scripts of test/volume-fuse.
+
+# Build output of cargo and local release archives.
+target/
+dist/
 *.zip
+*.tar.gz
 
 # Local credentials and developer overrides.
 config.hcl
 secrets/
+**/.env
 *.pem
 *.key
 service-account*.json
+
+# Packages that a local run of the browser tests can install.
+**/node_modules/
 
 # Repository metadata and workstation files are not needed in image builds.
 .git/

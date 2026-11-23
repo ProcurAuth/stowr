@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1.7
 # The container of the FUSE test of the volumes: weed mount (the pinned SeaweedFS release of test/seaweedfs), FUSE 3,
-# the Go toolchain for the Go tests of the volumes on the mount, and the static Stowr binary. compose.yaml gives
-# this container /dev/fuse and SYS_ADMIN for the mount. No other container of the tests has them.
-ARG GO_VERSION=1.22
-FROM golang:${GO_VERSION}
+# the pinned Rust image for the tests of the volumes on the mount, and Stowr. compose.yaml gives this container
+# /dev/fuse and SYS_ADMIN for the mount. No other container of the tests has them.
+# The image builds Stowr and the tests with the profile of `cargo test`: the two builds share the compiled crates.
+# The image stays on the machine of the tests. No script of this repository pushes it to a registry.
+ARG RUST_IMAGE=rust:1.99.1-trixie
+FROM ${RUST_IMAGE}
 
 ARG TARGETARCH
 ARG SEAWEEDFS_VERSION=4.41
@@ -26,8 +28,14 @@ RUN set -eu; \
     rm -f /tmp/weed.tgz
 
 WORKDIR /src
-COPY src/ ./
-RUN CGO_ENABLED=0 go build -tags=netgo,osusergo -trimpath -o /usr/local/bin/stowr .
+COPY Cargo.toml Cargo.lock build.rs ./
+COPY src/ src/
+# run.sh runs `cargo test --locked --offline volume::` in this folder: the crates and the test files are in the image.
+RUN set -eu; \
+    cargo build --locked; \
+    install -m 0755 target/debug/stowr /usr/local/bin/stowr; \
+    cargo test --locked --no-run; \
+    stowr version
 
 COPY test/volume-fuse/scripts/entrypoint.sh /bin/entrypoint.sh
 ENTRYPOINT ["/bin/sh", "/bin/entrypoint.sh"]

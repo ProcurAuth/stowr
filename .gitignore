@@ -1,2 +1,4 @@
 # Build output of cargo when it runs outside of the scripts (the scripts keep it in a Docker volume).
 /target/
+# Release archives that a local run of the release steps makes.
+/dist/
