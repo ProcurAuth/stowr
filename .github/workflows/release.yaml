@@ -43,7 +43,7 @@ jobs:
       - name: Never publish container images
         run: |
           # The pattern is split so that this line does not match itself.
-          if grep -rnE 'ghcr''\.io|docker/login''-action|docker push''\b|packages: *wr''ite|push: *tr''ue' .github/workflows; then
+          if grep -rnE 'ghcr''\.io|docker/login''-action|docker pus''h\b|packages: *wr''ite|push: *tr''ue' .github/workflows; then
             echo "::error::workflows must not publish container images"
             exit 1
           fi
