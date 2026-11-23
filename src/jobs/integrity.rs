@@ -327,9 +327,10 @@ async fn integrity_route(app: Arc<App>, req: Req) -> Result<Response> {
     Ok(analysis_job_answer(&app, &job).await)
 }
 
-/// The answer of a route that starts an analysis job: the job when it ends (or pauses) within 100 ms, a failure as
-/// an error, else `202` with the job.
-pub(super) async fn analysis_job_answer(app: &App, job: &JobState) -> Response {
+/// The answer of a route that starts an analysis job (the integrity of an object or of an archive entry): the job
+/// when it ends or pauses within 100 ms, a failure as an error (the refusal of a ceiling, else `422
+/// analysis_failed`), else `202` with the job.
+pub async fn analysis_job_answer(app: &App, job: &JobState) -> Response {
     if let Some(done) = app.jobs.wait_for_terminal(&job.id, ANALYSIS_INLINE_WAIT).await {
         if done.status == job_status::FAILED {
             if let Some(refusal) = &done.refusal {

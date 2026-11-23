@@ -44,7 +44,8 @@ use crate::instance::ceiling::Ceilings;
 
 pub use inspect::{InspectProbe, InspectResources, InspectResponse, handle_inspect};
 pub use integrity::{
-    IntegrityEntry, IntegrityRequest, IntegrityResult, checksum_matches, compute_object_integrity, handle_integrity,
+    ANALYSIS_INLINE_WAIT, IntegrityEntry, IntegrityRequest, IntegrityResult, analysis_job_answer, checksum_matches,
+    compute_object_integrity, handle_integrity,
 };
 pub use manager::{
     JobManager, MAX_ACTIVE_JOBS, PAUSED_JOB_TTL, STATS_INLINE_WAIT, STATS_RESULT_REUSE_TTL, terminal_status,
