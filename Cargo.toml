@@ -24,6 +24,8 @@ tokio = { version = "=1.53.1", default-features = false, features = ["rt-multi-t
 # The HTTP/1.1 server and the HTTP/1.1 client of the providers.
 hyper = { version = "=1.11.0", default-features = false, features = ["http1", "server", "client"] }
 hyper-util = { version = "=0.1.20", default-features = false, features = ["tokio", "client-legacy", "http1"] }
+# The connector trait of the provider client: TCP, then TLS with a time limit for each step.
+tower-service = "=0.3.3"
 http = { version = "=1.5.0", default-features = false, features = ["std"] }
 http-body = "=1.1.0"
 http-body-util = "=0.1.4"
