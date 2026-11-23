@@ -18,6 +18,10 @@ on:
       - "Cargo.toml"
       - "Cargo.lock"
       - "build.rs"
+      - "scripts/static.sh"
+      - "scripts/docker-env.sh"
+      - "scripts/Dockerfile.dev"
+      - "scripts/Dockerfile.static"
       - "test/conformance/**"
       - ".github/workflows/conformance.yml"
 
