@@ -76,10 +76,19 @@ pub(crate) fn trim_bytes<'a>(bytes: &'a [u8], set: &[u8]) -> &'a [u8] {
 
 /// The position of `needle` in `haystack`.
 pub(crate) fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() {
+    let Some((&first, rest)) = needle.split_first() else {
         return Some(0);
+    };
+    let last_start = haystack.len().checked_sub(needle.len())?;
+    let mut offset = 0;
+    while offset <= last_start {
+        let at = offset + haystack[offset..=last_start].iter().position(|byte| *byte == first)?;
+        if haystack[at + 1..at + needle.len()] == *rest {
+            return Some(at);
+        }
+        offset = at + 1;
     }
-    haystack.windows(needle.len()).position(|window| window == needle)
+    None
 }
 
 /// True when `haystack` holds `needle`.

@@ -988,3 +988,15 @@ async fn other_media_extensions_read_a_bounded_prefix() {
     assert_eq!(number(&response, "size"), 100_000);
     assert_eq!(read_counts(&backend).2, ["bytes=0-65535"]);
 }
+
+#[test]
+fn the_search_of_bytes_finds_the_first_occurrence() {
+    use super::text::find;
+    assert_eq!(find(b"abcabc", b"bc"), Some(1));
+    assert_eq!(find(b"abcabc", b"c"), Some(2));
+    assert_eq!(find(b"abcabc", b""), Some(0));
+    assert_eq!(find(b"ab", b"abc"), None);
+    assert_eq!(find(b"aab", b"ab"), Some(1));
+    assert_eq!(find(b"xyz", b"yz"), Some(1));
+    assert_eq!(find(b"xyz", b"za"), None);
+}
