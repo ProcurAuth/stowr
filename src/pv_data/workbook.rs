@@ -184,13 +184,40 @@ impl Read for ChannelReader {
     }
 }
 
-/// Send the decompressed bytes of a part to its parser. The parser can stop first: then the read stops too. The flag
-/// tells if a chunk went to the parser before an error.
-async fn send_part(reader: &ZipReader, entry: &ZipEntry, sender: mpsc::Sender<Bytes>, sent: &mut bool) -> Result<()> {
-    let bytes = reader.read_entry(entry, u64::MAX).await?;
-    *sent = true;
-    let _ = sender.send(bytes).await;
-    Ok(())
+/// Keep the error of the read of a part for its parser.
+fn keep_error(slot: &Mutex<Option<Error>>, error: Error) {
+    match slot.lock() {
+        Ok(mut slot) => *slot = Some(error),
+        Err(poisoned) => *poisoned.into_inner() = Some(error),
+    }
+}
+
+/// Send the decompressed bytes of a part to its parser, chunk by chunk. The parser can stop first: then the read stops
+/// too. An error of the read goes to `failed` before the end of the channel. Gives true when a chunk went to the
+/// parser.
+async fn send_part(
+    reader: &ZipReader,
+    entry: &ZipEntry,
+    sender: mpsc::Sender<Bytes>,
+    failed: &Mutex<Option<Error>>,
+) -> bool {
+    let mut sent = false;
+    let result = async {
+        let mut stream = reader.open_entry(entry).await?;
+        while let Some(chunk) = stream.next_chunk().await? {
+            sent = true;
+            if sender.send(chunk).await.is_err() {
+                break;
+            }
+        }
+        Ok::<(), Error>(())
+    }
+    .await;
+    if let Err(error) = result {
+        keep_error(failed, error);
+    }
+    drop(sender);
+    sent
 }
 
 /// What the parse of a part gives: the result of the parser, the error of the read of the part, and a flag that
@@ -219,13 +246,7 @@ where
         Some(limit) => parse(&mut BufReader::new(channel.take(limit))),
         None => parse(&mut BufReader::new(channel)),
     });
-    let mut sent = false;
-    if let Err(error) = send_part(reader, entry, sender, &mut sent).await {
-        match failed.lock() {
-            Ok(mut slot) => *slot = Some(error),
-            Err(poisoned) => *poisoned.into_inner() = Some(error),
-        }
-    }
+    let sent = send_part(reader, entry, sender, &failed).await;
     let value = task
         .await
         .map_err(|error| Error::internal(format!("parse of a workbook part: {error}")))?;
