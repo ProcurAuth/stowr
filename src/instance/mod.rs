@@ -10,25 +10,60 @@
 //! keep their state in the fields that this structure gives them.
 
 pub mod budget;
+pub mod capability;
 pub mod ceiling;
 pub mod cursor;
 pub mod gate;
+pub mod info;
+pub mod ops;
 pub mod range;
+pub mod versions;
 
-use std::sync::atomic::AtomicBool;
+#[cfg(test)]
+mod ops_tests;
+
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use http::HeaderMap;
-use serde::Serialize;
-
-use crate::common::config::{BucketConfig, PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE, RuntimePolicy};
+use crate::common::config::{BucketConfig, PERMISSION_READ, RuntimePolicy};
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
-use crate::common::http::Body;
-use crate::common::storage::{
-    Backend, Capabilities, CapabilityState, CompletedPart, ListOptions, ListPage, MultipartCopyOptions, MultipartPart,
-    ObjectResponse, ObjectVersionPage,
-};
+use crate::common::storage::{Backend, Capabilities, CapabilityState};
+use crate::common::time::Timestamp;
+
+pub use info::InstanceInfo;
+
+/// The size of a source from which a copy goes in parts: 5 GiB minus 256 MiB. A single copy request accepts 5 GiB at
+/// most; the margin keeps clear of that limit.
+pub const DEFAULT_MULTIPART_COPY_THRESHOLD: i64 = (5 << 30) - (256 << 20);
+
+/// The largest value of the copy threshold that a build can give: 5 GiB.
+pub const MAX_MULTIPART_COPY_THRESHOLD: i64 = 5 << 30;
+
+/// The copy threshold that the build gives (`STOWR_MULTIPART_COPY_THRESHOLD` at compile time, for the test images),
+/// or `None` for a release build. A value that is not an integer from 1 to 5 GiB is an error: the start stops.
+pub fn compiled_copy_threshold() -> Result<Option<i64>> {
+    let Some(raw) = option_env!("STOWR_MULTIPART_COPY_THRESHOLD").map(str::trim) else {
+        return Ok(None);
+    };
+    if raw.is_empty() {
+        return Ok(None);
+    }
+    match raw.parse::<i64>() {
+        Ok(value) if (1..=MAX_MULTIPART_COPY_THRESHOLD).contains(&value) => Ok(Some(value)),
+        _ => Err(Error::internal(format!(
+            "build value STOWR_MULTIPART_COPY_THRESHOLD must be an integer from 1 to {MAX_MULTIPART_COPY_THRESHOLD} bytes, got {raw:?}"
+        ))),
+    }
+}
+
+/// The copy threshold of the instances: the value of the build, else [`DEFAULT_MULTIPART_COPY_THRESHOLD`].
+pub fn multipart_copy_threshold() -> i64 {
+    match compiled_copy_threshold() {
+        Ok(Some(value)) => value,
+        _ => DEFAULT_MULTIPART_COPY_THRESHOLD,
+    }
+}
 
 /// The state of the versioning of an instance: the result of the start probe and the last status of the bucket.
 #[derive(Debug, Default)]
@@ -55,8 +90,10 @@ pub struct Instance {
     pub caps: Mutex<Capabilities>,
     /// The versioning.
     pub versioning: VersioningState,
-    /// Set when the provider refused the batch delete one time.
+    /// Set when the provider refused the batch delete one time: the later deletes are one by one.
     pub batch_delete_off: AtomicBool,
+    /// The source size from which a copy goes in parts (see [`multipart_copy_threshold`]).
+    pub copy_threshold: AtomicI64,
     /// The state of the tags (work package `lifecycle`).
     pub tags: crate::lifecycle::TagsState,
     /// The state of the lifecycle editor and of the bucket facts (work package `lifecycle`).
@@ -73,37 +110,37 @@ pub struct Instance {
     pub usage: crate::bucket::UsageCapability,
 }
 
-/// The public facts of an instance in `/api/instances` (docs/ARCHITECTURE.md).
-#[derive(Clone, Debug, Default, Serialize)]
-pub struct InstanceInfo {
-    /// The id.
-    pub id: String,
-    /// The host: the label of the auth block, or `volume`.
-    pub host: String,
-    /// The name.
-    pub name: String,
-    /// `s3`, `gcs` or `fs`.
-    pub provider: String,
+impl std::fmt::Debug for Instance {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Instance")
+            .field("cfg", &self.cfg)
+            .finish_non_exhaustive()
+    }
 }
 
 impl Instance {
-    /// An instance over a back end, with the gates of the process.
+    /// An instance over a back end, with the gates of the process and the permissions of the configuration.
     pub fn new(
         cfg: BucketConfig,
         backend: Arc<dyn Backend>,
         policy: Arc<RuntimePolicy>,
         global_gate: gate::Gate,
     ) -> Self {
-        let gate = gate::Gate::new(policy.max_concurrent_requests_per_storage);
+        let per_storage = match policy.max_concurrent_requests_per_storage {
+            0 => gate::DEFAULT_INSTANCE_SLOTS,
+            value => value,
+        };
+        let caps = capability::initial_capabilities(&cfg, policy.force_read_only());
         Self {
             cfg,
             backend,
             policy,
             global_gate,
-            gate,
-            caps: Mutex::new(Capabilities::default()),
+            gate: gate::Gate::new(per_storage),
+            caps: Mutex::new(caps),
             versioning: VersioningState::default(),
             batch_delete_off: AtomicBool::new(false),
+            copy_threshold: AtomicI64::new(multipart_copy_threshold()),
             tags: Default::default(),
             rules: Default::default(),
             multiparts: Default::default(),
@@ -127,13 +164,48 @@ impl Instance {
         full.strip_prefix(self.cfg.root_prefix.as_str()).map(str::to_owned)
     }
 
-    /// True when a request may reach the back end with this permission. Only the configuration, `force_read_only`
-    /// and a denial of a probe stop it; a denial that one provider call taught does not.
-    pub fn permitted(&self, permission: &str) -> bool {
-        if self.policy.force_read_only() && permission != PERMISSION_READ {
-            return false;
+    /// True with `access_mode = "force_read_only"`.
+    pub fn force_read_only(&self) -> bool {
+        self.policy.force_read_only()
+    }
+
+    /// The permissions that the process knows now. A denial of one provider call becomes `unknown` again after one
+    /// minute.
+    pub fn capabilities(&self) -> Capabilities {
+        let mut caps = self.caps.lock().map(|caps| caps.clone()).unwrap_or_default();
+        let now = Timestamp::now();
+        for name in capability::PERMISSIONS {
+            let state = capability::state_of(&caps, name);
+            if state.expires.is_some_and(|expires| now >= expires) {
+                capability::set_state(
+                    &mut caps,
+                    name,
+                    capability::unknown(
+                        "provider",
+                        "an earlier provider denial expired; the action will be verified when used",
+                    ),
+                );
+            }
         }
-        self.cfg.allows(permission)
+        caps
+    }
+
+    /// The state of one permission (`read`, `write` or `delete`).
+    pub fn capability(&self, permission: &str) -> CapabilityState {
+        capability::state_of(&self.capabilities(), permission)
+    }
+
+    /// True when the interface offers the action of the permission.
+    pub fn allowed(&self, permission: &str) -> bool {
+        self.capability(permission).allowed
+    }
+
+    /// True when a request may reach the back end with this permission. The configuration, `force_read_only` and
+    /// a denial of a probe stop it. A denial that one provider call taught does not: it can concern one object
+    /// only, and the next call can disprove it.
+    pub fn permitted(&self, permission: &str) -> bool {
+        let state = self.capability(permission);
+        state.allowed || state.source == "provider"
     }
 
     /// `403 permission_denied` when the permission is not permitted.
@@ -148,261 +220,112 @@ impl Instance {
         ))
     }
 
-    /// The permissions that the process knows now.
-    pub fn capabilities(&self) -> Capabilities {
-        self.caps.lock().map(|caps| caps.clone()).unwrap_or_default()
-    }
-
-    /// The state of one permission (`read`, `write` or `delete`).
-    pub fn capability(&self, permission: &str) -> CapabilityState {
-        let caps = self.capabilities();
-        match permission {
-            PERMISSION_READ => caps.read,
-            PERMISSION_WRITE => caps.write,
-            PERMISSION_DELETE => caps.delete,
-            _ => CapabilityState::default(),
+    /// Learn from the result of a real provider call. A success proves the permission. A provider answer 401 or 403
+    /// is a short denial that the answers show and that no check applies. Any other error teaches nothing. A denial
+    /// of the configuration or of `force_read_only` never changes.
+    pub fn observe_permission(&self, permission: &str, error: Option<&Error>) {
+        if permission.is_empty() {
+            return;
+        }
+        if self.force_read_only() && permission != PERMISSION_READ {
+            return;
+        }
+        if self.cfg.permissions_defined && !self.cfg.permissions.iter().any(|value| value == permission) {
+            return;
+        }
+        let now = Timestamp::now();
+        let next = match error {
+            None => capability::allowed(
+                "observed",
+                "a real provider operation succeeded during this process",
+                true,
+            ),
+            Some(error) => {
+                let denied = error
+                    .as_upstream()
+                    .is_some_and(|upstream| upstream.status == 401 || upstream.status == 403);
+                if !denied {
+                    return;
+                }
+                let mut state = capability::denied(
+                    "provider",
+                    "the storage provider denied a real operation during this process",
+                    true,
+                );
+                state.expires = Some(now.plus_secs(capability::OBSERVED_DENIAL_SECONDS));
+                state
+            }
+        };
+        if let Ok(mut caps) = self.caps.lock() {
+            let current = capability::state_of(&caps, permission);
+            if current.source != "runtime" && current.source != "configuration" {
+                capability::set_state(&mut caps, permission, next);
+                caps.checked_at = Some(now);
+            }
         }
     }
 
-    /// One page of a listing.
-    pub async fn list(&self, ctx: &OpCtx, options: &ListOptions) -> Result<ListPage> {
-        self.backend.list(ctx, options).await
+    /// Take a slot of the gate of the process and of the gate of the instance, with the mode of the context.
+    pub async fn acquire(&self, ctx: &OpCtx) -> Result<gate::Slot> {
+        gate::acquire(ctx, &[&self.global_gate, &self.gate]).await
     }
 
-    /// The headers of an object, or of the version of the context.
-    pub async fn head(&self, ctx: &OpCtx, key: &str) -> Result<ObjectResponse> {
-        self.backend.head(ctx, key).await
+    /// Count one provider call in the budget of the context, then take the slots of the gates. The gates get the
+    /// slots back when the value is dropped.
+    pub async fn begin_storage_request(&self, ctx: &OpCtx) -> Result<gate::Slot> {
+        if let Some(budget) = &ctx.budget {
+            budget.consume_request()?;
+        }
+        self.acquire(ctx).await
     }
 
-    /// The bytes of an object, or of the version of the context.
-    pub async fn get(&self, ctx: &OpCtx, key: &str, headers: &HeaderMap) -> Result<ObjectResponse> {
-        self.backend.get(ctx, key, headers).await
+    /// A gate for the provider requests of a copy in parts: each call counts one request and takes the slots.
+    pub fn request_gate(&self) -> crate::common::storage::RequestGate {
+        let process = self.global_gate.clone();
+        let own = self.gate.clone();
+        Arc::new(move |ctx: OpCtx| {
+            let process = process.clone();
+            let own = own.clone();
+            Box::pin(async move {
+                if let Some(budget) = &ctx.budget {
+                    budget.consume_request()?;
+                }
+                gate::acquire(&ctx, &[&process, &own]).await
+            })
+        })
     }
 
-    /// Write an object. The ceiling `object.write` applies before the first byte.
-    pub async fn put(&self, ctx: &OpCtx, key: &str, body: Body, size: i64, content_type: &str) -> Result<()> {
-        self.backend.put(ctx, key, body, size, content_type).await
+    /// The source size from which a copy goes in parts.
+    pub fn multipart_copy_threshold(&self) -> i64 {
+        self.copy_threshold.load(Ordering::Relaxed)
     }
 
-    /// Write an object only when no object exists at the key.
-    pub async fn put_if_absent(&self, ctx: &OpCtx, key: &str, body: Body, size: i64, content_type: &str) -> Result<()> {
-        let _ = (ctx, key, body, size, content_type);
-        Err(Error::not_served("the write that creates only"))
+    /// Set the source size from which a copy goes in parts.
+    pub fn set_multipart_copy_threshold(&self, value: i64) {
+        self.copy_threshold.store(value, Ordering::Relaxed);
     }
 
-    /// Delete an object. A refusal that an active Object Lock explains gives `409 object_locked`.
-    pub async fn delete(&self, ctx: &OpCtx, key: &str) -> Result<()> {
-        self.backend.delete(ctx, key).await
-    }
-
-    /// Delete keys, in batches of 1000 when the back end can. Gives the keys that an active Object Lock keeps.
-    pub async fn delete_many(&self, ctx: &OpCtx, keys: &[String]) -> Result<Vec<String>> {
-        let _ = (ctx, keys);
-        Err(Error::not_served("the delete of many keys"))
-    }
-
-    /// Copy one object. The ceilings of read and write apply to the size of the source.
-    pub async fn copy(&self, ctx: &OpCtx, source: &str, destination: &str) -> Result<()> {
-        self.backend.copy(ctx, source, destination).await
-    }
-
-    /// Copy one object of a known size: in parts from the threshold of the copy in parts up.
-    pub async fn copy_sized(
-        &self,
-        ctx: &OpCtx,
-        source: &str,
-        destination: &str,
-        size: i64,
-        progress: Option<crate::common::storage::CopyProgress>,
-    ) -> Result<()> {
-        let _ = (ctx, source, destination, size, progress);
-        Err(Error::not_served("the copy of a known size"))
-    }
-
-    /// One page of the versions of one key.
-    pub async fn list_versions(
-        &self,
-        ctx: &OpCtx,
-        key: &str,
-        page_token: &str,
-        maximum: u32,
-    ) -> Result<ObjectVersionPage> {
-        let _ = (ctx, key, page_token, maximum);
-        Err(Error::not_served("the versions"))
-    }
-
-    /// The headers of one version (an empty version: the current object).
-    pub async fn head_version(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<ObjectResponse> {
-        let _ = (ctx, key, version);
-        Err(Error::not_served("the read of a version"))
-    }
-
-    /// The bytes of one version (an empty version: the current object).
-    pub async fn get_version(
-        &self,
-        ctx: &OpCtx,
-        key: &str,
-        version: &str,
-        headers: &HeaderMap,
-    ) -> Result<ObjectResponse> {
-        let _ = (ctx, key, version, headers);
-        Err(Error::not_served("the read of a version"))
-    }
-
-    /// Delete one version for ever.
-    pub async fn delete_version(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<()> {
-        let _ = (ctx, key, version);
-        Err(Error::not_served("the delete of a version"))
-    }
-
-    /// Copy one version onto its key (in parts from the threshold up).
-    pub async fn restore_version(&self, ctx: &OpCtx, key: &str, version: &str) -> Result<()> {
-        let _ = (ctx, key, version);
-        Err(Error::not_served("the restore of a version"))
-    }
-
-    /// Copy an object in parts on the provider.
-    pub async fn copy_multipart(
-        &self,
-        ctx: &OpCtx,
-        source: &str,
-        destination: &str,
-        options: MultipartCopyOptions,
-    ) -> Result<()> {
-        let _ = (ctx, source, destination, options);
-        Err(Error::not_served("the copy in parts"))
-    }
-
-    /// True when a copy of this size goes in parts.
-    pub fn copies_in_parts(&self, size: i64) -> bool {
-        let _ = size;
-        false
-    }
-
-    /// True when the back end moves an object with one rename (a volume).
-    pub fn moves_objects(&self) -> bool {
-        self.backend.mover().is_some()
-    }
-
-    /// Move one object with one rename.
-    pub async fn move_object(&self, ctx: &OpCtx, source: &str, destination: &str) -> Result<()> {
-        let _ = (ctx, source, destination);
-        Err(Error::not_served("the move of an object"))
-    }
-
-    /// Remove the empty folders under a full prefix (a volume; nothing for the other back ends).
-    pub async fn remove_empty_folders(&self, ctx: &OpCtx, prefix: &str) -> Result<()> {
-        let _ = (ctx, prefix);
-        Ok(())
-    }
-
-    /// Start an S3 multipart upload.
-    pub async fn initiate_multipart(&self, ctx: &OpCtx, key: &str, content_type: &str) -> Result<String> {
-        let _ = (ctx, key, content_type);
-        Err(Error::not_served("the multipart upload"))
-    }
-
-    /// Send one part of an S3 multipart upload; gives its ETag.
-    pub async fn upload_part(
-        &self,
-        ctx: &OpCtx,
-        key: &str,
-        upload_id: &str,
-        number: u32,
-        body: Body,
-        size: i64,
-    ) -> Result<String> {
-        let _ = (ctx, key, upload_id, number, body, size);
-        Err(Error::not_served("the multipart upload"))
-    }
-
-    /// Complete an S3 multipart upload.
-    pub async fn complete_multipart(
-        &self,
-        ctx: &OpCtx,
-        key: &str,
-        upload_id: &str,
-        parts: &[CompletedPart],
-    ) -> Result<()> {
-        let _ = (ctx, key, upload_id, parts);
-        Err(Error::not_served("the multipart upload"))
-    }
-
-    /// Abort a multipart upload, or remove the temporary file of a volume upload.
-    pub async fn abort_multipart(&self, ctx: &OpCtx, key: &str, upload_id: &str) -> Result<()> {
-        let _ = (ctx, key, upload_id);
-        Err(Error::not_served("the multipart upload"))
-    }
-
-    /// The parts of an S3 multipart upload.
-    pub async fn list_multipart_parts(&self, ctx: &OpCtx, key: &str, upload_id: &str) -> Result<Vec<MultipartPart>> {
-        let _ = (ctx, key, upload_id);
-        Err(Error::not_served("the multipart upload"))
-    }
-
-    /// Start a resumable upload (GCS, a volume); gives the session.
-    pub async fn initiate_resumable(&self, ctx: &OpCtx, key: &str, total: i64, content_type: &str) -> Result<String> {
-        let _ = (ctx, key, total, content_type);
-        Err(Error::not_served("the resumable upload"))
-    }
-
-    /// Send one chunk of a resumable upload; gives the next offset and true at the end.
-    #[allow(clippy::too_many_arguments)]
-    pub async fn upload_resumable_chunk(
-        &self,
-        ctx: &OpCtx,
-        session: &str,
-        body: Body,
-        start: i64,
-        size: i64,
-        total: i64,
-        content_type: &str,
-    ) -> Result<(i64, bool)> {
-        let _ = (ctx, session, body, start, size, total, content_type);
-        Err(Error::not_served("the resumable upload"))
-    }
-
-    /// The next offset of a resumable upload, and true at the end.
-    pub async fn query_resumable(&self, ctx: &OpCtx, session: &str, total: i64) -> Result<(i64, bool)> {
-        let _ = (ctx, session, total);
-        Err(Error::not_served("the resumable upload"))
-    }
-
-    /// Abort a resumable upload.
-    pub async fn abort_resumable(&self, ctx: &OpCtx, session: &str) -> Result<()> {
-        let _ = (ctx, session);
-        Err(Error::not_served("the resumable upload"))
-    }
-
-    /// Learn the permissions again (`POST /api/permissions/refresh`).
+    /// Learn the permissions again (`POST /api/permissions/refresh`). A canceled or timed-out discovery proves
+    /// nothing: the known permissions stay.
     pub async fn refresh_capabilities(&self, ctx: &OpCtx) -> Capabilities {
-        let _ = ctx;
-        self.capabilities()
-    }
-
-    /// The start probe of the versioning: one bounded list of versions.
-    pub async fn probe_versioning(&self, ctx: &OpCtx) -> bool {
-        let _ = ctx;
-        false
-    }
-
-    /// True when the probe found the versions.
-    pub fn versioning_available(&self) -> bool {
-        false
-    }
-
-    /// `enabled`, `suspended`, `off`, or `None` when the server could not read the status.
-    pub fn versioning_state(&self) -> Option<&'static str> {
-        None
-    }
-
-    /// The public facts of the instance.
-    pub fn public_info(&self) -> InstanceInfo {
-        InstanceInfo {
-            id: self.cfg.id.clone(),
-            host: self.cfg.auth_id.clone(),
-            name: self.cfg.name.clone(),
-            provider: self.cfg.provider.clone(),
+        let discovered = self.discover_capabilities(ctx).await;
+        if ctx.check().is_err() {
+            return self.capabilities();
         }
+        let merged = match &discovered {
+            Ok(found) => capability::merge_capabilities(&self.cfg, self.force_read_only(), found, None),
+            Err(error) => {
+                capability::merge_capabilities(&self.cfg, self.force_read_only(), &Default::default(), Some(error))
+            }
+        };
+        if let Ok(mut caps) = self.caps.lock() {
+            *caps = merged.clone();
+        }
+        merged
+    }
+
+    async fn discover_capabilities(&self, ctx: &OpCtx) -> Result<crate::common::storage::DiscoveredCapabilities> {
+        let _slot = self.begin_storage_request(ctx).await?;
+        self.backend.discover_capabilities(ctx).await
     }
 }
