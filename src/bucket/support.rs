@@ -1,8 +1,6 @@
 //! The small helpers that the functions of this folder share. They are the S3 call seam, the XML tree of the provider
 //! answers and the quoting of a text.
 
-use std::fmt::Write as _;
-
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
@@ -92,35 +90,7 @@ pub fn aws_uri_encode(value: &str, encode_slash: bool) -> String {
 /// The text between double quotes with the escapes of a quoted text: `\n`, `\"`, `\\` and `\xNN` for a control
 /// character. It is the form of the messages that show a value of the client.
 pub fn quote(text: &str) -> String {
-    let mut out = String::with_capacity(text.len() + 2);
-    out.push('"');
-    for character in text.chars() {
-        match character {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            other if (other as u32) < 0x20 || other as u32 == 0x7f => {
-                let _ = write!(out, "\\x{:02x}", other as u32);
-            }
-            other if other.is_control() => {
-                let code = other as u32;
-                if code <= 0xffff {
-                    let _ = write!(out, "\\u{code:04x}");
-                } else {
-                    let _ = write!(out, "\\U{code:08x}");
-                }
-            }
-            other => out.push(other),
-        }
-    }
-    out.push('"');
-    out
+    crate::config::quote::quote(text)
 }
 
 /// True when the text has only the characters 0x20 to 0x7E, with no space at the start or the end. S3 sends the

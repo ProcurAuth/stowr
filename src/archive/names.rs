@@ -172,48 +172,9 @@ pub fn normalize_archive_entry_selection(entries: &[String], maximum: usize) -> 
     Ok(result.into_iter().collect())
 }
 
-/// True for a character that a quoted name shows as it is: a letter, a mark, a number, a punctuation, a symbol or
-/// the ASCII space.
-fn printable(c: char) -> bool {
-    let code = u32::from(c);
-    if code <= 0xff {
-        return (0x20..=0x7e).contains(&code) || (code >= 0xa1 && code != 0xad);
-    }
-    !(c.is_control()
-        || c.is_whitespace()
-        || (0x200b..=0x200f).contains(&code)
-        || (0x2028..=0x202e).contains(&code)
-        || (0x2060..=0x206f).contains(&code)
-        || (0xe000..=0xf8ff).contains(&code)
-        || (0xfff9..=0xfffb).contains(&code)
-        || code == 0xfeff
-        || code >= 0xf_0000
-        || (code & 0xfffe) == 0xfffe)
-}
-
 /// The name between double quotes, with the escapes of a text literal: `\"`, `\\`, `\n`, `\x01`, `\u200b`...
 pub fn quote(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if printable(c) => out.push(c),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            c if u32::from(c) < 0x20 || c == '\u{7f}' => out.push_str(&format!("\\x{:02x}", u32::from(c))),
-            c if u32::from(c) < 0x1_0000 => out.push_str(&format!("\\u{:04x}", u32::from(c))),
-            c => out.push_str(&format!("\\U{:08x}", u32::from(c))),
-        }
-    }
-    out.push('"');
-    out
+    crate::config::quote::quote(value)
 }
 
 #[cfg(test)]

@@ -99,35 +99,7 @@ where
 
 /// A text between double quotes, with the escapes of a quoted text: for a message that shows a value of the client.
 pub fn quote_text(text: &str) -> String {
-    fn printable(c: char) -> bool {
-        !c.is_control()
-            && !(c.is_whitespace() && c != ' ')
-            && !matches!(
-                c,
-                '\u{ad}' | '\u{200b}'..='\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2060}'..='\u{2064}' | '\u{feff}'
-            )
-    }
-    let mut out = String::with_capacity(text.len() + 2);
-    out.push('"');
-    for c in text.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            c if printable(c) => out.push(c),
-            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
-            c if (c as u32) < 0x10000 => out.push_str(&format!("\\u{:04x}", c as u32)),
-            c => out.push_str(&format!("\\U{:08x}", c as u32)),
-        }
-    }
-    out.push('"');
-    out
+    crate::config::quote::quote(text)
 }
 
 /// The raw lifecycle configuration of a bucket: the bytes that the provider sent.
