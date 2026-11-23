@@ -1398,3 +1398,95 @@ async fn concurrent_extractions_do_not_deadlock_on_storage_gates() {
         assert_eq!(objects[&format!("tenant/out-{index}/payload.bin")].data.len(), 12 << 20);
     }
 }
+
+// The ceilings of the access policy.
+
+fn ceiling_ctx(read: Option<i64>, write: Option<i64>) -> OpCtx {
+    use crate::instance::ceiling::{Ceilings, MAX_OBJECT_SIZE};
+    let ceilings = Ceilings::default();
+    if let Some(limit) = read {
+        ceilings.lower(crate::access::ACTION_READ, MAX_OBJECT_SIZE, limit);
+    }
+    if let Some(limit) = write {
+        ceilings.lower(crate::access::ACTION_WRITE, MAX_OBJECT_SIZE, limit);
+    }
+    OpCtx {
+        ceilings: Some(Arc::new(ceilings)),
+        ..OpCtx::default()
+    }
+}
+
+#[tokio::test]
+async fn the_zip_of_a_folder_gives_no_byte_when_one_object_is_over_the_ceiling() {
+    let backend = memory(&[
+        ("tenant/folder/zipme/small.txt", "abc"),
+        ("tenant/folder/zipme/big.txt", &"x".repeat(30)),
+    ]);
+    let app = application(RuntimePolicy::default(), backend, Vec::new());
+    let target = "/api/archive?instance=rw&prefix=folder%2Fzipme%2F";
+    let mut req = request(Method::GET, target, empty());
+    req.ctx = ceiling_ctx(Some(10), None);
+    let answer = collect(handle_archive(app.clone(), req).await).await;
+    assert_eq!(answer.status, 403, "{}", answer.text());
+    assert_eq!(answer.header("content-type"), "application/json; charset=utf-8");
+    assert!(
+        answer.text().contains(
+            "\"action\":\"object.read\",\"ceiling\":\"max_object_size\",\"code\":\"ceiling_exceeded\",\"limit\":10"
+        ),
+        "{}",
+        answer.text()
+    );
+    assert!(!answer.text().contains("PK"));
+    let mut req = request(Method::GET, target, empty());
+    req.ctx = ceiling_ctx(Some(100), None);
+    let answer = collect(handle_archive(app, req).await).await;
+    assert_eq!(answer.status, 200);
+    assert_eq!(zip_entries(&answer.body).await.len(), 2);
+}
+
+#[tokio::test]
+async fn an_extraction_checks_the_members_against_the_ceilings_before_the_first_write() {
+    let rw = default_objects();
+    let big = vec![b'z'; 40];
+    put_object(
+        &rw,
+        "tenant/folder/a.zip",
+        stored_zip(&[("a.txt", b"tiny"), ("z.txt", &big)]),
+    );
+    let app = application(RuntimePolicy::default(), rw.clone(), Vec::new());
+    let instance = app.instance("rw").unwrap().clone();
+    let extract = |ctx: OpCtx| {
+        let instance = instance.clone();
+        async move {
+            let reader = super::entry::open_archive_reader(
+                &ctx.gated(GateMode::Exempt),
+                &instance,
+                "folder/a.zip",
+                "",
+                &super::entry::ListedArchive::default(),
+                0,
+            )
+            .await?;
+            let mut job = extraction_job(&["a.txt", "z.txt"]);
+            job.source = "folder/a.zip".to_owned();
+            job.target = "extracted/".to_owned();
+            let target = InstanceTarget { instance };
+            extract_archive(&ctx, Arc::new(reader), &mut job, true, 0, &target).await
+        }
+    };
+    let extracted = || {
+        rw.keys()
+            .iter()
+            .filter(|key| key.starts_with("tenant/extracted/"))
+            .count()
+    };
+    let error = extract(ceiling_ctx(None, Some(10))).await.unwrap_err();
+    assert!(error.public_message().contains("max_object_size"), "{error:?}");
+    assert_eq!(extracted(), 0, "members written before the refusal");
+    // The archive is an object that the extraction reads: the read ceiling applies to it.
+    let error = extract(ceiling_ctx(Some(10), None)).await.unwrap_err();
+    assert!(error.public_message().contains("max_object_size"), "{error:?}");
+    assert_eq!(extracted(), 0);
+    extract(ceiling_ctx(Some(1 << 20), Some(100))).await.unwrap();
+    assert_eq!(extracted(), 2);
+}

@@ -34,7 +34,7 @@ use crate::common::misc::clean_relative_key;
 use crate::common::storage::{ListOptions, ListPage, ObjectInfo, ObjectResponse};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
-use crate::instance::ceiling::{MAX_OBJECT_SIZE, check_object_ceiling};
+use crate::instance::ceiling::{ceiling_applies, check_object_ceiling};
 
 /// The trailer of the state of the archive: `complete` or `incomplete`.
 pub const ARCHIVE_STATUS_TRAILER: &str = "X-Stowr-Archive-Status";
@@ -48,17 +48,6 @@ pub const INCOMPLETE_ENTRY_NAME: &str = "__STOWR_ARCHIVE_INCOMPLETE.txt";
 pub const ARCHIVE_PREFETCH_MAX_BYTES: i64 = 4 << 20;
 
 const PAGE_SIZE: u32 = 1000;
-
-/// True when a ceiling `max_object_size` applies to the action in the context.
-pub(crate) fn ceiling_applies(ctx: &OpCtx, action: &str) -> bool {
-    ctx.ceilings
-        .as_ref()
-        .is_some_and(|ceilings| ceilings.get(action, MAX_OBJECT_SIZE).is_some())
-        || ctx
-            .access
-            .as_ref()
-            .is_some_and(|access| access.ceilings.get(action, MAX_OBJECT_SIZE).is_some())
-}
 
 /// The handler of `/api/archive`.
 pub fn handle_archive(app: Arc<App>, req: Req) -> BoxFuture<'static, Response> {
@@ -116,7 +105,7 @@ async fn start_archive(app: Arc<App>, req: Req) -> Result<Response> {
 /// The ceiling `object.read`: the check of the size of each object of the prefix, in key order, before the first
 /// byte of the ZIP. A folder marker needs no check. No request when no ceiling applies.
 async fn check_archive_sizes(ctx: &OpCtx, instance: &Instance, prefix: &str) -> Result<()> {
-    if !ceiling_applies(ctx, ACTION_READ) {
+    if !ceiling_applies(ctx, &[ACTION_READ]) {
         return Ok(());
     }
     let full_prefix = instance.full_key(prefix);

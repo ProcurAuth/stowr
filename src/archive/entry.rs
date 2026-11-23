@@ -22,7 +22,6 @@ use super::content::{
     apply_object_safety_headers, archive_entry_active_content, browser_inline_content, format_disposition,
     is_svg_content, preview_content_type,
 };
-use super::folder::ceiling_applies;
 use super::md5::Md5;
 use super::names::{
     DEFAULT_MAX_ARCHIVE_ENTRIES, normalize_archive_entry_selection, normalize_prefix, path_base, path_ext, quote,
@@ -44,7 +43,7 @@ use crate::common::http::{Body, Req, Response, answer, api_error, decode_json, e
 use crate::common::misc::{clean_relative_key, hex};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
-use crate::instance::ceiling::check_object_ceiling;
+use crate::instance::ceiling::{Ceilings, ceiling_applies, ceiling_error_of, ceilings_of, check_object_ceiling};
 use crate::instance::range::{ObjectVersion, RangeSource};
 use crate::jobs::{JobRun, JobState, job_type};
 
@@ -155,7 +154,7 @@ pub async fn open_archive_reader(
     };
     match ZipReader::open_package(source, &extension, max_entries).await {
         Ok(reader) => Ok(reader),
-        Err(error) if error.has_code(CODE_TOO_MANY_ENTRIES) || error.has_code("ceiling_exceeded") => Err(error),
+        Err(error) if error.has_code(CODE_TOO_MANY_ENTRIES) || ceiling_error_of(&error).is_some() => Err(error),
         Err(_) => Err(invalid_zip()),
     }
 }
@@ -409,7 +408,7 @@ async fn start_extraction(app: Arc<App>, req: Req) -> Result<Response> {
         version: request.version,
         target: request.target,
         entries,
-        ceilings: ceilings_of(&ctx),
+        ceilings: job_ceilings(&ctx),
         ..JobState::default()
     })?;
     Ok(json(202, &PublicJob::of(&job)))
@@ -450,7 +449,7 @@ async fn start_entry_integrity(app: Arc<App>, req: Req) -> Result<Response> {
         job_type: job_type::ARCHIVE_ENTRY_INTEGRITY.to_owned(),
         instance: instance.cfg.id.clone(),
         archive_entry_integrity_request: Some(ArchiveEntryIntegrityRequest { key, version, entry }),
-        ceilings: ceilings_of(&ctx),
+        ceilings: job_ceilings(&ctx),
         ..JobState::default()
     })?;
     if let Some(ended) = app.jobs.wait_for_terminal(&job.id, ANALYSIS_INLINE_WAIT).await
@@ -467,12 +466,10 @@ async fn start_entry_integrity(app: Arc<App>, req: Req) -> Result<Response> {
     Ok(json(202, &PublicJob::of(&job)))
 }
 
-/// A copy of the ceilings of the request, for the job.
-fn ceilings_of(ctx: &OpCtx) -> Option<Arc<crate::instance::ceiling::Ceilings>> {
-    ctx.ceilings
-        .as_ref()
-        .map(|ceilings| Arc::new(ceilings.snapshot()))
-        .or_else(|| ctx.access.as_ref().map(|access| Arc::new(access.ceilings.snapshot())))
+/// A copy of the ceilings of the request (those of the PDP answers and those that the context carries), for the job.
+fn job_ceilings(ctx: &OpCtx) -> Option<Arc<Ceilings>> {
+    let map = ceilings_of(ctx);
+    (!map.is_empty()).then(|| Arc::new(Ceilings::from_map(&map)))
 }
 
 fn is_zero(value: &i64) -> bool {
@@ -717,7 +714,7 @@ pub async fn extract_archive<S: ByteSource + 'static, T: ExtractTarget>(
     }
     // The ceiling object.write: the central directory gives the size of each member, so the check of all of them
     // comes before the first write. A size that does not fit in 63 bits is an unknown size.
-    if ceiling_applies(ctx, ACTION_WRITE) {
+    if ceiling_applies(ctx, &[ACTION_WRITE]) {
         for (entry, _) in &selected {
             check_object_ceiling(ctx, ACTION_WRITE, i64::try_from(entry.size).unwrap_or(-1))?;
         }
