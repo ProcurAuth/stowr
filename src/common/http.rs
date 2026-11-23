@@ -11,8 +11,8 @@ use http::{HeaderMap, Method, StatusCode};
 use http_body::Frame;
 use http_body_util::combinators::UnsyncBoxBody;
 use http_body_util::{BodyExt, Empty, Full};
-use serde::Serialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 
 use super::BoxFuture;
@@ -21,6 +21,7 @@ use super::ctx::OpCtx;
 use super::error::{Error, Result};
 use super::json;
 use super::query::Query;
+use super::request_json::RequestValue;
 
 /// The body of a request, of an answer, or of an object.
 pub type Body = UnsyncBoxBody<Bytes, Error>;
@@ -108,6 +109,10 @@ pub const MAX_JSON_BODY: usize = 1 << 20;
 
 /// Read the JSON body of a request: one value of at most 1 MiB, no unknown member (the request types have
 /// `#[serde(deny_unknown_fields)]`), nothing after the value. An error gives `400 invalid_json`.
+///
+/// The reader checks the syntax of the complete value first. A byte that is not valid UTF-8 becomes U+FFFD. Then the
+/// reader gives the value to the request type with the rules of [`RequestValue`]: a structure accepts only an object,
+/// `null` keeps the zero value of a member, and the last value of a repeated member applies.
 pub async fn decode_json<T: DeserializeOwned>(body: Body) -> Result<T> {
     let (bytes, truncated) = read_limited(body, MAX_JSON_BODY + 1).await?;
     if truncated {
@@ -117,13 +122,15 @@ pub async fn decode_json<T: DeserializeOwned>(body: Body) -> Result<T> {
             "invalid JSON body: the body is larger than 1 MiB",
         ));
     }
-    let mut deserializer = serde_json::Deserializer::from_slice(&bytes);
-    let value = T::deserialize(&mut deserializer)
-        .map_err(|error| Error::api(400, "invalid_json", format!("invalid JSON body: {error}")))?;
+    let invalid = |error: serde_json::Error| Error::api(400, "invalid_json", format!("invalid JSON body: {error}"));
+    // A byte that is not valid UTF-8 becomes U+FFFD: a text member keeps its other characters.
+    let text = String::from_utf8_lossy(&bytes);
+    let mut deserializer = serde_json::Deserializer::from_str(&text);
+    let parsed = serde_json::Value::deserialize(&mut deserializer).map_err(invalid)?;
     if deserializer.end().is_err() {
         return Err(Error::api(400, "invalid_json", "JSON body must contain one object"));
     }
-    Ok(value)
+    T::deserialize(RequestValue(&parsed)).map_err(invalid)
 }
 
 /// A request, as a handler gets it.
@@ -358,5 +365,32 @@ mod tests {
         let error = decode_json::<Body>(full("{\"key\":\"a\"} {}")).await.err().unwrap();
         assert!(error.has_code("invalid_json"));
         assert!(decode_json::<Body>(full("{\"other\":1}")).await.is_err());
+    }
+
+    #[tokio::test]
+    async fn json_bodies_need_an_object_and_read_null_as_the_zero_value() {
+        #[derive(Debug, Default, serde::Deserialize)]
+        #[serde(deny_unknown_fields, default)]
+        struct Body {
+            instance: String,
+            size: i64,
+        }
+        for text in ["[]", "[\"a\",1]", "\"a\"", "1"] {
+            let error = decode_json::<Body>(full(text)).await.err().unwrap();
+            assert!(error.has_code("invalid_json"), "{text}");
+        }
+        let body = decode_json::<Body>(full("{\"instance\":null,\"size\":null}"))
+            .await
+            .unwrap();
+        assert_eq!((body.instance.as_str(), body.size), ("", 0));
+        let body = decode_json::<Body>(full("{\"instance\":\"a\",\"instance\":\"b\"}"))
+            .await
+            .unwrap();
+        assert_eq!(body.instance, "b");
+        let error = decode_json::<Body>(full("{\"size\":")).await.err().unwrap();
+        assert!(error.has_code("invalid_json"));
+        let bytes = Bytes::from_static(b"{\"instance\":\"a\xffb\"}");
+        let body = decode_json::<Body>(full(bytes)).await.unwrap();
+        assert_eq!(body.instance, "a\u{fffd}b");
     }
 }

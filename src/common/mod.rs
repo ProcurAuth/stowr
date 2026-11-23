@@ -13,6 +13,7 @@ pub mod md5;
 pub mod mediatype;
 pub mod misc;
 pub mod query;
+pub mod request_json;
 pub mod storage;
 pub mod time;
 
