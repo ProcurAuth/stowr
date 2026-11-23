@@ -10,7 +10,8 @@ use serde::Serialize;
 use super::{Database, Flow, Value, invalid};
 use crate::common::ctx::OpCtx;
 use crate::common::error::Result;
-use crate::pv_data::text::{lossy_each_byte, lower, upper};
+use crate::pv_data::text::upper;
+use crate::pv_docs::util::{lossy_bytes, lower};
 
 /// One row of the schema table.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -153,7 +154,7 @@ pub(crate) async fn inspect_tables(
 fn tail(text: &str, start: usize) -> String {
     match text.get(start..) {
         Some(rest) => rest.to_owned(),
-        None => lossy_each_byte(text.as_bytes().get(start..).unwrap_or(&[])),
+        None => lossy_bytes(text.as_bytes().get(start..).unwrap_or(&[])),
     }
 }
 
@@ -161,7 +162,7 @@ fn tail(text: &str, start: usize) -> String {
 fn between(text: &str, start: usize, end: usize) -> String {
     match text.get(start..end) {
         Some(part) => part.to_owned(),
-        None => lossy_each_byte(text.as_bytes().get(start..end).unwrap_or(&[])),
+        None => lossy_bytes(text.as_bytes().get(start..end).unwrap_or(&[])),
     }
 }
 
@@ -242,7 +243,7 @@ pub(crate) fn parse_identifier(value: &str) -> Option<(String, String)> {
                         continue;
                     }
                     let rest = tail(trimmed, index + 1);
-                    return Some((lossy_each_byte(&name), rest.trim().to_owned()));
+                    return Some((lossy_bytes(&name), rest.trim().to_owned()));
                 }
                 name.push(current);
                 index += 1;

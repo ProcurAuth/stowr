@@ -1,18 +1,15 @@
 //! The previews of data files and the details of documents: SQLite (a reader of the database pages over byte
-//! ranges, with sessions in memory), Parquet (the footer and the Thrift compact metadata), and the summaries of
-//! the details (delimited dimensions, line counts, worksheet dimensions, SQLite header, Parquet summary)
+//! ranges, with sessions in memory), Parquet (the footer and the Thrift compact metadata), and the details of the
+//! documents (SQLite header, Parquet summary, and the calls to the Office and structured readers)
 //! (docs/PREVIEWS.md, "SQLite", "Parquet").
 //!
 //! Each reader reads exact byte ranges and has strict limits. A crafted file gives a `422` error.
 
-mod bridge;
-mod compare;
 mod details;
 mod parquet;
 mod sqlite;
 mod text;
 mod thrift;
-mod workbook;
 
 #[cfg(test)]
 mod tests;
@@ -27,10 +24,8 @@ use crate::common::error::Result;
 use crate::common::http::{Route, RouteAccess, route};
 use crate::instance::Instance;
 
-pub use details::{DelimitedSummary, count_object_lines, detect_delimited_separator, inspect_delimited_summary};
 pub use parquet::handle_parquet;
 pub use sqlite::sessions::{SqliteSessions, handle_sqlite_sessions};
-pub use workbook::{SpreadsheetSummary, inspect_spreadsheet_dimensions};
 
 /// The details of a document for `/api/media-info`: the container, its properties and the storage values.
 ///

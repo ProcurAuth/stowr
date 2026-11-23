@@ -16,10 +16,11 @@ use std::collections::HashSet;
 
 use serde::{Serialize, Serializer};
 
-use super::text::{format_float_short, lossy_each_run};
+use super::text::format_float_short;
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::instance::range::RangeSource;
+use crate::pv_docs::util::to_valid_utf8;
 
 /// The deepest B-tree that a walk reads.
 pub(crate) const MAX_BTREE_DEPTH: usize = 128;
@@ -76,7 +77,7 @@ impl Value {
         match self {
             Self::Integer(value) => *value,
             Self::Real(value) => super::text::float_to_int(*value),
-            Self::Text(value) => super::text::parse_int(value.trim()).0,
+            Self::Text(value) => crate::pv_docs::util::parse_integer(value.trim()).0,
             _ => 0,
         }
     }
@@ -299,7 +300,7 @@ fn decode_text(data: &[u8], encoding: u32) -> String {
         }
         _ => match std::str::from_utf8(data) {
             Ok(text) => text.to_owned(),
-            Err(_) => lossy_each_run(data),
+            Err(_) => to_valid_utf8(data),
         },
     }
 }

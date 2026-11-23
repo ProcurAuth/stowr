@@ -13,8 +13,8 @@ use super::schema::{ColumnInfo, TableDefinition};
 use super::{Database, Flow, Value, blob_label, invalid, null_when_empty};
 use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
-use crate::pv_data::compare::{SortKey, matches_filter, stable_sort};
-use crate::pv_data::text::lower;
+use crate::pv_docs::compare::{SortKey, matches_filter};
+use crate::pv_docs::util::{lower, stable_sort};
 
 /// The largest number of rows of a sort.
 pub(crate) const MAX_SORT_ROWS: usize = 150_000;

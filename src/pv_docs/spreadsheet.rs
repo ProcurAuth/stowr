@@ -11,9 +11,10 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
+use super::compare::{compare_values, matches_filter};
 use super::package::{Fault, HardLimit, Package, Truncate, join_path, open_sized_source, parse_entry};
 use super::request::{Call, answer, key_extension, read_instance, required_key, start};
-use super::util::{lower, parse_float, parse_i64, parse_integer, stable_sort, truncate_utf8_bytes};
+use super::util::{lower, parse_float, parse_i64, parse_integer, quote, stable_sort, truncate_utf8_bytes};
 use super::xml::{XmlEvent, XmlFault, XmlReader, last_attribute};
 use crate::access;
 use crate::archive::zip::ZipEntry;
@@ -247,74 +248,6 @@ pub fn excel_column_name(index: i64) -> String {
 
 // --- the comparison of values ------------------------------------------------------------------------------------
 
-/// The order of two cell values: empty values last, numbers by value, times by instant, other values by their text
-/// without case. The result is -1, 0 or 1.
-pub fn compare_values(left: &str, right: &str) -> i32 {
-    let left = left.trim();
-    let right = right.trim();
-    if left.is_empty() && right.is_empty() {
-        return 0;
-    }
-    if left.is_empty() {
-        return 1;
-    }
-    if right.is_empty() {
-        return -1;
-    }
-    if let Some(left_number) = parse_float(left)
-        && let Some(right_number) = parse_float(right)
-    {
-        return if left_number < right_number {
-            -1
-        } else {
-            i32::from(left_number > right_number)
-        };
-    }
-    if let Some(left_time) = Timestamp::parse_rfc3339(left)
-        && let Some(right_time) = Timestamp::parse_rfc3339(right)
-    {
-        return match left_time.cmp(&right_time) {
-            std::cmp::Ordering::Less => -1,
-            std::cmp::Ordering::Equal => 0,
-            std::cmp::Ordering::Greater => 1,
-        };
-    }
-    match lower(left).cmp(&lower(right)) {
-        std::cmp::Ordering::Less => -1,
-        std::cmp::Ordering::Equal => 0,
-        std::cmp::Ordering::Greater => 1,
-    }
-}
-
-fn matches_filter(value: &str, raw_filter: &str) -> bool {
-    let filter = raw_filter.trim();
-    if filter.is_empty() {
-        return true;
-    }
-    let mut operator = "contains";
-    let mut operand = filter;
-    for candidate in [">=", "<=", "!=", "=", ">", "<"] {
-        if let Some(rest) = filter.strip_prefix(candidate) {
-            operator = candidate;
-            operand = rest.trim();
-            break;
-        }
-    }
-    if operator == "contains" {
-        return lower(value).contains(&lower(operand));
-    }
-    let comparison = compare_values(value, operand);
-    match operator {
-        "=" => comparison == 0,
-        "!=" => comparison != 0,
-        ">" => comparison > 0,
-        ">=" => comparison >= 0,
-        "<" => comparison < 0,
-        "<=" => comparison <= 0,
-        _ => true,
-    }
-}
-
 fn row_matches(record: &Record, filters: &HashMap<i64, String>, global_search: &str) -> bool {
     let query = lower(global_search.trim());
     if !query.is_empty() && !record.cells.values().any(|value| lower(value).contains(&query)) {
@@ -374,37 +307,6 @@ pub fn is_date_number_format(id: i64, code: &str) -> bool {
 }
 
 // --- the query ---------------------------------------------------------------------------------------------------
-
-/// The text of a value in double quotes, with the escapes of a quoted text.
-fn quote(value: &str) -> String {
-    let mut out = String::from("\"");
-    for current in value.chars() {
-        match current {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            other if u32::from(other) < 0x20 || u32::from(other) == 0x7f => {
-                out.push_str(&format!("\\x{:02x}", u32::from(other)));
-            }
-            other if other.is_control() || (other.is_whitespace() && other != ' ') => {
-                if u32::from(other) > 0xFFFF {
-                    out.push_str(&format!("\\U{:08x}", u32::from(other)));
-                } else {
-                    out.push_str(&format!("\\u{:04x}", u32::from(other)));
-                }
-            }
-            other => out.push(other),
-        }
-    }
-    out.push('"');
-    out
-}
 
 /// The query of a request.
 pub fn parse_query(req: &Call) -> Result<SheetQuery> {
@@ -1133,12 +1035,16 @@ fn read_sheet_inner(
     if query.sort_column >= 0 {
         let column = query.sort_column;
         let descending = query.sort_direction == "desc";
-        stable_sort(&mut sort_records, &|left: &Record, right: &Record| {
+        stable_sort(&mut sort_records, |left: &Record, right: &Record| {
             let comparison = compare_values(left.cell(column), right.cell(column));
-            if comparison == 0 {
+            if comparison.is_eq() {
                 return left.row_number < right.row_number;
             }
-            if descending { comparison > 0 } else { comparison < 0 }
+            if descending {
+                comparison.is_gt()
+            } else {
+                comparison.is_lt()
+            }
         });
         let start = usize::try_from(page_start)
             .unwrap_or(usize::MAX)
