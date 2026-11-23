@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Build the program as a static Linux file with the musl target, inside Docker.
+# Build the program as a static Linux file with the musl target of the host architecture (x86_64 or aarch64), inside
+# Docker.
 # Use: scripts/static.sh            (build)
 #      scripts/static.sh --check    (build, then check that the file is static and runs)
-# The file is in the target volume, in /cargo-target/x86_64-unknown-linux-musl/release/stowr.
+# The file is in the target volume, in /cargo-target/<architecture>-unknown-linux-musl/release/stowr.
 # Give it to the host with: scripts/static.sh --copy <directory>
 set -euo pipefail
 
@@ -15,7 +16,11 @@ if ! docker image inspect "$static_image" >/dev/null 2>&1; then
     docker build --quiet --tag "$static_image" --file "$root/scripts/Dockerfile.static" "$root/scripts" >/dev/null
 fi
 
-target=x86_64-unknown-linux-musl
+case "$(uname -m)" in
+    x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
+    aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
+    *) echo "unsupported architecture: $(uname -m)" >&2; exit 2 ;;
+esac
 binary="/cargo-target/$target/release/stowr"
 after=""
 mounts=()
