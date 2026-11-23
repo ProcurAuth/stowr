@@ -4,11 +4,38 @@
 //!
 //! This work package owns `/api/uploads`, `/api/uploads/resume`, `/api/multiparts`, `/api/multiparts/abort`, the
 //! job `abort_multiparts`, and the S3 list of the incomplete uploads (`impl MultipartUploadLister for S3Backend`).
+//!
+//! The upload manager and the incomplete-upload functions work with an [`UploadTarget`]: one storage instance with its
+//! key and its permissions. The routes get the target of an instance from the application.
 
-use std::collections::BTreeSet;
+mod checksum;
+mod handlers;
+mod limit;
+mod manager;
+mod multipart_routes;
+mod multiparts;
+mod s3_list;
+mod session;
+mod target;
+mod token;
+
+#[cfg(test)]
+mod checksum_tests;
+#[cfg(test)]
+mod handlers_tests;
+#[cfg(test)]
+mod manager_tests;
+#[cfg(test)]
+mod multiparts_tests;
+#[cfg(test)]
+mod session_tests;
+#[cfg(test)]
+mod test_fakes;
+#[cfg(test)]
+mod token_tests;
+
 use std::sync::atomic::AtomicBool;
 
-use http::HeaderMap;
 use serde::{Deserialize, Serialize};
 
 use crate::common::BoxFuture;
@@ -16,17 +43,51 @@ use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Route, RouteAccess, route};
 use crate::common::time::Timestamp;
-use crate::provider::S3Backend;
 
-/// The position in the list of the incomplete uploads of a provider.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub use checksum::{
+    CHECKSUM_HEADER, UPLOAD_CHECKSUM_SHA256, checksum_confirmed, composite_checksum, parse_checksum_header,
+    same_composite_checksum, sha256_base64, verify_upload_checksum, with_checksum_transfer, with_upload_tags,
+};
+pub use handlers::{RESUME_TOKEN_HEADER, handle_uploads};
+pub use limit::limit_body;
+pub use manager::{
+    ChunkInput, CreateUploadRequest, UPLOAD_IDLE_TTL, UPLOAD_REAP_ABORT_LIMIT, UPLOAD_REAP_INTERVAL, UploadManager,
+    volume_session_upload_id,
+};
+pub use multipart_routes::{handle_multipart_abort, handle_multiparts};
+pub use multiparts::{
+    ACTIVE_UPLOAD_REASON, JobProgress, MINIMUM_ABORT_AGE, MultipartAbortFailure, MultipartAbortItem,
+    MultipartAbortResponse, MultipartListResponse, MultipartUploadJson, abort_job_request, abort_selected_multiparts,
+    collect_multipart_uploads, decode_multipart_cursor, describe_multipart_uploads, encode_multipart_cursor,
+    invalid_multipart_request, is_no_such_upload, multipart_unsupported, next_multipart_page, provider_refused_feature,
+    run_abort_multiparts, valid_multipart_upload_id,
+};
+pub use session::{
+    MAX_IN_MEMORY_UPLOAD_SESSIONS, PublicUpload, STATUS_CANCELED, STATUS_COMPLETED, STATUS_UPLOADING, UploadPartState,
+    UploadSession, parse_content_range, upload_chunk_size,
+};
+pub use target::{AccessCheck, InstanceTarget, NoCheck, Targets, UploadTarget};
+pub use token::{
+    RESUME_TOKEN_VERSION, ResumeDescriptor, derive_cipher_key, open_resume_token, seal_descriptor, upload_id_from_token,
+};
+
+/// The position in the list of the incomplete uploads of a provider. The page token holds it with the short names
+/// `k`, `u` and `i`; a value that is empty or 0 is not in the text.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct MultipartCursor {
     /// `key-marker`.
+    #[serde(rename = "k", skip_serializing_if = "String::is_empty")]
     pub key_marker: String,
     /// `upload-id-marker`.
+    #[serde(rename = "u", skip_serializing_if = "String::is_empty")]
     pub upload_id_marker: String,
     /// The position in the page.
+    #[serde(rename = "i", skip_serializing_if = "is_zero")]
     pub skip: u32,
+}
+
+fn is_zero(value: &u32) -> bool {
+    *value == 0
 }
 
 /// One incomplete upload.
@@ -58,7 +119,7 @@ pub struct MultipartPartsSummary {
     pub bytes: i64,
     /// True when the upload has more parts than the page.
     pub at_least: bool,
-    /// True when the provider gives no parts (a volume).
+    /// True when the provider gives no parts.
     pub unknown: bool,
 }
 
@@ -95,19 +156,16 @@ pub trait IncompleteUploadRemover: Send + Sync {
 /// The state of the list of the incomplete uploads of an instance.
 #[derive(Debug, Default)]
 pub struct MultipartsState {
-    /// Set when the provider refused the list.
+    /// Set when the provider refuses the list.
     pub off: AtomicBool,
 }
 
 /// The request of the job `abort_multiparts`.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MultipartAbortJob {
-    /// The prefix.
-    pub prefix: String,
     /// The age in days.
-    #[serde(rename = "olderThanDays")]
     pub older_than_days: u32,
-    /// The cutoff: the time of the request minus the age.
+    /// The cutoff: the time of the request minus the age. The job aborts the uploads that start before it.
     pub cutoff: Option<Timestamp>,
 }
 
@@ -127,41 +185,15 @@ pub struct MultipartAbortResult {
     pub failed: u64,
 }
 
-/// The upload sessions in the memory of the process (at most four).
-#[derive(Debug, Default)]
-pub struct UploadManager {}
-
-impl UploadManager {
-    /// A manager with no session.
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    /// The provider upload ids that this process sends now, for an instance.
-    pub fn active_provider_uploads(&self, instance: &str) -> BTreeSet<String> {
-        let _ = instance;
-        BTreeSet::new()
-    }
-
-    /// Stop the reaper of the idle sessions.
-    pub fn close(&self) {}
-}
-
-/// Read the header `X-Checksum-Sha256`: an empty text, or a base64 digest of 32 bytes (else `400 invalid_checksum`).
-pub fn parse_checksum_header(headers: &HeaderMap) -> Result<String> {
-    let _ = headers;
-    Ok(String::new())
-}
-
 /// Run the job `abort_multiparts`.
 pub async fn run_abort_multiparts_job(run: &crate::jobs::JobRun, job: &mut crate::jobs::JobState) -> Result<()> {
-    let _ = (run, job);
-    Err(Error::not_served("the job abort_multiparts"))
+    let instance = run.app.instance(&job.instance)?.clone();
+    let Some(target) = <crate::common::app::App as Targets>::target(&run.app, &instance.cfg.id) else {
+        return Err(Error::api(404, "unknown_instance", "storage instance was not found"));
+    };
+    multiparts::require_job_permissions(&*target)?;
+    run_abort_multiparts(&run.app.uploads, &*target, &run.ctx, run, job).await
 }
-
-crate::stub_handler!(handle_uploads, "the route /api/uploads");
-crate::stub_handler!(handle_multiparts, "the route /api/multiparts");
-crate::stub_handler!(handle_multipart_abort, "the route /api/multiparts/abort");
 
 /// The routes of this work package.
 pub fn routes() -> Vec<Route> {
@@ -175,24 +207,4 @@ pub fn routes() -> Vec<Route> {
         route("/api/uploads/resume", RouteAccess::HandlerAsks, handle_uploads),
         route("/api/uploads", RouteAccess::HandlerAsks, handle_uploads),
     ]
-}
-
-impl MultipartUploadLister for S3Backend {
-    fn list_uploads<'a>(
-        &'a self,
-        _ctx: &'a OpCtx,
-        _cursor: &'a MultipartCursor,
-        _maximum: u32,
-    ) -> BoxFuture<'a, Result<MultipartUploadPage>> {
-        Box::pin(async move { Err(Error::not_served("the S3 list of the incomplete uploads")) })
-    }
-    fn upload_parts<'a>(
-        &'a self,
-        _ctx: &'a OpCtx,
-        _key: &'a str,
-        _upload_id: &'a str,
-        _maximum: u32,
-    ) -> BoxFuture<'a, Result<MultipartPartsSummary>> {
-        Box::pin(async move { Err(Error::not_served("the S3 list of the parts")) })
-    }
 }
