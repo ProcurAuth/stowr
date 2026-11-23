@@ -253,8 +253,27 @@ fn set_retry_after(headers: &mut HeaderMap, seconds: u64) {
     }
 }
 
+/// The answer of an action that needs an approval: 403 with exactly `{"error":"approval_cannot_wait"}`, on each route.
+fn approval_answer(error: &Error) -> Option<Response> {
+    #[derive(Serialize)]
+    struct Flat {
+        error: &'static str,
+    }
+    error.has_code(super::error::CODE_APPROVAL_CANNOT_WAIT).then(|| {
+        json(
+            403,
+            &Flat {
+                error: super::error::CODE_APPROVAL_CANNOT_WAIT,
+            },
+        )
+    })
+}
+
 /// The JSON error answer of an API route: `{"error":{"code":...,"message":...}}`.
 pub fn api_error(error: &Error) -> Response {
+    if let Some(response) = approval_answer(error) {
+        return response;
+    }
     let mut response = json(error.status(), &error.envelope());
     set_retry_after(response.headers_mut(), error.retry_after());
     response
@@ -271,6 +290,9 @@ pub fn text_error(status: u16, message: &str) -> Response {
 
 /// The error answer of the object routes (`/s3`, `/open/`): the message as text, with `Cache-Control: no-store`.
 pub fn gateway_error(error: &Error) -> Response {
+    if let Some(response) = approval_answer(error) {
+        return response;
+    }
     let mut response = text_error(error.status(), &error.public_message());
     response
         .headers_mut()
@@ -327,6 +349,20 @@ mod tests {
                 .unwrap()
                 .contains("\"ceiling\":\"max_object_size\",\"code\":\"ceiling_exceeded\",\"limit\":1048576")
         );
+    }
+
+    #[tokio::test]
+    async fn an_action_that_needs_an_approval_has_one_fixed_body_on_each_route() {
+        let error = Error::api(403, super::super::error::CODE_APPROVAL_CANNOT_WAIT, "any text");
+        for response in [api_error(&error), gateway_error(&error)] {
+            assert_eq!(response.status(), 403);
+            assert_eq!(
+                response.headers().get(CONTENT_TYPE).unwrap(),
+                "application/json; charset=utf-8"
+            );
+            let (bytes, _) = read_limited(response.into_body(), 4096).await.unwrap();
+            assert_eq!(&bytes[..], b"{\"error\":\"approval_cannot_wait\"}\n");
+        }
     }
 
     #[tokio::test]
