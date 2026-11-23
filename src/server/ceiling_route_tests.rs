@@ -542,6 +542,14 @@ async fn an_integrity_job_applies_the_ceiling_of_its_request_without_a_new_quest
     env.fake.set_answer(ceilings(10, NONE));
     assert_ceiling(&send_json(&env, "POST", "/api/integrity", body).await, ACTION_READ, 10);
     assert_eq!(env.fake.questions().len(), 1, "{:?}", env.fake.questions());
+    // The job of the refusal stays in the manager: it failed with the ceiling of its request.
+    let jobs = env.app.jobs.all();
+    assert_eq!(jobs.len(), 1, "{jobs:?}");
+    let refused = &jobs[0];
+    assert_eq!(refused.job_type, job_type::INTEGRITY);
+    assert_eq!(refused.status, "failed", "{refused:?}");
+    assert!(refused.error.contains("max_object_size"), "{}", refused.error);
+    assert_eq!(job_ceiling(refused, ACTION_READ), Some(10));
 
     env.fake.set_answer(ceilings(20, NONE));
     let answer = send_json(&env, "POST", "/api/integrity", body).await;

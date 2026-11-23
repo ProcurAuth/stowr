@@ -168,6 +168,12 @@ impl JobManager {
         lock(&self.shared.jobs).get(id).cloned()
     }
 
+    /// A copy of each job, in no order. A test finds with it a job whose id no answer gives.
+    #[cfg(test)]
+    pub fn all(&self) -> Vec<JobState> {
+        lock(&self.shared.jobs).values().cloned().collect()
+    }
+
     /// The status and the end of a job, without a copy of the whole job.
     pub fn status_of(&self, id: &str) -> Option<(String, Option<Timestamp>)> {
         lock(&self.shared.jobs)
