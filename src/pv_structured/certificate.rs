@@ -34,8 +34,14 @@ pub fn merge_block_properties(props: &mut BTreeMap<String, String>, kind: &str, 
             props.insert("Serial number".to_owned(), certificate.serial.clone());
             props.insert("Not before".to_owned(), certificate.not_before.rfc3339());
             props.insert("Not after".to_owned(), certificate.not_after.rfc3339());
-            props.insert("Signature algorithm".to_owned(), certificate.signature_algorithm.clone());
-            props.insert("Public key algorithm".to_owned(), certificate.public_key_algorithm.clone());
+            props.insert(
+                "Signature algorithm".to_owned(),
+                certificate.signature_algorithm.clone(),
+            );
+            props.insert(
+                "Public key algorithm".to_owned(),
+                certificate.public_key_algorithm.clone(),
+            );
             if !certificate.dns_names.is_empty() {
                 props.insert("DNS names".to_owned(), certificate.dns_names.join(", "));
             }

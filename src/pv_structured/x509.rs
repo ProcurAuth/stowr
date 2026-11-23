@@ -1,9 +1,10 @@
-//! A reader of X.509 certificates, certificate requests and keys. It gives the facts that the previews show: the
-//! names in the text form of RFC 2253, the serial number, the dates, the algorithms, the alternative names and the
-//! size of a key. The reader refuses a structure that a strict parser refuses.
+//! A reader of X.509 certificates, certificate requests and keys. It gives the facts that the previews show.
+//! These are the names in the text form of RFC 2253, the serial number, the dates, the algorithms, the
+//! alternative names and the size of a key. The reader refuses a structure that a strict parser refuses.
 
 use std::fmt::Write as _;
 
+use super::bignum::Uint;
 use super::der::{
     BOOLEAN, BitString, DateTime, Der, INTEGER, OBJECT_IDENTIFIER, OCTET_STRING, Oid, SEQUENCE, SET, context,
     context_constructed, read_time,
@@ -64,7 +65,7 @@ fn parse_string(tag: u8, value: &[u8]) -> Option<String> {
         }
         super::der::UTF8_STRING => std::str::from_utf8(value).ok().map(str::to_owned),
         super::der::BMP_STRING => {
-            if value.len() % 2 != 0 {
+            if !value.len().is_multiple_of(2) {
                 return None;
             }
             let mut value = value;
@@ -172,12 +173,7 @@ impl Name {
         ];
         for (values, name) in groups {
             if !values.is_empty() {
-                rdns.push(
-                    values
-                        .iter()
-                        .map(|value| Rendered::text(name, value))
-                        .collect(),
-                );
+                rdns.push(values.iter().map(|value| Rendered::text(name, value)).collect());
             }
         }
         if !self.common_name.is_empty() {
@@ -243,16 +239,20 @@ fn escape_value(value: &str) -> String {
     out
 }
 
-/// The type name and the value of an attribute of a type that has no short name: the identifier and the
-/// hexadecimal form of the DER bytes of the value. The value is a PrintableString when its characters allow it,
-/// else a UTF8String.
+/// The type name and the value of an attribute of a type that has no short name.
+/// The type name is the identifier. The value is the hexadecimal form of its DER bytes.
+/// The DER value is a PrintableString when its characters allow it, else a UTF8String.
 fn describe_other(attribute: &Attribute) -> Rendered {
     if attribute.invalid {
         // The bytes are not UTF-8: no DER form exists for the text, so the text stays.
         return Rendered::text(&attribute.oid.dotted(), &attribute.value);
     }
     let printable = attribute.value.bytes().all(|byte| {
-        byte.is_ascii_alphanumeric() || matches!(byte, b'\'' | b'(' | b')' | b'+' | b',' | b'-' | b'.' | b'/' | b' ' | b':' | b'=' | b'?')
+        byte.is_ascii_alphanumeric()
+            || matches!(
+                byte,
+                b'\'' | b'(' | b')' | b'+' | b',' | b'-' | b'.' | b'/' | b' ' | b':' | b'=' | b'?'
+            )
     });
     let tag = if printable { 0x13 } else { 0x0c };
     let content = attribute.value.as_bytes();
@@ -437,24 +437,24 @@ fn coordinate_length(curve: &str) -> usize {
 fn curve_order(curve: &str) -> &'static [u8] {
     match curve {
         "P-224" => &[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x16, 0xa2, 0xe0,
-            0xb8, 0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45, 0x5c, 0x5c, 0x2a, 0x3d,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x16, 0xa2, 0xe0, 0xb8,
+            0xf0, 0x3e, 0x13, 0xdd, 0x29, 0x45, 0x5c, 0x5c, 0x2a, 0x3d,
         ],
         "P-256" => &[
-            0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xbc,
-            0xe6, 0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
+            0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xbc, 0xe6,
+            0xfa, 0xad, 0xa7, 0x17, 0x9e, 0x84, 0xf3, 0xb9, 0xca, 0xc2, 0xfc, 0x63, 0x25, 0x51,
         ],
         "P-384" => &[
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc7, 0x63, 0x4d, 0x81, 0xf4, 0x37, 0x2d, 0xdf, 0x58, 0x1a,
-            0x0d, 0xb2, 0x48, 0xb0, 0xa7, 0x7a, 0xec, 0xec, 0x19, 0x6a, 0xcc, 0xc5, 0x29, 0x73,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xc7, 0x63, 0x4d, 0x81, 0xf4, 0x37, 0x2d, 0xdf, 0x58, 0x1a, 0x0d, 0xb2,
+            0x48, 0xb0, 0xa7, 0x7a, 0xec, 0xec, 0x19, 0x6a, 0xcc, 0xc5, 0x29, 0x73,
         ],
         _ => &[
-            0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfa, 0x51,
-            0x86, 0x87, 0x83, 0xbf, 0x2f, 0x96, 0x6b, 0x7f, 0xcc, 0x01, 0x48, 0xf7, 0x09, 0xa5, 0xd0, 0x3b, 0xb5,
-            0xc9, 0xb8, 0x89, 0x9c, 0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38, 0x64, 0x09,
+            0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfa, 0x51, 0x86, 0x87, 0x83,
+            0xbf, 0x2f, 0x96, 0x6b, 0x7f, 0xcc, 0x01, 0x48, 0xf7, 0x09, 0xa5, 0xd0, 0x3b, 0xb5, 0xc9, 0xb8, 0x89, 0x9c,
+            0x47, 0xae, 0xbb, 0x6f, 0xb7, 0x1e, 0x91, 0x38, 0x64, 0x09,
         ],
     }
 }
@@ -480,6 +480,9 @@ fn parse_public_key(oid: &Oid, parameters: &[u8], data: &[u8]) -> Option<PublicK
         let curve = named_curve(&curve_oid)?;
         let length = coordinate_length(curve);
         if data.len() != 1 + 2 * length || data[0] != 4 {
+            return None;
+        }
+        if !super::bignum::point_on_curve(curve, &data[1..=length], &data[1 + length..]) {
             return None;
         }
         Some(PublicKey::Ecdsa(curve))
@@ -911,8 +914,8 @@ fn read_alternative_names(value: &[u8], facts: &mut Certificate) -> Option<()> {
     Some(())
 }
 
-/// The text of an IP address of 4 or 16 bytes: dotted decimal for IPv4 and for an IPv4-mapped address, else the
-/// compact form of RFC 5952.
+/// The text of an IP address of 4 or 16 bytes. An IPv4 address and an IPv4-mapped address have the dotted
+/// decimal form. Any other address has the compact form of RFC 5952.
 pub fn ip_text(bytes: &[u8]) -> String {
     if bytes.len() == 4 {
         return format!("{}.{}.{}.{}", bytes[0], bytes[1], bytes[2], bytes[3]);
@@ -1092,7 +1095,8 @@ pub fn parse_certificate_request(der: &[u8]) -> Option<CertificateRequest> {
     })
 }
 
-/// The bits of the modulus of an RSA private key (PKCS #1).
+/// The bits of the modulus of an RSA private key (PKCS #1). The key must be consistent: the primes multiply to the
+/// modulus and the exponents agree with each prime.
 pub fn parse_pkcs1_private_key(der: &[u8]) -> Option<usize> {
     let mut input = Der(der);
     let content = input.read(SEQUENCE)?;
@@ -1102,7 +1106,7 @@ pub fn parse_pkcs1_private_key(der: &[u8]) -> Option<usize> {
     let mut der = Der(content);
     let version = der.read_i32()?;
     let modulus = der.read_integer()?;
-    let _exponent = der.read_i32()?;
+    let exponent = der.read_i32()?;
     let d = der.read_integer()?;
     let p = der.read_integer()?;
     let q = der.read_integer()?;
@@ -1112,6 +1116,7 @@ pub fn parse_pkcs1_private_key(der: &[u8]) -> Option<usize> {
             optional.push(der.read_integer()?);
         }
     }
+    let mut primes = vec![p, q];
     if der.peek_tag(SEQUENCE) {
         let content = der.read(SEQUENCE)?;
         let mut list = Der(content);
@@ -1124,6 +1129,7 @@ pub fn parse_pkcs1_private_key(der: &[u8]) -> Option<usize> {
             if first.sign() <= 0 {
                 return None;
             }
+            primes.push(first);
         }
     }
     if version > 1 {
@@ -1131,11 +1137,35 @@ pub fn parse_pkcs1_private_key(der: &[u8]) -> Option<usize> {
     }
     if modulus.sign() <= 0
         || d.sign() <= 0
-        || p.sign() <= 0
-        || q.sign() <= 0
+        || primes[0].sign() <= 0
+        || primes[1].sign() <= 0
         || optional.iter().any(|value| value.sign() <= 0)
     {
         return None;
+    }
+    if exponent < 2 {
+        return None;
+    }
+    let one = Uint::from_u64(1);
+    let mut product = one.clone();
+    let primes: Vec<Uint> = primes
+        .iter()
+        .map(|prime| Uint::from_be_bytes(&prime.magnitude))
+        .collect();
+    for prime in &primes {
+        if *prime <= one {
+            return None;
+        }
+        product = product.mul(prime);
+    }
+    if product != Uint::from_be_bytes(&modulus.magnitude) {
+        return None;
+    }
+    let exponent_times_d = Uint::from_u64(exponent as u64).mul(&Uint::from_be_bytes(&d.magnitude));
+    for prime in &primes {
+        if exponent_times_d.rem(&prime.sub(&one)) != one {
+            return None;
+        }
     }
     Some(modulus.bit_length())
 }

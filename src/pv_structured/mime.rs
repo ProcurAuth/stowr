@@ -113,7 +113,8 @@ impl<'a> LineReader<'a> {
     /// Skip the blanks and the tabs; gives the number of bytes.
     fn skip_blanks(&mut self) -> usize {
         let mut count = 0;
-        while self.position < self.data.len() && (self.data[self.position] == b' ' || self.data[self.position] == b'\t') {
+        while self.position < self.data.len() && (self.data[self.position] == b' ' || self.data[self.position] == b'\t')
+        {
             self.position += 1;
             count += 1;
         }
@@ -547,7 +548,7 @@ pub fn decode_quoted_printable(data: &[u8]) -> Decoded {
             }
         } else if byte == b'\t' || byte == b'\r' || byte == b'\n' || byte >= 0x80 {
             // Kept as it is.
-        } else if byte < b' ' || byte > b'~' {
+        } else if !(b' '..=b'~').contains(&byte) {
             return Decoded {
                 bytes: out,
                 failed: true,
@@ -598,8 +599,8 @@ fn find(haystack: &[u8], needle: &[u8]) -> Option<usize> {
     haystack.windows(needle.len()).position(|window| window == needle)
 }
 
-/// Whether the text after a prefix of a boundary is the end of the boundary: a dash, a blank, a tab or a line end
-/// follows, or the data ends.
+/// True when the text after a prefix of a boundary ends the boundary.
+/// A dash, a blank, a tab or a line end must follow, or the data must end.
 fn matches_after_prefix(buffer: &[u8], prefix_length: usize) -> bool {
     if buffer.len() == prefix_length {
         return true;
@@ -653,8 +654,8 @@ impl<'a> MultipartReader<'a> {
         rest == self.nl.as_slice()
     }
 
-    /// One line up to and with the line end. The error is `Some(true)` at the end of the data and `Some(false)` for
-    /// a line that is too long or for a data that ended without a clean end.
+    /// One line, with its line end. The error is `Some(true)` at the end of the data.
+    /// The error is `Some(false)` for a line that is too long, or for data that has no clean end.
     fn read_slice(&mut self) -> (&'a [u8], Option<bool>) {
         let rest = &self.data[self.position..];
         let window = &rest[..rest.len().min(BOUNDARY_LINE_LIMIT)];
@@ -682,10 +683,7 @@ impl<'a> MultipartReader<'a> {
             if consumed == 0 {
                 if buffer.starts_with(&self.dash_boundary) {
                     if matches_after_prefix(buffer, self.dash_boundary.len()) {
-                        return BodyEnd {
-                            end: from,
-                            clean: true,
-                        };
+                        return BodyEnd { end: from, clean: true };
                     }
                     consumed += self.dash_boundary.len();
                     continue;
@@ -765,11 +763,7 @@ impl<'a> MultipartReader<'a> {
     }
 
     fn new_part(&mut self) -> Option<Part<'a>> {
-        let block = read_header_block(
-            &self.data[self.position..],
-            MAX_PART_HEADER_BYTES,
-            MAX_PART_HEADERS,
-        );
+        let block = read_header_block(&self.data[self.position..], MAX_PART_HEADER_BYTES, MAX_PART_HEADERS);
         if block.error.is_some() {
             return None;
         }
@@ -786,10 +780,6 @@ impl<'a> MultipartReader<'a> {
             failed = failed || decoded.failed;
             body = Cow::Owned(decoded.bytes);
         }
-        Some(Part {
-            headers,
-            body,
-            failed,
-        })
+        Some(Part { headers, body, failed })
     }
 }

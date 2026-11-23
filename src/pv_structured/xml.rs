@@ -1,9 +1,9 @@
 //! A strict XML reader for the package manifests: a pull tokenizer and a tree of elements.
 //!
-//! The reader keeps the local part of each name. It accepts the five predefined entities and the numeric references,
-//! and it refuses any other entity. It ignores the declaration of the type of the document and the processing
-//! instructions. A document with an encoding other than UTF-8, with a name that has two colons, or with a tag that
-//! the end tag does not close is not valid.
+//! The reader keeps the local part of each name. It accepts the five predefined entities and the numeric
+//! references. It refuses any other entity. It ignores the declaration of the type of the document and the
+//! instructions for programs. These documents are not valid: a document with an encoding other than UTF-8,
+//! a document with a name that has two colons, and a document with a tag that its end tag does not close.
 
 /// One token of a document.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -488,7 +488,7 @@ pub fn parse_document(data: &[u8]) -> Option<Element> {
 }
 
 /// Read the text of the element that a start token opened: the text parts of the element itself, with the nested
-/// elements skipped. Reads to the matching end token.
+/// elements skipped. Reads to the end token of that element.
 pub fn read_element_text(tokenizer: &mut Tokenizer<'_>) -> Result<String, ()> {
     let mut depth = 0usize;
     let mut text = String::new();

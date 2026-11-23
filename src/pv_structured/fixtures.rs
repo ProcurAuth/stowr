@@ -1,4 +1,4 @@
-//! The cases of the tests: inputs and the expected answers of a reference run, in `testdata/fixtures.json`.
+//! The cases of the tests: the inputs and the expected answers, in `testdata/fixtures.json`.
 
 use std::sync::OnceLock;
 
@@ -8,9 +8,7 @@ use serde_json::Value;
 static FIXTURES: OnceLock<Value> = OnceLock::new();
 
 fn all() -> &'static Value {
-    FIXTURES.get_or_init(|| {
-        serde_json::from_str(include_str!("testdata/fixtures.json")).unwrap_or(Value::Null)
-    })
+    FIXTURES.get_or_init(|| serde_json::from_str(include_str!("testdata/fixtures.json")).unwrap_or(Value::Null))
 }
 
 /// The cases of one category.

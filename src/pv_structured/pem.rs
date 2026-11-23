@@ -49,10 +49,9 @@ pub fn decode(data: &[u8]) -> Option<(PemBlock, &[u8])> {
     loop {
         if rest.starts_with(PEM_BEGIN) {
             rest = &rest[PEM_BEGIN.len()..];
-        } else if let Some(position) = find(rest, PEM_NEWLINE_BEGIN) {
-            rest = &rest[position + PEM_NEWLINE_BEGIN.len()..];
         } else {
-            return None;
+            let position = find(rest, PEM_NEWLINE_BEGIN)?;
+            rest = &rest[position + PEM_NEWLINE_BEGIN.len()..];
         }
         let (type_line, after) = get_line(rest);
         rest = after;

@@ -147,7 +147,7 @@ fn is_space(byte: u8) -> bool {
     matches!(byte, b'\t' | b'\n' | 0x0c | b'\r' | b' ')
 }
 
-/// The end of the closing tag `</name  >` at the start of the bytes, when there is one.
+/// The end of the end tag `</name  >` at the start of the bytes, when there is one.
 fn closing_tag_end(bytes: &[u8], name: &str) -> Option<usize> {
     let opening = format!("</{name}");
     if !starts_with_ignore_case(bytes, &opening) {
@@ -160,7 +160,7 @@ fn closing_tag_end(bytes: &[u8], name: &str) -> Option<usize> {
     (bytes.get(index) == Some(&b'>')).then_some(index + 1)
 }
 
-/// Replace each block `<name ...> ... </name>` with a space. The block ends at the first closing tag.
+/// Replace each block `<name ...> ... </name>` with a space. The block ends at the first end tag.
 fn replace_blocks(text: &str, name: &str) -> String {
     let bytes = text.as_bytes();
     let opening = format!("<{name}");

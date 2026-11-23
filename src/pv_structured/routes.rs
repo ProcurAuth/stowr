@@ -29,9 +29,9 @@ use crate::archive::zip::{ByteSource, ZipReader, invalid_zip, is_zip_archive_ext
 use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::{PERMISSION_READ, RuntimePolicy};
+use crate::common::ctx::OpCtx;
 use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, json, method_not_allowed};
-use crate::common::ctx::OpCtx;
 use crate::common::misc::clean_relative_key;
 use crate::common::query::Query;
 use crate::instance::Instance;
@@ -173,9 +173,7 @@ async fn prepare(app: &Arc<App>, query: &Query, ctx: &OpCtx) -> Result<(Arc<Inst
 }
 
 async fn structured_preview(app: Arc<App>, req: Req) -> Result<Response> {
-    let Req {
-        method, query, ctx, ..
-    } = req;
+    let Req { method, query, ctx, .. } = req;
     if method != Method::GET {
         return Ok(method_not_allowed(&["GET"]));
     }
@@ -207,11 +205,9 @@ async fn structured_preview(app: Arc<App>, req: Req) -> Result<Response> {
         raw_encoding: "text".to_owned(),
         ..StructuredPreviewResponse::default()
     };
-    let mime = content_type;
-    let response = tokio::task::spawn_blocking(move || build_structured_response(response, kind, &extension, &mime, &data))
+    tokio::task::spawn_blocking(move || json(200, &build_structured_response(response, kind, &extension, &data)))
         .await
-        .map_err(|_| Error::internal("the structured reader stopped"))?;
-    Ok(json(200, &response))
+        .map_err(|_| Error::internal("the structured reader stopped"))
 }
 
 /// The parts of the answer that depend on the kind of the object.
@@ -219,10 +215,8 @@ fn build_structured_response(
     mut response: StructuredPreviewResponse,
     kind: &str,
     extension: &str,
-    content_type: &str,
     data: &[u8],
 ) -> StructuredPreviewResponse {
-    let _ = content_type;
     match kind {
         "contact" => {
             response.container = contact_container_label(extension).to_owned();
@@ -300,9 +294,7 @@ async fn read_complete_object(
 }
 
 async fn archive_preview(app: Arc<App>, req: Req) -> Result<Response> {
-    let Req {
-        method, query, ctx, ..
-    } = req;
+    let Req { method, query, ctx, .. } = req;
     if method != Method::GET {
         return Ok(method_not_allowed(&["GET"]));
     }
@@ -333,9 +325,7 @@ async fn archive_preview(app: Arc<App>, req: Req) -> Result<Response> {
                 return Err(Error::api(
                     413,
                     "archive_too_many_entries",
-                    format!(
-                        "the archive contains {count} entries; the configured complete preview limit is {limit}"
-                    ),
+                    format!("the archive contains {count} entries; the configured complete preview limit is {limit}"),
                 ));
             }
             return Err(invalid_zip());
@@ -347,10 +337,7 @@ async fn archive_preview(app: Arc<App>, req: Req) -> Result<Response> {
         if entry.is_dir() || entry.name.ends_with('/') || entry.is_symlink() || !entry.is_regular() {
             continue;
         }
-        let modified = entry
-            .modified
-            .map(|time| time.utc().rfc3339())
-            .unwrap_or_default();
+        let modified = entry.modified.map(|time| time.utc().rfc3339()).unwrap_or_default();
         entries.push(ArchivePreviewEntry {
             name: entry.name.clone(),
             compressed_size: entry.compressed_size,
@@ -388,10 +375,10 @@ async fn declared_entry_count(source: &RangeSource) -> Option<u64> {
     const ZIP64_END: [u8; 4] = [0x50, 0x4b, 0x06, 0x06];
     let size = source.size()?;
     let length = size.min(128 << 10);
-    let tail = ByteSource::fetch(source, (size - length) as u64, length as u64).await.ok()?;
-    let position = tail
-        .windows(4)
-        .rposition(|window| window == END_SIGNATURE)?;
+    let tail = ByteSource::fetch(source, (size - length) as u64, length as u64)
+        .await
+        .ok()?;
+    let position = tail.windows(4).rposition(|window| window == END_SIGNATURE)?;
     let record = &tail[position..];
     if record.len() < 22 {
         return None;

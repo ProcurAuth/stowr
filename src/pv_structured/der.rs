@@ -1,7 +1,8 @@
 //! A strict reader of DER: the elements, the integers, the object identifiers and the times of X.509.
 //!
-//! The reader follows the rules of a strict DER parser. A tag with a high number, an indefinite length, a length
-//! that is not the shortest form and an integer that is not minimal give no value.
+//! The reader follows the rules of a strict DER parser. It gives no value for these inputs:
+//! a tag with a high number, an indefinite length, a length that is not the shortest form, and an integer
+//! that is not minimal.
 
 use std::fmt::Write as _;
 
@@ -13,8 +14,6 @@ pub const INTEGER: u8 = 0x02;
 pub const BIT_STRING: u8 = 0x03;
 /// The tag of OCTET STRING.
 pub const OCTET_STRING: u8 = 0x04;
-/// The tag of NULL.
-pub const NULL: u8 = 0x05;
 /// The tag of OBJECT IDENTIFIER.
 pub const OBJECT_IDENTIFIER: u8 = 0x06;
 /// The tag of UTF8String.
@@ -217,12 +216,12 @@ fn integer_i64(content: &[u8]) -> Option<i64> {
     Some(value)
 }
 
-/// A big integer: the sign and the magnitude in big-endian bytes without leading zeros.
+/// A big integer: the sign and the magnitude in big-endian bytes without zero bytes at the start.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BigInt {
     /// True for a value below 0.
     pub negative: bool,
-    /// The absolute value, big-endian, without leading zero bytes. Empty for 0.
+    /// The absolute value, big-endian, without zero bytes at the start. Empty for 0.
     pub magnitude: Vec<u8>,
 }
 

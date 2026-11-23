@@ -98,7 +98,10 @@ pub fn unfold_lines(text: &[u8]) -> Vec<String> {
         if (line[0] == b' ' || line[0] == b'\t') && open {
             let room = MAX_UNFOLDED_LINE_BYTES.saturating_sub(current.len());
             if room > 0 {
-                let start = line.iter().position(|byte| *byte != b' ' && *byte != b'\t').unwrap_or(line.len());
+                let start = line
+                    .iter()
+                    .position(|byte| *byte != b' ' && *byte != b'\t')
+                    .unwrap_or(line.len());
                 let part = &line[start..];
                 let part = &part[..part.len().min(room)];
                 current.extend_from_slice(part);
@@ -334,7 +337,12 @@ pub struct ContactRecord {
 }
 
 /// Add a value to a list when it is not empty, not a duplicate and the list is below the limit.
-fn append_unique(values: &mut Vec<String>, seen: &mut HashSet<(&'static str, String)>, field: &'static str, value: &str) {
+fn append_unique(
+    values: &mut Vec<String>,
+    seen: &mut HashSet<(&'static str, String)>,
+    field: &'static str,
+    value: &str,
+) {
     let value = value.trim();
     if value.is_empty() || values.len() >= MAX_CONTACT_VALUES_PER_FIELD {
         return;

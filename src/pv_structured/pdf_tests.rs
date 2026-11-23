@@ -32,7 +32,12 @@ fn pdf_details_match_the_expected_answers_in_each_case() {
             failures.push(format!("{} (pages): got {pages}, want {want_pages}", name(case)));
         }
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} failures:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }
 
 #[test]
@@ -50,7 +55,11 @@ fn the_page_count_scan_is_bounded() {
     let data = b"/Type/Pages".repeat(20_000);
     let started = std::time::Instant::now();
     page_count(&data);
-    assert!(started.elapsed() < std::time::Duration::from_secs(2), "the scan took {:?}", started.elapsed());
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(2),
+        "the scan took {:?}",
+        started.elapsed()
+    );
     let legit = b"%PDF-1.7\n2 0 obj << /Type /Pages /Count 7 /Kids [3 0 R] >> endobj\n";
     assert_eq!(page_count(legit), 7);
 }

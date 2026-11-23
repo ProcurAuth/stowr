@@ -16,8 +16,15 @@ fn html_text_and_references_match_the_expected_answers_in_each_case() {
         }
         let unescaped = unescape(input);
         if unescaped != want_unescape {
-            failures.push(format!("references of {input:?}: got {unescaped:?}, want {want_unescape:?}"));
+            failures.push(format!(
+                "references of {input:?}: got {unescaped:?}, want {want_unescape:?}"
+            ));
         }
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} failures:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }

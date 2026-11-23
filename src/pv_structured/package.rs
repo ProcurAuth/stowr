@@ -1,5 +1,6 @@
-//! The details of the ZIP-compatible packages: the archive properties, the manifests of Java archives, browser
-//! extensions and VSIX packages, the contents of an APK, and the book data of an EPUB.
+//! The details of the ZIP-compatible packages. They give the archive properties and the manifests of Java
+//! archives, browser extensions and VSIX packages. They also give the contents of an APK and the book data of
+//! an EPUB.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -28,7 +29,7 @@ fn clean_rooted(path: &str) -> String {
     parts.join("/")
 }
 
-/// The clean form of the name of an entry: no leading `/`, no `.` or `..` part.
+/// The clean form of the name of an entry: no `/` at the start, no `.` or `..` part.
 pub fn clean_entry_name(name: &str) -> String {
     clean_rooted(&format!("/{name}"))
 }
@@ -77,7 +78,11 @@ fn resolve_relative(base_dir: &str, relative: &str) -> String {
         .copied()
         .collect::<Vec<_>>()
         .join("/");
-    let joined = if joined.is_empty() { String::new() } else { clean_relative(&joined) };
+    let joined = if joined.is_empty() {
+        String::new()
+    } else {
+        clean_relative(&joined)
+    };
     clean_entry_name(&joined)
 }
 
@@ -213,8 +218,8 @@ fn manifest_metadata(data: &[u8]) -> Option<BTreeMap<String, String>> {
     Some(props)
 }
 
-/// The text that a JSON value has when a program prints it: strings as they are, numbers in the shortest form,
-/// lists in brackets and maps with their keys in order.
+/// The text of a JSON value for a detail. Strings stay as they are and numbers have the shortest form.
+/// A list is in brackets. A map has its keys in order.
 fn print_value(value: &serde_json::Value) -> String {
     use serde_json::Value;
     match value {
@@ -358,7 +363,9 @@ fn apk_metadata(entries: &[ZipEntry]) -> BTreeMap<String, String> {
             }
         }
         let upper = name.to_uppercase();
-        if upper.starts_with("META-INF/") && (upper.ends_with(".RSA") || upper.ends_with(".DSA") || upper.ends_with(".EC")) {
+        if upper.starts_with("META-INF/")
+            && (upper.ends_with(".RSA") || upper.ends_with(".DSA") || upper.ends_with(".EC"))
+        {
             signatures += 1;
         }
     }
@@ -375,7 +382,10 @@ fn apk_metadata(entries: &[ZipEntry]) -> BTreeMap<String, String> {
         props.insert("Signature blocks".to_owned(), signatures.to_string());
     }
     if !abis.is_empty() {
-        props.insert("Native ABIs".to_owned(), abis.into_iter().collect::<Vec<_>>().join(", "));
+        props.insert(
+            "Native ABIs".to_owned(),
+            abis.into_iter().collect::<Vec<_>>().join(", "),
+        );
     }
     props
 }
@@ -386,9 +396,11 @@ pub async fn archive_package_metadata<S: ByteSource>(
     extension: &str,
 ) -> Option<BTreeMap<String, String>> {
     match extension {
-        "jar" | "war" | "ear" | "aar" => {
-            manifest_metadata(&read_zip_entry(reader, "META-INF/MANIFEST.MF", MAX_ENTRY_BYTES).await.unwrap_or_default())
-        }
+        "jar" | "war" | "ear" | "aar" => manifest_metadata(
+            &read_zip_entry(reader, "META-INF/MANIFEST.MF", MAX_ENTRY_BYTES)
+                .await
+                .unwrap_or_default(),
+        ),
         "xpi" | "crx" => json_manifest_metadata(
             &read_zip_entry(reader, "manifest.json", MAX_ENTRY_BYTES)
                 .await
@@ -511,7 +523,10 @@ fn parse_epub_nav(data: &[u8]) -> Vec<TocEntry> {
                         }
                     }
                     if let Ok(label) = read_element_text(&mut tokenizer) {
-                        let label = html::to_plain_text(&label).split_whitespace().collect::<Vec<_>>().join(" ");
+                        let label = html::to_plain_text(&label)
+                            .split_whitespace()
+                            .collect::<Vec<_>>()
+                            .join(" ");
                         if !label.is_empty() {
                             result.push(TocEntry {
                                 label,
@@ -589,9 +604,45 @@ pub async fn epub_preview<S: ByteSource>(reader: &ZipReader<S>) -> Option<EpubPr
         }
     }
     if !nav_path.is_empty() {
-        let data = read_zip_entry(reader, &nav_path, MAX_ENTRY_BYTES).await.unwrap_or_default();
+        let data = read_zip_entry(reader, &nav_path, MAX_ENTRY_BYTES)
+            .await
+            .unwrap_or_default();
         result.toc = parse_epub_nav(&data);
     }
     // The navigation map of the old format (NCX) gives no entry.
     Some(result)
+}
+
+/// The details of a package: the properties of the archive, the details of its manifest and, for an EPUB, the
+/// book data. A manifest value that is blank does not count.
+pub async fn zip_details<S: ByteSource>(reader: &ZipReader<S>, extension: &str) -> BTreeMap<String, String> {
+    let mut props = zip_archive_properties(&reader.entries);
+    if let Some(package) = archive_package_metadata(reader, extension).await {
+        for (name, value) in package {
+            if !value.trim().is_empty() {
+                props.insert(name, value);
+            }
+        }
+    }
+    if extension == "epub"
+        && let Some(epub) = epub_preview(reader).await
+    {
+        let pairs = [
+            ("Title", epub.title.clone()),
+            ("Authors", epub.creators.join(", ")),
+            ("Language", epub.language.clone()),
+            ("Identifier", epub.identifier.clone()),
+            ("Publisher", epub.publisher.clone()),
+            ("Publication date", epub.date.clone()),
+            ("Rights", epub.rights.clone()),
+            ("Subjects", epub.subjects.join(", ")),
+            ("Table of contents entries", epub.toc.len().to_string()),
+        ];
+        for (name, value) in pairs {
+            if !value.trim().is_empty() && value != "0" {
+                props.insert(name.to_owned(), value);
+            }
+        }
+    }
+    props
 }

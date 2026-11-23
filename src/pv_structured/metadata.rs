@@ -9,13 +9,9 @@ use http::HeaderMap;
 
 use super::certificate::{certificate_container_label, parse_certificate_properties};
 use super::email::{email_container_label, email_properties, parse_email_headers};
-use super::package::{
-    archive_container_label, archive_package_metadata, epub_preview, zip_archive_properties,
-};
+use super::package::{archive_container_label, zip_details};
 use super::pdf::parse_pdf_metadata;
-use super::text::{
-    calendar_container_label, calendar_metadata, contact_container_label, vcard_metadata,
-};
+use super::text::{calendar_container_label, calendar_metadata, contact_container_label, vcard_metadata};
 use crate::archive::zip::{ZipReader, is_zip_archive_extension};
 use crate::common::ctx::OpCtx;
 use crate::common::error::Result;
@@ -32,7 +28,7 @@ const MAX_PDF_SUFFIX_BYTES: i64 = 4 << 20;
 /// The suffix that finds the size of an object whose size is not known.
 const SIZE_PROBE_BYTES: i64 = 64 << 10;
 
-/// What the listing told about an object: the size, the ETag and the date of the last change as a text.
+/// What the list told about an object: the size, the ETag and the date of the last change as a text.
 #[derive(Clone, Debug, Default)]
 pub struct ListedObject {
     /// The size, or 0 or less when it is not known.
@@ -48,10 +44,7 @@ impl From<&MediaSourceMetadata> for ListedObject {
         Self {
             size: listed.size,
             etag: listed.etag.clone(),
-            modified: listed
-                .last_modified
-                .map(|time| time.rfc3339_nano())
-                .unwrap_or_default(),
+            modified: listed.last_modified.map(|time| time.rfc3339_nano()).unwrap_or_default(),
         }
     }
 }
@@ -184,26 +177,36 @@ pub async fn inspect_structured_metadata(
     listed: &MediaSourceMetadata,
 ) -> Result<Option<StructuredMetadata>> {
     let extension = extension.trim().to_lowercase();
-    let content_type = content_type
-        .split(';')
-        .next()
-        .unwrap_or("")
-        .trim()
-        .to_lowercase();
+    let content_type = content_type.split(';').next().unwrap_or("").trim().to_lowercase();
     let listed = ListedObject::from(listed);
     let summary = if extension == "pdf" || content_type == "application/pdf" {
         inspect_pdf(ctx, instance, key, &listed).await?
     } else if is_zip_archive_extension(&extension) {
         inspect_zip_archive(ctx, instance, key, &extension, &listed).await?
     } else if is_contact_extension(&extension, &content_type) {
-        inspect_small_text(ctx, instance, key, &listed, contact_container_label(&extension), vcard_metadata).await?
+        inspect_small_text(
+            ctx,
+            instance,
+            key,
+            &listed,
+            contact_container_label(&extension),
+            vcard_metadata,
+        )
+        .await?
     } else if is_calendar_extension(&extension, &content_type) {
-        inspect_small_text(ctx, instance, key, &listed, calendar_container_label(&extension), calendar_metadata)
-            .await?
+        inspect_small_text(
+            ctx,
+            instance,
+            key,
+            &listed,
+            calendar_container_label(&extension),
+            calendar_metadata,
+        )
+        .await?
     } else if is_email_extension(&extension, &content_type) {
         inspect_email_headers(ctx, instance, key, &listed, email_container_label(&extension)).await?
     } else if is_certificate_extension(&extension, &content_type) {
-        inspect_certificate(ctx, instance, key, &extension, &content_type, &listed).await?
+        inspect_certificate(ctx, instance, key, &extension, &listed).await?
     } else {
         return Ok(None);
     };
@@ -249,34 +252,7 @@ async fn inspect_zip_archive(
     let Ok(reader) = ZipReader::open_package(source.with_context(ctx), extension, 0).await else {
         return Ok(summary(label, BTreeMap::new(), &source));
     };
-    let mut props = zip_archive_properties(&reader.entries);
-    if let Some(package) = archive_package_metadata(&reader, extension).await {
-        for (name, value) in package {
-            if !value.trim().is_empty() {
-                props.insert(name, value);
-            }
-        }
-    }
-    if extension == "epub"
-        && let Some(epub) = epub_preview(&reader).await
-    {
-        let pairs = [
-            ("Title", epub.title.clone()),
-            ("Authors", epub.creators.join(", ")),
-            ("Language", epub.language.clone()),
-            ("Identifier", epub.identifier.clone()),
-            ("Publisher", epub.publisher.clone()),
-            ("Publication date", epub.date.clone()),
-            ("Rights", epub.rights.clone()),
-            ("Subjects", epub.subjects.join(", ")),
-            ("Table of contents entries", epub.toc.len().to_string()),
-        ];
-        for (name, value) in pairs {
-            if !value.trim().is_empty() && value != "0" {
-                props.insert(name.to_owned(), value);
-            }
-        }
-    }
+    let props = zip_details(&reader, extension).await;
     Ok(summary(label, props, &source))
 }
 
@@ -321,13 +297,11 @@ async fn inspect_certificate(
     instance: &Arc<Instance>,
     key: &str,
     extension: &str,
-    content_type: &str,
     listed: &ListedObject,
 ) -> Result<StructuredMetadata> {
     let source = open_source(ctx, instance, key, listed).await?;
     discover_size(&source).await?;
     let container = certificate_container_label(extension);
-    let _ = content_type;
     let Some(size) = source.size().filter(|size| *size <= MAX_SMALL_METADATA_BYTES) else {
         return head_only_summary(ctx, instance, key, container).await;
     };

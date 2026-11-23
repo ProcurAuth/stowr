@@ -14,7 +14,7 @@ fn map_value(map: &BTreeMap<String, String>) -> Value {
     serde_json::to_value(map).unwrap_or(Value::Null)
 }
 
-/// A null of the reference answer is an empty map or an empty list.
+/// A null of an expected answer stands for an empty map or an empty list.
 fn normalize(value: &Value, empty: Value) -> Value {
     if value.is_null() { empty } else { value.clone() }
 }
@@ -25,13 +25,21 @@ fn contacts_and_calendars_match_the_expected_answers_in_each_case() {
     for case in cases("texts") {
         let data = bytes(&case["input"]);
         let checks = [
-            ("vcard details", map_value(&vcard_metadata(&data)), normalize(&case["vcardMeta"], json!({}))),
+            (
+                "vcard details",
+                map_value(&vcard_metadata(&data)),
+                normalize(&case["vcardMeta"], json!({})),
+            ),
             (
                 "vcard preview",
                 serde_json::to_value(vcard_preview(&data)).unwrap_or(Value::Null),
                 normalize(&case["vcard"], json!([])),
             ),
-            ("calendar details", map_value(&calendar_metadata(&data)), normalize(&case["icalMeta"], json!({}))),
+            (
+                "calendar details",
+                map_value(&calendar_metadata(&data)),
+                normalize(&case["icalMeta"], json!({})),
+            ),
             (
                 "calendar preview",
                 serde_json::to_value(calendar_preview(&data)).unwrap_or(Value::Null),
@@ -49,7 +57,12 @@ fn contacts_and_calendars_match_the_expected_answers_in_each_case() {
             }
         }
     }
-    assert!(failures.is_empty(), "{} failures:\n{}", failures.len(), failures.join("\n"));
+    assert!(
+        failures.is_empty(),
+        "{} failures:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
 }
 
 #[test]

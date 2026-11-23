@@ -1,5 +1,5 @@
-//! The details of a PDF file from the first bytes and the last bytes: the version, the page count, the information
-//! dictionary and a few flags. The readers look for text patterns and parse no object tree.
+//! The details of a PDF file from its first bytes and its last bytes. They are the version, the page count,
+//! the information dictionary and a few flags. The readers look for text patterns and parse no object tree.
 
 use std::collections::BTreeMap;
 
