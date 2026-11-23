@@ -44,8 +44,7 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 
 - The release has one static binary for each architecture, with no dynamic loader and no shared library. The archives
   are `stowr_0.3.0_linux_amd64.tar.gz` and `stowr_0.3.0_linux_arm64.tar.gz`, with `checksums.txt`.
-- `scripts/cargo.sh` runs the build, the tests and the checks in Docker. `scripts/static.sh` builds the static binary.
-  Refer to `docs/DEVELOPMENT.md`.
+- To build the binary from the source, refer to `docs/DEVELOPMENT.md`.
 
 ### Upgrade steps from 0.2.1
 
