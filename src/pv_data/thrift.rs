@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-/// The deepest nesting of the skipped structures and collections.
+/// The deepest level of the skipped structures and collections.
 pub(crate) const MAX_SKIP_DEPTH: usize = 64;
 
 /// The end of a structure.
@@ -94,7 +94,7 @@ impl<'a> CompactReader<'a> {
         Ok(value)
     }
 
-    /// Go over `count` bytes.
+    /// Skip `count` bytes.
     pub(crate) fn advance(&mut self, count: usize) -> ThriftResult<()> {
         if count > self.remaining() {
             return Err(ThriftError::unexpected_end());

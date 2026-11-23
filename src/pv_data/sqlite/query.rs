@@ -2,7 +2,7 @@
 //! totals.
 //!
 //! Without a sort, the walk stops after the page unless the client asks for the exact totals (`count=1`). A sort
-//! keeps the matching rows in memory with two limits: 150,000 rows and 64 MiB of values (a long text keeps 4,096
+//! keeps the rows that match in memory with two limits: 150,000 rows and 64 MiB of values (a long text keeps 4,096
 //! characters, a blob keeps only its size).
 
 use std::collections::BTreeMap;
@@ -16,9 +16,9 @@ use crate::common::error::{Error, Result};
 use crate::pv_data::compare::{SortKey, matches_filter, stable_sort};
 use crate::pv_data::text::lower;
 
-/// The largest number of matching rows of a sort.
+/// The largest number of rows of a sort.
 pub(crate) const MAX_SORT_ROWS: usize = 150_000;
-/// The largest size of the matching rows of a sort: 64 MiB.
+/// The largest size of the rows of a sort: 64 MiB.
 pub(crate) const MAX_SORT_BYTES: i64 = 64 << 20;
 /// The number of characters of a text that a page shows; a longer text ends with `…`.
 pub(crate) const MAX_DISPLAY_CHARS: usize = 4096;
@@ -73,10 +73,10 @@ pub(crate) struct PageAnswer {
     /// The rows of a page.
     #[serde(rename = "pageSize")]
     pub(crate) page_size: i64,
-    /// True when more matching rows follow.
+    /// True when more rows that match follow.
     #[serde(rename = "hasMore")]
     pub(crate) has_more: bool,
-    /// The matching rows, or -1 when the walk stopped after the page.
+    /// The rows that match, or -1 when the walk stopped after the page.
     #[serde(rename = "totalRows")]
     pub(crate) total_rows: i64,
     /// The rows of the table, or -1 when the walk stopped after the page.
@@ -180,7 +180,7 @@ pub(crate) fn row_matches_filters(row: &BTreeMap<String, Value>, filters: &BTree
     })
 }
 
-/// A matching row of a sort.
+/// A row of a sort.
 struct SortRow {
     row_id: i64,
     values: BTreeMap<String, Value>,
@@ -200,7 +200,7 @@ async fn walk_rows(
     }
 }
 
-/// Sort the matching rows by the value of a column, then by the row id, and keep the order of equal rows.
+/// Sort the rows by the value of a column, then by the row id, and keep the order of equal rows.
 fn sort_rows(rows: Vec<SortRow>, column: &str, descending: bool) -> Vec<SortRow> {
     let mut keyed: Vec<(SortKey, String, SortRow)> = rows
         .into_iter()

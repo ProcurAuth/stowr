@@ -660,8 +660,8 @@ impl<R: BufRead> SheetReader<R> {
 }
 
 /// Count the used rows and columns of a sheet: the last row number with a cell that has a value or a formula, and the
-/// last column of such a cell. A row without `r` follows the previous row; a cell without `r` follows the previous
-/// cell. An error outside a row is `SheetFault::Sheet`; an error in a row is `SheetFault::Raw`.
+/// last column of such a cell. A row without `r` comes after the row before it; a cell without `r` comes after the
+/// cell before it. An error outside a row is `SheetFault::Sheet`; an error in a row is `SheetFault::Raw`.
 pub(crate) fn count_worksheet_dimensions(input: &mut dyn BufRead) -> std::result::Result<(i64, i64), SheetFault> {
     let mut reader = SheetReader::new(input);
     let mut maximum_row: i64 = 0;

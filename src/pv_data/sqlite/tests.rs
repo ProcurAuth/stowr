@@ -207,7 +207,7 @@ fn a_used_session_cannot_live_longer_than_its_maximum_age() {
     ));
     assert!(
         sessions.get("old").is_none(),
-        "a session past its maximum age was served"
+        "the table serves a session past its maximum age"
     );
     assert!(!sessions.contains("old"), "a session past its maximum age stays");
 

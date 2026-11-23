@@ -374,7 +374,7 @@ pub(crate) fn declared_type(definition: &str) -> String {
     between(trimmed, 0, end).trim().to_owned()
 }
 
-/// The end of a parenthesized list that starts at `open`: the offset of its closing parenthesis. Quotes hide the
+/// The end of a parenthesized list that starts at `open`: the offset of the parenthesis that closes it. Quotes hide the
 /// parentheses.
 fn closing_parenthesis(bytes: &[u8], open: usize) -> Option<usize> {
     let mut depth: i64 = 0;

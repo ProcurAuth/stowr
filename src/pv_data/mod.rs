@@ -34,7 +34,7 @@ pub use workbook::{SpreadsheetSummary, inspect_spreadsheet_dimensions};
 
 /// The details of a document for `/api/media-info`: the container, its properties and the storage values.
 ///
-/// `handled` is false for a format that the document readers do not handle: the media readers go on. For a handled
+/// `handled` is false for a format that the document readers do not handle: the media readers continue. For a handled
 /// format, the details of the answer take the size from `size` (from the headers when it is 0 or less) and the media
 /// type and the headers from `headers`.
 #[derive(Clone, Debug, Default)]

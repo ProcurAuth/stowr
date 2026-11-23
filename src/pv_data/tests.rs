@@ -161,7 +161,7 @@ async fn the_thrift_skip_refuses_hostile_metadata() {
             .await
             .unwrap_or_else(|_| panic!("{name}: the parser did not return"))
             .unwrap();
-        assert!(refused, "{name}: the hostile metadata was accepted");
+        assert!(refused, "{name}: the reader accepts the hostile metadata");
     }
     let data = vec![0x1c; 200];
     let mut reader = CompactReader::new(&data);
