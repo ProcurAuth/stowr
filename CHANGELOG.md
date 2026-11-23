@@ -37,6 +37,14 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 - The connections to the providers, to the admin APIs and to the PDP use HTTP/1.1.
 - An archive entry that is a symbolic link gives `403 archive_symlink_blocked`.
 - A read of a file of a volume that is not a regular file (a device, a socket or a pipe) gives `403 volume_not_file`.
+- The details of a package show a manifest value that is a list or an object as compact JSON, for example
+  `{"email":"y","name":"x"}` or `[1,2]`. A `null` value shows as an empty text, and the list of permissions skips it. A
+  number shows in its shortest decimal form, for example `1000000` or `1.5`. Below 1e-6 and from 1e21, it shows in the
+  exponent form, for example `1e-7` or `1e21`. An attribute of a certificate name with no value shows as an empty text.
+- `stowr -h` writes one help with a table of the commands and the options. The names and the forms of the options do
+  not change. An error of an option has a new text, for example `unknown option: -x`. The exit statuses do not change.
+- Some error texts are new: the errors of a URL in the configuration, the errors of `stowr healthcheck`, and the
+  errors of a CSV or XML preview. The error codes and the HTTP statuses do not change.
 - `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
   accepts the value and shows it.
 
@@ -44,8 +52,7 @@ the same. The release has a static binary for Linux amd64 and for Linux arm64.
 
 - The release has one static binary for each architecture, with no dynamic loader and no shared library. The archives
   are `stowr_0.3.0_linux_amd64.tar.gz` and `stowr_0.3.0_linux_arm64.tar.gz`, with `checksums.txt`.
-- `scripts/cargo.sh` runs the build, the tests and the checks in Docker. `scripts/static.sh` builds the static binary.
-  Refer to `docs/DEVELOPMENT.md`.
+- To build the binary from the source, refer to `docs/DEVELOPMENT.md`.
 
 ### Upgrade steps from 0.2.1
 

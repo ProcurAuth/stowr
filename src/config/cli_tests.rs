@@ -3,7 +3,7 @@
 use std::io::{Read as _, Write as _};
 use std::net::TcpListener;
 
-use super::cli::{Next, execute};
+use super::cli::{HELP, Next, execute};
 use super::support_tests::{TempDir, minimal_test_config, test_hooks};
 use super::{format_effective, reference};
 
@@ -31,8 +31,6 @@ fn run(arguments: &[&str]) -> Outcome {
 fn log_text(line: &str) -> &str {
     line.splitn(3, ' ').nth(2).unwrap_or_default().trim_end()
 }
-
-const MAIN_USAGE: &str = "Usage of stowr:\n  -c string\n    \tpath to the HCL configuration file (default \"config.hcl\")\n  -config string\n    \tpath to the HCL configuration file (default \"config.hcl\")\n  -print-config\n    \tcheck the configuration, write the value and the source of each key, and exit\n";
 
 #[test]
 fn version_writes_the_identity_of_the_build() {
@@ -88,11 +86,7 @@ fn print_config_errors_exit_with_status_1() {
     );
     let outcome = run(&["print-config", "-x"]);
     assert_eq!(outcome.status, Some(2));
-    assert!(
-        outcome
-            .err
-            .starts_with("flag provided but not defined: -x\nUsage of print-config:\n  -c string\n")
-    );
+    assert_eq!(outcome.err, format!("unknown option: -x\n{HELP}"));
 }
 
 #[test]
@@ -116,13 +110,15 @@ fn errors_of_the_main_command() {
     );
     let outcome = run(&["-x"]);
     assert_eq!(outcome.status, Some(2));
-    assert_eq!(outcome.err, format!("flag provided but not defined: -x\n{MAIN_USAGE}"));
+    assert_eq!(outcome.err, format!("unknown option: -x\n{HELP}"));
     let outcome = run(&["-c"]);
     assert_eq!(outcome.status, Some(2));
-    assert_eq!(outcome.err, format!("flag needs an argument: -c\n{MAIN_USAGE}"));
-    let outcome = run(&["-h"]);
-    assert_eq!(outcome.status, Some(0));
-    assert_eq!(outcome.err, MAIN_USAGE);
+    assert_eq!(outcome.err, format!("the option -c needs a value\n{HELP}"));
+    for help in ["-h", "--help", "-help"] {
+        let outcome = run(&[help]);
+        assert_eq!(outcome.status, Some(0));
+        assert_eq!(outcome.err, HELP);
+    }
     let dir = TempDir::new();
     let path = dir.join("config.hcl");
     let outcome = run(&["-c", &path]);
@@ -207,17 +203,33 @@ fn a_health_check_without_a_server_fails() {
     assert_eq!(outcome.status, Some(1));
     assert_eq!(
         outcome.err,
-        format!("healthcheck failed: Get \"{url}\": cannot connect to {address}: connection refused\n")
+        format!("healthcheck failed: cannot get \"{url}\": cannot connect to {address}: connection refused\n")
     );
     let outcome = run(&["healthcheck", "-url", "http://127.0.0.1:x/"]);
     assert_eq!(
         outcome.err,
-        "healthcheck request: parse \"http://127.0.0.1:x/\": invalid port \":x\" after host\n"
+        "healthcheck request: invalid URL \"http://127.0.0.1:x/\": invalid port \":x\"\n"
     );
     let outcome = run(&["healthcheck", "-h"]);
     assert_eq!(outcome.status, Some(0));
-    assert_eq!(
-        outcome.err,
-        "Usage of healthcheck:\n  -c string\n    \toptional HCL configuration used to derive the health endpoint\n  -config string\n    \toptional HCL configuration used to derive the health endpoint\n  -url string\n    \thealth endpoint URL\n"
-    );
+    assert_eq!(outcome.err, HELP);
+}
+
+#[test]
+fn the_help_lists_each_command_and_each_option_on_one_line() {
+    assert!(HELP.starts_with("Usage: stowr [command] [options]\n"));
+    for line in [
+        "  print-config      ",
+        "  healthcheck       ",
+        "  config-reference  ",
+        "  version           ",
+        "  -c, --config <path>  ",
+        "  --print-config       ",
+        "  --url <url>          ",
+        "  -h, --help           ",
+    ] {
+        assert_eq!(HELP.lines().filter(|text| text.starts_with(line)).count(), 1, "{line}");
+    }
+    assert!(HELP.lines().all(|line| line.len() <= 120));
+    assert!(!HELP.contains("Usage of"));
 }

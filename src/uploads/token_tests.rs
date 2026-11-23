@@ -65,11 +65,12 @@ fn decrypt(key: &[u8; 32], token: &str) -> String {
     String::from_utf8(plain.to_vec()).unwrap()
 }
 
-/// A token that an earlier version of Stowr made for the instance `rw` and the credentials `test-auth`.
-const EARLIER_TOKEN: &str = "stowr1.cnc.d-4Tf2XhubVF2RmA2A0W5eF1QWyHpOdX_DlQLY7a5NKbt6aXKeOiuggWxwO3hMHkc5CXJ1ZIwT2BGarXho1DoJ-CJ5XWC-ri6NlJvxjA6sdegE8XfXINzmL_oUj5_CP6gGs-MGoE1Z_-4F7oy_Urf5NxxDL8TV8ds6uAtSnMHLoK9VjY6pASOyFnKGgNNnlvn9uAzTc_ySTbPcEqQsSEFy6qVgI0ep1lnXfDdnLYYYtcHXL50Zpp-HI";
+/// A fixed token for the instance `rw` and the credentials `test-auth`. A change of the token format makes the test
+/// fail.
+const FIXED_TOKEN: &str = "stowr1.cnc.d-4Tf2XhubVF2RmA2A0W5eF1QWyHpOdX_DlQLY7a5NKbt6aXKeOiuggWxwO3hMHkc5CXJ1ZIwT2BGarXho1DoJ-CJ5XWC-ri6NlJvxjA6sdegE8XfXINzmL_oUj5_CP6gGs-MGoE1Z_-4F7oy_Urf5NxxDL8TV8ds6uAtSnMHLoK9VjY6pASOyFnKGgNNnlvn9uAzTc_ySTbPcEqQsSEFy6qVgI0ep1lnXfDdnLYYYtcHXL50Zpp-HI";
 
-/// An earlier token whose descriptor has characters that the JSON form escapes, and a NUL in the session.
-const EARLIER_ESCAPED_TOKEN: &str = "stowr1.cnc.0JE-pS-XtHWFbk7OYg0IBm3XheBUOijw5LCFuh7rvihWV7GoIT1Xomp0pP0sSp_7c3U4d9yamqNrFv8MZeTdqhxoj9ILy_TXzJ8SC4LkbSwmFuvJcXx_BxaHni4FED1BkMhPDN3__ak6gGPZ9j7LHKleA25W7oDLn6zi5AE4muiAkaGHH-pW1yml4342T62PprM0gJptzO8-n93CxV3OmqcORZEaow";
+/// A fixed token whose descriptor has characters that the JSON form escapes, and a NUL in the session.
+const FIXED_ESCAPED_TOKEN: &str = "stowr1.cnc.0JE-pS-XtHWFbk7OYg0IBm3XheBUOijw5LCFuh7rvihWV7GoIT1Xomp0pP0sSp_7c3U4d9yamqNrFv8MZeTdqhxoj9ILy_TXzJ8SC4LkbSwmFuvJcXx_BxaHni4FED1BkMhPDN3__ak6gGPZ9j7LHKleA25W7oDLn6zi5AE4muiAkaGHH-pW1yml4342T62PprM0gJptzO8-n93CxV3OmqcORZEaow";
 
 #[test]
 fn the_key_comes_from_the_domain_the_auth_label_and_the_secret_material() {
@@ -82,8 +83,8 @@ fn the_key_comes_from_the_domain_the_auth_label_and_the_secret_material() {
 }
 
 #[test]
-fn a_token_of_an_earlier_version_opens() {
-    let (descriptor, target) = open_resume_token(EARLIER_TOKEN, &targets(), at("2026-11-21T00:00:00Z")).unwrap();
+fn a_fixed_token_opens() {
+    let (descriptor, target) = open_resume_token(FIXED_TOKEN, &targets(), at("2026-11-21T00:00:00Z")).unwrap();
     assert_eq!(target.id(), "rw");
     assert_eq!(
         descriptor,
@@ -102,14 +103,14 @@ fn a_token_of_an_earlier_version_opens() {
         }
     );
     assert_eq!(
-        upload_id_from_token(EARLIER_TOKEN),
+        upload_id_from_token(FIXED_TOKEN),
         "upl_553565f583214b9b9baa6f795cc31dd9"
     );
 }
 
 #[test]
-fn an_earlier_token_with_escaped_characters_opens() {
-    let (descriptor, _) = open_resume_token(EARLIER_ESCAPED_TOKEN, &targets(), at("2026-11-21T00:00:00Z")).unwrap();
+fn a_fixed_token_with_escaped_characters_opens() {
+    let (descriptor, _) = open_resume_token(FIXED_ESCAPED_TOKEN, &targets(), at("2026-11-21T00:00:00Z")).unwrap();
     assert_eq!(descriptor.key, "a<b>&c.bin");
     assert_eq!(descriptor.session_url, "x\0y");
     assert_eq!(descriptor.content_type, "text/plain");

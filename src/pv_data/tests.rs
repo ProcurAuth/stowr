@@ -349,7 +349,7 @@ async fn the_parquet_route_gives_the_footer_metadata() {
         (broken.status, broken.code()),
         (422, "invalid_parquet_metadata".to_owned())
     );
-    assert_eq!(broken.json()["error"]["message"], "unexpected EOF");
+    assert_eq!(broken.json()["error"]["message"], "unexpected end of the data");
 }
 
 // --- Delimited text and lines ------------------------------------------------------------------------------------

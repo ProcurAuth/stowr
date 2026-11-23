@@ -99,9 +99,9 @@ fn success(status: u16) -> bool {
 /// Set a header. A value that a header cannot carry stops the request, as a transport error.
 pub(crate) fn set_header(headers: &mut HeaderMap, name: &str, value: &str) -> Result<()> {
     let name = HeaderName::from_bytes(name.as_bytes())
-        .map_err(|_| Error::Connect(format!("invalid header field name {name:?}")))?;
+        .map_err(|_| Error::Connect(format!("the header name {name:?} is not valid")))?;
     let value = HeaderValue::from_bytes(value.as_bytes())
-        .map_err(|_| Error::Connect(format!("invalid header field value for {:?}", name.as_str())))?;
+        .map_err(|_| Error::Connect(format!("the value of the header {:?} is not valid", name.as_str())))?;
     headers.insert(name, value);
     Ok(())
 }

@@ -10,9 +10,6 @@ use serde::Serialize;
 /// The result type of the program.
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// The code of a function that is not served yet. A stub returns it with the status 501.
-pub const CODE_NOT_SERVED: &str = "not_served";
-
 /// The code of an action that needs the approval of its owner (ProcurAuth 17.7a). No route can wait for the
 /// approval. The answer is 403 with exactly the body `{"error":"approval_cannot_wait"}`.
 pub const CODE_APPROVAL_CANNOT_WAIT: &str = "approval_cannot_wait";
@@ -155,16 +152,6 @@ impl Error {
             code: code.into(),
             message: message.into(),
         }))
-    }
-
-    /// The answer of a function that is not served yet: status 501 and code `not_served`. The skeleton uses it in
-    /// each function that a work package has not written yet.
-    pub fn not_served(what: &str) -> Self {
-        Self::api(
-            501,
-            CODE_NOT_SERVED,
-            format!("This function is not served yet: {what}."),
-        )
     }
 
     /// Any other failure, with a text for the log.
@@ -370,8 +357,8 @@ impl fmt::Display for Error {
             }
             Self::Interrupted(Interrupt::Paused) => f.write_str("job paused"),
             Self::Interrupted(Interrupt::Canceled) => f.write_str("job canceled"),
-            Self::Timeout => f.write_str("deadline exceeded"),
-            Self::Canceled => f.write_str("canceled"),
+            Self::Timeout => f.write_str("the operation timed out"),
+            Self::Canceled => f.write_str("the operation was canceled"),
             Self::Connect(text) | Self::Internal(text) => f.write_str(text),
         }
     }
@@ -415,12 +402,5 @@ mod tests {
         );
         assert_eq!(error.code(), "accessdenied");
         assert_eq!(Error::upstream(403, "bad code!", "").code(), "storage_error");
-    }
-
-    #[test]
-    fn not_served_is_a_typed_501() {
-        let error = Error::not_served("the tags");
-        assert_eq!(error.status(), 501);
-        assert_eq!(error.code(), CODE_NOT_SERVED);
     }
 }

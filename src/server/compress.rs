@@ -196,7 +196,7 @@ impl http_body::Body for GzipBody {
                 if let Some(encoder) = self.encoder.as_mut()
                     && let Err(error) = encoder.write_all(&chunk)
                 {
-                    return Poll::Ready(Some(Err(Error::internal(format!("gzip: {error}")))));
+                    return Poll::Ready(Some(Err(Error::internal(format!("gzip error: {error}")))));
                 }
                 if let Some(output) = self.take_output() {
                     return Poll::Ready(Some(Ok(Frame::data(output))));
@@ -236,7 +236,7 @@ impl http_body::Body for GzipBody {
                 match encoder.finish() {
                     Ok(output) if !output.is_empty() => return Poll::Ready(Some(Ok(Frame::data(Bytes::from(output))))),
                     Ok(_) => {}
-                    Err(error) => return Poll::Ready(Some(Err(Error::internal(format!("gzip: {error}"))))),
+                    Err(error) => return Poll::Ready(Some(Err(Error::internal(format!("gzip error: {error}"))))),
                 }
             }
         }

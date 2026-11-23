@@ -144,7 +144,7 @@ pub fn signing_key(secret: &str, date: &str, region: &str) -> Vec<u8> {
     key
 }
 
-/// The date and time of the signature (`20060102T150405Z`) and the day (`20060102`).
+/// The date and time of the signature (`19941106T084937Z`) and the day (`19941106`).
 fn amz_date(now: Timestamp) -> (String, String) {
     let text: String = now
         .utc()

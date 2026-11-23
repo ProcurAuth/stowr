@@ -12,5 +12,5 @@ pdf.worker.min.mjs
 LICENSE
 ```
 
-The Go binary embeds the complete `src/public` directory. No installer script
+The binary embeds the complete `src/public` directory. No installer script
 or Makefile is included in the distributed project.

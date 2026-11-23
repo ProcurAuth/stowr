@@ -73,7 +73,8 @@ Parquet reader, DER reader, CSV reader, MIME reader, image and media header read
 | `base64` | The base64 forms of the checksums, of the tokens and of the previews. |
 | `libc` | `statfs`, `O_NOFOLLOW` and the error numbers of the volume back end. |
 | `tower-service` | The connector trait of the provider client: TCP, then TLS, with a time limit for each step. |
-| `procurauth-pep`, `procurauth-core` | The PEP of ProcurAuth for the mode `authzen`: the check of the identity token, the questions to the PDP and the kept answers. The two crates come from one commit of the ProcurAuth repository. |
+| `procurauth-pep` | The PEP of ProcurAuth 1.1 for the mode `authzen`: the check of the identity token, the questions to the PDP, the kept answers and the transport over TLS. It comes from one fixed commit of the ProcurAuth repository. |
+| `procurauth-core` | The shared types of ProcurAuth: the key set of the edge (JWK Set and PEM keys), the JWS decoder and the decision of the PDP. It comes from the same commit as `procurauth-pep`. |
 
 ## Rules of the runtime
 

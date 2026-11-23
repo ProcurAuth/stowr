@@ -38,7 +38,7 @@ pub(crate) fn invalid(code: &str, message: impl Into<String>) -> Error {
 
 /// The error of a read that ends before the requested bytes.
 pub(crate) fn unexpected_end() -> Error {
-    Error::internal("unexpected EOF")
+    Error::internal("unexpected end of the data")
 }
 
 /// One value of a record.

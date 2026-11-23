@@ -35,7 +35,7 @@ use crate::common::http::{Route, RouteAccess, route};
 
 pub use office::office_properties;
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route(

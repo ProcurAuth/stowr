@@ -30,8 +30,10 @@ The edge authenticates the person and signs an identity token. Stowr checks the 
 - Stowr accepts requests only through the edge (P 9.4). Use a network rule: a firewall, a network policy or a private
   network. Do not publish the port of Stowr. A client that reaches Stowr without the edge skips the other checks of the edge.
   Stowr writes a warning at start when `server.listen` accepts requests on each network interface.
-- The routes `/healthz` and `/.well-known/procurauth/actions` need no token. The static files, the pages, `/api/build` and
-  `OPTIONS /s3` need a token but ask no PDP question. They hold no data of a bucket. Each other route asks the PDP.
+- The routes `/healthz` and `/.well-known/procurauth/actions` need no token and ask the PDP nothing. The static files,
+  the pages, `/api/build`, `OPTIONS /s3` and `/api/jobs` without an id hold no data of a bucket. They need a token and ask
+  the action `access` on the service node. A `false` answer gives `403 forbidden`. Each other route asks the actions of
+  the action document.
 - A route that has no access rule answers 403. An action that the configuration does not serve answers 403.
 - Stowr fails closed. When the PDP gives no valid answer, Stowr answers `503 pdp_unavailable`, never 403 and never an
   allow. Stowr never sends a question again.

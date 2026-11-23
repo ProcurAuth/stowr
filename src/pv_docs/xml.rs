@@ -172,7 +172,7 @@ impl<R: Read> XmlReader<R> {
     }
 
     fn require_byte(&mut self) -> Result<u8, XmlFault> {
-        self.next_byte()?.ok_or_else(|| syntax("unexpected EOF"))
+        self.next_byte()?.ok_or_else(|| syntax("unexpected end of the data"))
     }
 
     fn skip_spaces(&mut self) -> Result<(), XmlFault> {
@@ -217,12 +217,12 @@ impl<R: Read> XmlReader<R> {
     fn read_entity(&mut self, out: &mut String) -> Result<(), XmlFault> {
         let mut name = String::new();
         loop {
-            let byte = self.next_byte()?.ok_or_else(|| syntax("unexpected EOF"))?;
+            let byte = self.next_byte()?.ok_or_else(|| syntax("unexpected end of the data"))?;
             if byte == b';' {
                 break;
             }
             if name.len() > 16 || is_name_end(byte) && byte != b'#' {
-                return Err(syntax(format!("invalid character entity &{name} (no semicolon)")));
+                return Err(syntax(format!("the character entity &{name} has no semicolon")));
             }
             name.push(char::from(byte));
         }
@@ -241,7 +241,7 @@ impl<R: Read> XmlReader<R> {
                 };
                 code.and_then(char::from_u32)
                     .filter(|value| in_character_range(*value))
-                    .ok_or_else(|| syntax(format!("invalid character entity &{other};")))?
+                    .ok_or_else(|| syntax(format!("unknown character entity &{other};")))?
             }
         };
         out.push(value);
@@ -256,7 +256,7 @@ impl<R: Read> XmlReader<R> {
         loop {
             let Some(byte) = self.peek()? else {
                 if quote.is_some() {
-                    return Err(syntax("unexpected EOF"));
+                    return Err(syntax("unexpected end of the data"));
                 }
                 break;
             };
@@ -298,7 +298,10 @@ impl<R: Read> XmlReader<R> {
         }
         let text = std::str::from_utf8(raw).map_err(|_| syntax("invalid UTF-8"))?;
         if let Some(bad) = text.chars().find(|value| !in_character_range(*value)) {
-            return Err(syntax(format!("illegal character code U+{:04X}", u32::from(bad))));
+            return Err(syntax(format!(
+                "the character U+{:04X} is not allowed in XML",
+                u32::from(bad)
+            )));
         }
         out.push_str(text);
         raw.clear();
@@ -310,7 +313,7 @@ impl<R: Read> XmlReader<R> {
         loop {
             self.skip_spaces()?;
             match self.peek()? {
-                None => return Err(syntax("unexpected EOF")),
+                None => return Err(syntax("unexpected end of the data")),
                 Some(b'>') => {
                     self.position += 1;
                     return Ok((attrs, false));
@@ -385,7 +388,9 @@ impl<R: Read> XmlReader<R> {
         loop {
             let Some(byte) = self.peek()? else {
                 if let Some((raw, _)) = self.stack.last() {
-                    return Err(syntax(format!("unexpected EOF: element <{raw}> is not closed")));
+                    return Err(syntax(format!(
+                        "unexpected end of the data: element <{raw}> is not closed"
+                    )));
                 }
                 return Ok(None);
             };
@@ -399,7 +404,7 @@ impl<R: Read> XmlReader<R> {
                     let raw = self.read_name()?;
                     self.skip_spaces()?;
                     if self.require_byte()? != b'>' {
-                        return Err(syntax("invalid characters between </ and >"));
+                        return Err(syntax("invalid characters in a closing tag"));
                     }
                     let Some((open, local)) = self.stack.pop() else {
                         return Err(syntax(format!("unexpected end element </{raw}>")));
@@ -468,7 +473,7 @@ impl<R: Read> XmlReader<R> {
         let mut depth = 1usize;
         while depth > 0 {
             match self.next_event()? {
-                None => return Err(syntax("unexpected EOF")),
+                None => return Err(syntax("unexpected end of the data")),
                 Some(XmlEvent::Start { .. }) => depth += 1,
                 Some(XmlEvent::End { .. }) => depth -= 1,
                 Some(XmlEvent::Text(text)) => {
@@ -490,7 +495,7 @@ impl<R: Read> XmlReader<R> {
     pub fn skip_to_depth(&mut self, mut depth: usize) -> Result<(), XmlFault> {
         while depth > 0 {
             match self.next_event()? {
-                None => return Err(syntax("unexpected EOF")),
+                None => return Err(syntax("unexpected end of the data")),
                 Some(XmlEvent::Start { .. }) => depth += 1,
                 Some(XmlEvent::End { .. }) => depth -= 1,
                 Some(XmlEvent::Text(_)) => {}

@@ -1,9 +1,8 @@
 [package]
 name = "stowr"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2024"
 rust-version = "1.99"
-license = "Apache-2.0"
 description = "A self-contained browser for S3-compatible storage, Google Cloud Storage and folders of the server"
 repository = "https://github.com/SCcagg5/stowr"
 publish = false

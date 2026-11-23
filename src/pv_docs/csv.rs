@@ -27,16 +27,16 @@ impl From<Error> for CsvFailure {
     }
 }
 
-const BARE_QUOTE: &str = "bare \" in non-quoted field";
-const BAD_QUOTE: &str = "extraneous or missing \" in quoted-field";
+const BARE_QUOTE: &str = "a quote in a field that does not start with a quote";
+const BAD_QUOTE: &str = "a quote is missing or extra in a quoted field";
 
 fn parse_failure(start_line: i64, line: i64, column: usize, reason: &str) -> CsvFailure {
     if start_line != line {
         return CsvFailure::Parse(format!(
-            "record on line {start_line}; parse error on line {line}, column {column}: {reason}"
+            "CSV error on line {line}, column {column}, in the record that starts on line {start_line}: {reason}"
         ));
     }
-    CsvFailure::Parse(format!("parse error on line {line}, column {column}: {reason}"))
+    CsvFailure::Parse(format!("CSV error on line {line}, column {column}: {reason}"))
 }
 
 /// 1 when the bytes end with a line feed, else 0.

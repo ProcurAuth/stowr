@@ -484,10 +484,10 @@ fn the_version_of_a_cursor_has_short_names() {
     let version = ObjectVersion {
         etag: "\"e1\"".to_owned(),
         version: String::new(),
-        modified: "Mon, 02 Jan 2006 15:04:05 GMT".to_owned(),
+        modified: "Sun, 06 Nov 1994 08:49:37 GMT".to_owned(),
     };
     let text = String::from_utf8(crate::common::json::to_vec(&version).unwrap()).unwrap();
-    assert_eq!(text, "{\"e\":\"\\\"e1\\\"\",\"m\":\"Mon, 02 Jan 2006 15:04:05 GMT\"}");
+    assert_eq!(text, "{\"e\":\"\\\"e1\\\"\",\"m\":\"Sun, 06 Nov 1994 08:49:37 GMT\"}");
     let back: ObjectVersion = serde_json::from_str(&text).unwrap();
     assert_eq!(back, version);
     assert!(ObjectVersion::default().is_empty());

@@ -367,7 +367,7 @@ fn describe_other(attribute: &Attribute) -> Rendered {
     let oid = attribute.oid.dotted();
     let (text, invalid) = match &attribute.value {
         AttrValue::Text { text, invalid } => (text, *invalid),
-        AttrValue::Nothing => return Rendered::text(&oid, "<nil>"),
+        AttrValue::Nothing => return Rendered::text(&oid, ""),
         AttrValue::Der(bytes) => {
             let mut hex = String::with_capacity(bytes.len() * 2);
             for byte in bytes {

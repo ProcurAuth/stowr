@@ -70,7 +70,7 @@ const GZIP_STEP: usize = 1024;
 #[derive(Clone, Copy, Debug)]
 pub struct Timeouts {
     /// The TCP connection.
-    pub dial: Duration,
+    pub connect: Duration,
     /// The TLS handshake.
     pub handshake: Duration,
     /// The headers of the answer, after the client sent the request.
@@ -82,7 +82,7 @@ pub struct Timeouts {
 impl Default for Timeouts {
     fn default() -> Self {
         Self {
-            dial: Duration::from_secs(10),
+            connect: Duration::from_secs(10),
             handshake: Duration::from_secs(10),
             headers: Duration::from_secs(30),
             idle: Duration::from_secs(90),
@@ -151,7 +151,7 @@ impl StorageClient {
         }
         let mut tcp = HttpConnector::new();
         tcp.enforce_http(false);
-        tcp.set_connect_timeout(Some(timeouts.dial));
+        tcp.set_connect_timeout(Some(timeouts.connect));
         tcp.set_keepalive(Some(Duration::from_secs(30)));
         tcp.set_nodelay(true);
         let connector = Connector {
@@ -503,7 +503,7 @@ impl GzipBody {
 
     fn fail(&mut self, error: &std::io::Error) -> Poll<Option<Result<Frame<Bytes>>>> {
         self.done = true;
-        Poll::Ready(Some(Err(Error::internal(format!("gzip: {error}")))))
+        Poll::Ready(Some(Err(Error::internal(format!("gzip error: {error}")))))
     }
 
     fn output(&mut self) -> Option<Bytes> {

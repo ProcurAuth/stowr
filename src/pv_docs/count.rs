@@ -331,7 +331,7 @@ fn cell_has_content<R: Read>(xml: &mut XmlReader<R>) -> std::result::Result<bool
     let mut has_content = false;
     while depth > 0 {
         match xml.next_event()? {
-            None => return Err(XmlFault::Syntax("unexpected EOF".to_owned())),
+            None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned())),
             Some(XmlEvent::Start { name, .. }) => {
                 depth += 1;
                 match name.as_str() {
@@ -361,7 +361,7 @@ fn count_worksheet_row<R: Read>(xml: &mut XmlReader<R>) -> std::result::Result<(
     let mut fallback: i64 = 0;
     while depth > 0 {
         match xml.next_event()? {
-            None => return Err(XmlFault::Syntax("unexpected EOF".to_owned())),
+            None => return Err(XmlFault::Syntax("unexpected end of the data".to_owned())),
             Some(XmlEvent::Start { name, attrs }) => {
                 if name == "c" {
                     let mut column = fallback;

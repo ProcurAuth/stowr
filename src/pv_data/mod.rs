@@ -59,7 +59,7 @@ pub async fn inspect_document_details(
     details::inspect(ctx, instance, key, extension, content_type, listed).await
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/parquet", RouteAccess::HandlerAsks, handle_parquet),

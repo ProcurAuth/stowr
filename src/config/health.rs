@@ -76,11 +76,11 @@ fn request_target(url: &Url) -> String {
 }
 
 async fn get(url: &Url, raw: &str) -> Result<u16, String> {
-    let fail = |message: String| format!("Get {}: {message}", quote(raw));
+    let fail = |message: String| format!("cannot get {}: {message}", quote(raw));
     let default_port = match url.scheme.as_str() {
         "http" => "80",
         "https" => "443",
-        other => return Err(fail(format!("unsupported protocol scheme {}", quote(other)))),
+        other => return Err(fail(format!("the scheme {} is not supported", quote(other)))),
     };
     let host_header = url.host.strip_suffix(':').unwrap_or(&url.host).to_owned();
     if host_header.is_empty() {
@@ -119,11 +119,11 @@ async fn get(url: &Url, raw: &str) -> Result<u16, String> {
     if url.scheme == "https" {
         let config = tls_config().map_err(fail)?;
         let name = ServerName::try_from(hostname.clone())
-            .map_err(|_| fail(format!("tls: invalid server name {}", quote(&hostname))))?;
+            .map_err(|_| fail(format!("invalid TLS server name {}", quote(&hostname))))?;
         let tls = tokio_rustls::TlsConnector::from(Arc::new(config))
             .connect(name, stream)
             .await
-            .map_err(|error| fail(format!("tls: {error}")))?;
+            .map_err(|error| fail(format!("TLS error: {error}")))?;
         return send(tls, &target, &host_header).await.map_err(fail);
     }
     send(stream, &target, &host_header).await.map_err(fail)
@@ -135,14 +135,14 @@ fn tls_config() -> Result<rustls::ClientConfig, String> {
     let bundle = ROOT_BUNDLES
         .iter()
         .find_map(|path| std::fs::read(path).ok())
-        .ok_or_else(|| "tls: the system has no bundle of root certificates".to_owned())?;
+        .ok_or_else(|| "the system has no bundle of root certificates for TLS".to_owned())?;
     for certificate in CertificateDer::pem_slice_iter(&bundle).flatten() {
         let _ = roots.add(certificate);
     }
     let provider = Arc::new(rustls::crypto::aws_lc_rs::default_provider());
     let config = rustls::ClientConfig::builder_with_provider(provider)
         .with_protocol_versions(&[&rustls::version::TLS13, &rustls::version::TLS12])
-        .map_err(|error| format!("tls: {error}"))?
+        .map_err(|error| format!("TLS error: {error}"))?
         .with_root_certificates(roots)
         .with_no_client_auth();
     Ok(config)
@@ -215,25 +215,25 @@ mod tests {
         assert_eq!(
             check("ftp://h/x"),
             Err(Failure::Failed(
-                "Get \"ftp://h/x\": unsupported protocol scheme \"ftp\"".to_owned()
+                "cannot get \"ftp://h/x\": the scheme \"ftp\" is not supported".to_owned()
             ))
         );
         assert_eq!(
             check("/healthz"),
             Err(Failure::Failed(
-                "Get \"/healthz\": unsupported protocol scheme \"\"".to_owned()
+                "cannot get \"/healthz\": the scheme \"\" is not supported".to_owned()
             ))
         );
         assert_eq!(
             check("http:///healthz"),
             Err(Failure::Failed(
-                "Get \"http:///healthz\": the URL has no host".to_owned()
+                "cannot get \"http:///healthz\": the URL has no host".to_owned()
             ))
         );
         assert_eq!(
             check("http://h:x/"),
             Err(Failure::Request(
-                "parse \"http://h:x/\": invalid port \":x\" after host".to_owned()
+                "invalid URL \"http://h:x/\": invalid port \":x\"".to_owned()
             ))
         );
     }

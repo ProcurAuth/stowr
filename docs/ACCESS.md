@@ -591,8 +591,8 @@ kept answers. Stowr asks each question with the AuthZEN Authorization API 1.0.
   question with an answer in an earlier request of the call. An item of an Access Evaluations request that is not a
   valid answer makes the whole request fail.
 - The client follows no redirect, uses no proxy, and uses TLS 1.2 or newer. It trusts the certificate bundle of the
-  image, as the provider client does. It reads at most 256 KiB of an answer. The dial timeout is 5 s, TLS handshake
-  included, or less when the deadline of the call is nearer.
+  image, as the provider client does. It reads at most 256 KiB of an answer. The connection timeout is 5 s, TLS
+  handshake included, or less when the deadline of the call is nearer.
 - The client keeps at most 4 connections. It closes an idle connection after 5 s, or after half of
   `procurauth_idle_max_seconds` when this value is lower.
 - `plain_http = true` accepts an `http` URL. Use it only on a trusted network.
@@ -632,7 +632,8 @@ The library `procurauth-pep` gives the rules of a PEP. Stowr adds these rules ar
 
 ## Log lines
 
-Each line is `key=value`. A request with a valid token also gives `subject` and `request_id` in the request log.
+Each line starts with the date and the time in UTC, in the form `YYYY/MM/DD hh:mm:ss`. The fields of a line are
+`key=value`. A request with a valid token also gives `subject` and `request_id` in the request log.
 
 | Event | When |
 |---|---|
@@ -691,7 +692,7 @@ Stowr reads the keys one time at start. A restart clears the cache of tokens.
 | Body of one Access Evaluations request | 1 MiB, or the maximum of the metadata when it is lower |
 | Connections to the PDP | 4; an idle connection closes after 5 s |
 | Wait of a usage question | The longer of `usage_timeout` and `procurauth_usage_max_seconds` plus 1 s |
-| Dial timeout to the PDP | 5 s |
+| Connection timeout to the PDP | 5 s |
 | Questions of one options request | 200 |
 | Items of one options page | 50 |
 | Query of the options route | 16 KiB; `q` 256 bytes; cursor 2048 bytes |

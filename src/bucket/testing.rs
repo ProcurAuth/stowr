@@ -597,19 +597,19 @@ impl AdminTransport for FakeAdmin {
 
 impl crate::lifecycle::BucketRules for FakeBackend {
     fn lifecycle_rules<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<Vec<crate::lifecycle::LifecycleRule>>> {
-        Box::pin(async { Err(Error::not_served("the lifecycle rules of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no lifecycle rules.")) })
     }
 
     fn read_lifecycle<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<crate::lifecycle::LifecycleDocument>> {
-        Box::pin(async { Err(Error::not_served("the lifecycle rules of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no lifecycle rules.")) })
     }
 
     fn write_lifecycle<'a>(&'a self, _ctx: &'a OpCtx, _body: Bytes) -> BoxFuture<'a, Result<()>> {
-        Box::pin(async { Err(Error::not_served("the lifecycle rules of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no lifecycle rules.")) })
     }
 
     fn delete_lifecycle<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<()>> {
-        Box::pin(async { Err(Error::not_served("the lifecycle rules of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no lifecycle rules.")) })
     }
 
     fn versioning_status<'a>(&'a self, _ctx: &'a OpCtx) -> BoxFuture<'a, Result<String>> {
@@ -645,7 +645,7 @@ impl VersionStore for FakeBackend {
         _page_token: &'a str,
         _maximum: u32,
     ) -> BoxFuture<'a, Result<ObjectVersionPage>> {
-        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no versions.")) })
     }
 
     fn head_version<'a>(
@@ -678,12 +678,12 @@ impl VersionStore for FakeBackend {
     ) -> BoxFuture<'a, Result<ObjectResponse>> {
         match Self::replaced(&self.get_fn) {
             Some(get) => Box::pin(async move { get(key) }),
-            None => Box::pin(async { Err(Error::not_served("the versions of the fake")) }),
+            None => Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no versions.")) }),
         }
     }
 
     fn delete_version<'a>(&'a self, _ctx: &'a OpCtx, _key: &'a str, _version: &'a str) -> BoxFuture<'a, Result<()>> {
-        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no versions.")) })
     }
 
     fn restore_version<'a>(
@@ -693,6 +693,6 @@ impl VersionStore for FakeBackend {
         _version: &'a str,
         _extra: &'a HeaderMap,
     ) -> BoxFuture<'a, Result<()>> {
-        Box::pin(async { Err(Error::not_served("the versions of the fake")) })
+        Box::pin(async { Err(Error::api(501, "unsupported", "The fake has no versions.")) })
     }
 }

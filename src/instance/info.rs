@@ -1,7 +1,7 @@
 //! The public facts of an instance in `/api/instances` (docs/ARCHITECTURE.md).
 //!
-//! The facts of the feature work packages (tags, lifecycle, uploads, Object Lock, encryption, metadata, usage) come
-//! from the methods that those work packages give to the instance.
+//! The facts of the feature modules (tags, lifecycle, uploads, Object Lock, encryption, metadata, usage) come from
+//! the methods that those modules give to the instance.
 
 use std::collections::BTreeMap;
 

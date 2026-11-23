@@ -1,5 +1,5 @@
 //! The application: the configuration, the storage instances and the managers that live in the memory of the
-//! process. The work package `server` builds it at start (`crate::server::build_app`).
+//! process. The module `server` builds it at start (`crate::server::build_app`).
 
 use std::collections::BTreeMap;
 use std::sync::Arc;

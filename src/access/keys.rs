@@ -329,7 +329,7 @@ fn jwk_coordinate(members: &Map<String, Value>, name: &str) -> Result<[u8; 32], 
             _ => text.len(),
         };
         format!(
-            "the member {} must be base64url without padding: illegal base64 data at input byte {offset}",
+            "the member {} must be base64url without padding: the byte {offset} is not base64url",
             quote(name)
         )
     })?;
@@ -383,7 +383,7 @@ impl<'a> StrictJson<'a> {
             self.at += 1;
             Ok(())
         } else if self.peek().is_none() {
-            Err(self.invalid("unexpected end of JSON input"))
+            Err(self.invalid("the JSON text ends too early"))
         } else {
             Err(self.invalid(&format!("expected {}", char::from(byte))))
         }
@@ -395,7 +395,7 @@ impl<'a> StrictJson<'a> {
         }
         self.space();
         match self.peek() {
-            None => Err(self.invalid("unexpected end of JSON input")),
+            None => Err(self.invalid("the JSON text ends too early")),
             Some(b'{') => {
                 self.at += 1;
                 let mut seen: Vec<String> = Vec::new();
@@ -420,7 +420,7 @@ impl<'a> StrictJson<'a> {
                             self.at += 1;
                             return Ok(());
                         }
-                        None => return Err(self.invalid("unexpected end of JSON input")),
+                        None => return Err(self.invalid("the JSON text ends too early")),
                         Some(_) => return Err(self.invalid("expected , or }")),
                     }
                 }
@@ -443,7 +443,7 @@ impl<'a> StrictJson<'a> {
                             self.at += 1;
                             return Ok(());
                         }
-                        None => return Err(self.invalid("unexpected end of JSON input")),
+                        None => return Err(self.invalid("the JSON text ends too early")),
                         Some(_) => return Err(self.invalid("expected , or ]")),
                     }
                 }
@@ -468,7 +468,7 @@ impl<'a> StrictJson<'a> {
             Ok(())
         } else {
             self.at = start;
-            Err(self.invalid("invalid character"))
+            Err(self.invalid("a character that is not valid JSON"))
         }
     }
 
@@ -492,7 +492,7 @@ impl<'a> StrictJson<'a> {
                 _ => {}
             }
         }
-        Err(self.invalid("unexpected end of JSON input"))
+        Err(self.invalid("the JSON text ends too early"))
     }
 }
 

@@ -68,7 +68,7 @@ pub const MAX_CONNECTIONS: usize = 4;
 /// The longest idle time of a connection to the PDP, until the metadata gives a lower value.
 pub const IDLE_CLOSE: Duration = Duration::from_secs(5);
 /// The longest wait for a new connection to the PDP, TLS handshake included.
-pub const DIAL_TIMEOUT: Duration = Duration::from_secs(5);
+pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 /// The deepest nesting of the JSON of a token: the header or the claims.
 pub const MAX_TOKEN_DEPTH: usize = 32;
 
@@ -157,7 +157,7 @@ pub fn link_config(pdp: &PdpConfig) -> PepPdpConfig {
 fn transport_bounds() -> HttpTransportConfig {
     HttpTransportConfig {
         max_connections: MAX_CONNECTIONS,
-        connect_timeout: DIAL_TIMEOUT,
+        connect_timeout: CONNECT_TIMEOUT,
         idle_close_after: IDLE_CLOSE,
         max_response_bytes: MAX_ANSWER_BYTES,
     }

@@ -576,7 +576,7 @@ async fn reads_honour_ranges_and_conditions() {
         (vec![("If-Range", &etag), ("Range", "bytes=0-0")], 200, "0123456789", ""),
         (vec![("If-Range", &modified), ("Range", "bytes=0-0")], 206, "0", "bytes 0-0/10"),
         (vec![("If-Modified-Since", &modified)], 304, "", ""),
-        (vec![("If-Unmodified-Since", "Mon, 02 Jan 2006 15:04:05 GMT")], 412, "", ""),
+        (vec![("If-Unmodified-Since", "Sun, 06 Nov 1994 08:49:37 GMT")], 412, "", ""),
     ];
     for (headers, status, body, range) in cases {
         let got = read_with(&backend, "a/b.txt", &headers).await;

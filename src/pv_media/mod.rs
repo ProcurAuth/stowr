@@ -161,7 +161,7 @@ fn is_zero_float(value: &f64) -> bool {
     *value == 0.0
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/media-info", RouteAccess::HandlerAsks, handle_media_info),

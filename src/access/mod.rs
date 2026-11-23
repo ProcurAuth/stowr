@@ -730,7 +730,7 @@ pub fn handle_options(app: Arc<App>, req: Req) -> crate::common::BoxFuture<'stat
     Box::pin(async move { options::serve(&app.access, &app.instances, &req.method, &req.raw_query, &req.ctx).await })
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route(actions::ACTIONS_PATH, RouteAccess::Exempt, handle_actions),

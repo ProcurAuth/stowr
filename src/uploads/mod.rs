@@ -2,7 +2,7 @@
 //! the parts, and the incomplete multipart uploads (docs/ARCHITECTURE.md, "Upload resume protocol", "Upload
 //! checksums", "Cleanup of incomplete multipart uploads").
 //!
-//! This work package owns `/api/uploads`, `/api/uploads/resume`, `/api/multiparts`, `/api/multiparts/abort`, the
+//! This module owns `/api/uploads`, `/api/uploads/resume`, `/api/multiparts`, `/api/multiparts/abort`, the
 //! job `abort_multiparts`, and the S3 list of the incomplete uploads (`impl MultipartUploadLister for S3Backend`).
 //!
 //! The upload manager and the incomplete-upload functions work with an [`UploadTarget`]: one storage instance with its
@@ -195,7 +195,7 @@ pub async fn run_abort_multiparts_job(run: &crate::jobs::JobRun, job: &mut crate
     run_abort_multiparts(&run.app.uploads, &*target, &run.ctx, run, job).await
 }
 
-/// The routes of this work package.
+/// The routes of this module.
 pub fn routes() -> Vec<Route> {
     vec![
         route("/api/multiparts", RouteAccess::HandlerAsks, handle_multiparts),

@@ -348,7 +348,9 @@ impl<'a> Lexer<'a> {
             if byte == b'"' {
                 let raw = self.source.get(start..self.pos).unwrap_or_default();
                 let Some(value) = unquote(raw) else {
-                    return Err(format!("line {line}:{column}: invalid string: invalid syntax"));
+                    return Err(format!(
+                        "line {line}:{column}: invalid string: bad escape or bad character"
+                    ));
                 };
                 if std::str::from_utf8(&value).is_err() {
                     return Err(format!(
@@ -576,7 +578,10 @@ mod tests {
             error_of("a = \"x\ny\""),
             "line 1:5: quoted strings cannot contain a raw newline"
         );
-        assert_eq!(error_of("a = \"\\q\""), "line 1:5: invalid string: invalid syntax");
+        assert_eq!(
+            error_of("a = \"\\q\""),
+            "line 1:5: invalid string: bad escape or bad character"
+        );
         assert_eq!(error_of("/* x"), "line 1:1: unterminated block comment");
         assert_eq!(error_of("  b {\n"), "line 1:3: expected closing brace");
         assert_eq!(error_of("}"), "line 1:1: unexpected closing brace");

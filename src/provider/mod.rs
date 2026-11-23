@@ -1,7 +1,7 @@
 //! The clients of the providers: S3 (SigV4, listing, ranges, multipart, versions, batch delete, copy in parts) and
 //! GCS (service account, JSON API, resumable upload), and the shared client of each `auth` block.
 //!
-//! The feature work packages send their own S3 requests with [`S3Backend::send`]. The HTTP client follows no
+//! The feature modules send their own S3 requests with [`S3Backend::send`]. The HTTP client follows no
 //! redirect, reads no proxy variable, uses TLS 1.2 or newer with the system root certificates of the image, and
 //! verifies the certificate unless `insecure_skip_verify` is set (refer to [`client`]).
 

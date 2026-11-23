@@ -1,6 +1,6 @@
-//! The shared part of the program: the types that the work packages agree on.
+//! The shared part of the program: the types that the other modules use together.
 //!
-//! The coordinator owns this folder. A work package that needs a change here asks the coordinator.
+//! A change of a type here changes each module that uses it.
 
 pub mod app;
 pub mod assets;
