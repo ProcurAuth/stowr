@@ -1,150 +1,201 @@
 name: Release
 
+# A tag vX.Y.Z (or vX.Y.Z-suffix) starts the release. The tag must be equal to the version of Cargo.toml, and
+# CHANGELOG.md must have a section "## X.Y.Z (date)".
+# The release has three files:
+#   stowr_<version>_linux_amd64.tar.gz   the static binary `stowr` for Linux x86-64
+#   stowr_<version>_linux_arm64.tar.gz   the static binary `stowr` for Linux AArch64
+#   checksums.txt                        the SHA-256 of each archive (the format of sha256sum)
+# The notes of the release are the section of the version in CHANGELOG.md.
+# No job builds an image for a registry, logs in to a registry or publishes an image.
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: "Release tag to publish, e.g. v0.1.1"
-        required: true
-        type: string
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+# bash with -e and -o pipefail: a failure in a pipe stops the step.
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-
+  prepare:
+    name: Version, notes and policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.identity.outputs.tag }}
+      version: ${{ steps.identity.outputs.version }}
+      prerelease: ${{ steps.identity.outputs.prerelease }}
+      commit: ${{ steps.identity.outputs.commit }}
+      date: ${{ steps.identity.outputs.date }}
+      epoch: ${{ steps.identity.outputs.epoch }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22"
-          cache-dependency-path: src/go.sum
-
-      - name: Prepare manual tag
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
+          persist-credentials: false
+      - name: Never publish container images
         run: |
-          set -euo pipefail
-          tag="${{ inputs.tag }}"
-          case "$tag" in
-            v*) ;;
-            *) echo "tag must start with v, for example v0.1.1" >&2; exit 1 ;;
-          esac
-
-          git fetch --force --tags
-
-          if git rev-parse -q --verify "refs/tags/$tag" >/dev/null; then
-            git checkout -f "$tag"
-          else
-            git tag "$tag"
+          # The pattern is split so that this line does not match itself.
+          if grep -rnE 'ghcr''\.io|docker/login''-action|docker push''\b|packages: *wr''ite|push: *tr''ue' .github/workflows; then
+            echo "::error::workflows must not publish container images"
+            exit 1
           fi
-
-      - name: Resolve release identity
-        shell: bash
+      - name: Identity of the build
+        id: identity
         run: |
-          set -euo pipefail
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version="${{ inputs.tag }}"
-          else
-            version="${GITHUB_REF_NAME}"
-          fi
-          commit=$(git rev-parse HEAD)
-          build_date=$(git show -s --format=%cI HEAD)
-          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
-          echo "RELEASE_COMMIT=$commit" >> "$GITHUB_ENV"
-          echo "RELEASE_BUILD_DATE=$build_date" >> "$GITHUB_ENV"
-
-
-      - name: Download Go modules
-        working-directory: src
-        run: go mod download
-
-      - name: Test and vet
-        working-directory: src
-        run: |
-          set -euo pipefail
-          test -z "$(gofmt -l *.go)"
-          go test -race ./...
-          go vet ./...
-
-      - name: Verify self-contained and private runtime
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(cd src && go list -m all | wc -l | tr -d ' ')" = "1"
-          if grep -R --include='*.go' '"os/exec"' src; then
-            echo "runtime source must not invoke external commands" >&2
+          tag="$GITHUB_REF_NAME"
+          if ! printf '%s' "$tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::the tag $tag is not vX.Y.Z or vX.Y.Z-suffix"
             exit 1
           fi
-          if grep -R --include='*.go' -E 'os\.(Getenv|Environ)|ProxyFromEnvironment' src; then
-            echo "runtime configuration and provider clients must not use process environment variables" >&2
+          version="${tag#v}"
+          crate="$(sed -n '/^\[package\]/,/^\[/{s/^version = "\(.*\)"$/\1/p;}' Cargo.toml | head -n 1)"
+          if [ "$crate" != "$version" ]; then
+            echo "::error::the tag $tag is not equal to the version $crate of Cargo.toml"
             exit 1
           fi
-          # Only the _env attributes of the configuration read the environment, in one place.
-          if grep -R --include='*.go' --exclude='config_env.go' -E 'os\.LookupEnv' src; then
-            echo "only src/config_env.go may read an environment variable that the configuration names" >&2
-            exit 1
-          fi
-          # Only the files of the volume backend (src/volume_*.go) write to the local filesystem: the files of a volume
-          # block. No other runtime file writes application state.
-          if grep -R --include='*.go' --exclude='*_test.go' --exclude='volume_*.go' -E 'os\.(Create|Mkdir|MkdirAll|WriteFile|OpenFile|Remove|RemoveAll|Rename|Link|Symlink|Truncate|Chmod|Chown|Lchown|Chtimes)\b|CreateTemp|MkdirTemp|syscall\.(Open|Creat|Mkdir|Rmdir|Unlink|Rename|Link|Symlink|Truncate)\b' src; then
-            echo "runtime source must not write application state to the local filesystem; only src/volume_*.go may write (the files of a volume block)" >&2
-            exit 1
-          fi
-          if find . -type f \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' -o -iname '*.woff2' -o -iname '*.eot' \) | grep -q .; then
-            echo "font binaries must not be shipped" >&2
-            exit 1
-          fi
-          if grep -R -E --exclude-dir=vendor --include='*.html' --include='*.js' --include='*.css' 'https?://|//cdn\.' src/public; then
-            echo "runtime frontend must not contact external asset domains" >&2
-            exit 1
-          fi
-
-      - name: Verify statically linked release binary
-        working-directory: src
-        shell: bash
-        run: |
-          set -euo pipefail
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-            go build \
-              -tags=netgo,osusergo \
-              -trimpath \
-              -ldflags="-s -w -buildid= -X main.buildVersion=${RELEASE_VERSION} -X main.buildCommit=${RELEASE_COMMIT} -X main.buildDate=${RELEASE_BUILD_DATE}" \
-              -o /tmp/stowr-static .
-
-          file /tmp/stowr-static
-          if readelf -l /tmp/stowr-static | grep -q 'Requesting program interpreter'; then
-            echo "release binary unexpectedly requires a dynamic loader" >&2
-            exit 1
-          fi
-          go version -m /tmp/stowr-static | grep -F 'CGO_ENABLED=0'
-          short_sha=$(printf '%s' "$RELEASE_COMMIT" | cut -c1-9)
-          /tmp/stowr-static version | grep -F "${RELEASE_VERSION} · $short_sha"
-
-      - name: Build and run the scratch image
-        shell: bash
-        run: |
-          BUILD_VERSION="$RELEASE_VERSION" \
-          BUILD_COMMIT="$RELEASE_COMMIT" \
-          BUILD_DATE="$RELEASE_BUILD_DATE" \
-            ./test/scratch-runtime.sh
-
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          version: "v2.17.0"
-          args: release --clean
-          workdir: src
+          commit="$(git rev-parse HEAD)"
+          # The date of the commit, in UTC: two builds of one tag give the same binary and the same archives.
+          date="$(TZ=UTC0 git show -s --format=%cd --date=format-local:%Y-%m-%dT%H:%M:%SZ HEAD)"
+          epoch="$(git show -s --format=%ct HEAD)"
+          case "$version" in *-*) prerelease=true ;; *) prerelease=false ;; esac
+          {
+            echo "tag=$tag"
+            echo "version=$version"
+            echo "prerelease=$prerelease"
+            echo "commit=$commit"
+            echo "date=$date"
+            echo "epoch=$epoch"
+          } >> "$GITHUB_OUTPUT"
+      - name: Notes of the release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.identity.outputs.version }}
+        run: |
+          # The lines after the heading "## <version> (date)", up to the next heading of level 2.
+          awk -v version="$VERSION" '
+            /^## / { if (found) exit; if (index($0, "## " version " ") == 1) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/notes.md"; then
+            echo "::error::CHANGELOG.md has no section \"## $VERSION (date)\""
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/notes.md"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: notes
+          path: ${{ runner.temp }}/notes.md
+          if-no-files-found: error
+
+  checks:
+    name: Format, clippy, tests and rules of the runtime
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Format
+        run: scripts/cargo.sh fmt --all -- --check
+      - name: Clippy
+        run: scripts/cargo.sh clippy --all-targets --locked -- -D warnings
+      - name: Tests
+        run: scripts/cargo.sh test --locked
+      - name: Rules of the runtime
+        run: scripts/check-invariants.sh
+
+  binaries:
+    name: Static binary (${{ matrix.arch }})
+    needs: [prepare, checks]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04, machine: "x86-64" }
+          - { arch: arm64, runner: ubuntu-24.04-arm, machine: "ARM aarch64" }
+    # The runner has the architecture of the binary: scripts/static.sh builds natively, in Docker.
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      STOWR_BUILD_VERSION: ${{ needs.prepare.outputs.version }}
+      STOWR_BUILD_COMMIT: ${{ needs.prepare.outputs.commit }}
+      STOWR_BUILD_DATE: ${{ needs.prepare.outputs.date }}
+      EPOCH: ${{ needs.prepare.outputs.epoch }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # scripts/static.sh reads STOWR_BUILD_VERSION, STOWR_BUILD_COMMIT and STOWR_BUILD_DATE and gives them to the
+      # compiler. --check makes sure that the binary needs no dynamic loader, and runs `stowr version`.
+      - name: Build the static binary
+        run: |
+          scripts/static.sh --check | tee "$RUNNER_TEMP/version.txt"
+          grep -Fx "stowr ${VERSION} · ${STOWR_BUILD_COMMIT:0:9}" "$RUNNER_TEMP/version.txt"
+          mkdir -p dist/bin
+          scripts/static.sh --copy dist/bin
+      - name: Check the binary
+        run: |
+          description="$(file -b dist/bin/stowr)"
+          echo "$description"
+          case "$description" in *"${{ matrix.machine }}"*) ;; *) echo "::error::stowr is not a ${{ matrix.machine }} binary"; exit 1 ;; esac
+          case "$description" in *"statically linked"* | *"static-pie linked"*) ;; *) echo "::error::stowr is not static"; exit 1 ;; esac
+          dist/bin/stowr version
+      # The archive has one file at its root: stowr, mode 0755, owner 0:0, with the date of the commit.
+      - name: Pack the archive
+        run: |
+          name="stowr_${VERSION}_linux_${{ matrix.arch }}.tar.gz"
+          stage="$(mktemp -d)"
+          install -m 0755 dist/bin/stowr "$stage/stowr"
+          tar -C "$stage" --owner=0 --group=0 --numeric-owner --mtime="@${EPOCH}" -cf - stowr | gzip -9n > "dist/$name"
+          rm -rf "$stage"
+          tar -tvzf "dist/$name"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: binary-${{ matrix.arch }}
+          path: dist/stowr_${{ needs.prepare.outputs.version }}_linux_${{ matrix.arch }}.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: GitHub release
+    needs: [prepare, binaries]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: binary-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: notes
+          path: notes
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum "stowr_${VERSION}_linux_amd64.tar.gz" "stowr_${VERSION}_linux_arm64.tar.gz" > checksums.txt
+          cat checksums.txt
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          options=()
+          if [ "$PRERELEASE" = true ]; then options=(--prerelease); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$TAG" \
+            --notes-file notes/notes.md "${options[@]}" \
+            "dist/stowr_${VERSION}_linux_amd64.tar.gz" "dist/stowr_${VERSION}_linux_arm64.tar.gz" dist/checksums.txt

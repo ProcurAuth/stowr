@@ -2,6 +2,61 @@
 
 This document uses ASD-STE100 Simplified Technical English.
 
+## 0.3.0 (2026-11-23)
+
+Stowr follows ProcurAuth 1.1 in the mode `authzen`. The configuration keys, the routes and the JSON of the answers stay
+the same. The release has a static binary for Linux amd64 and for Linux arm64.
+
+### Changes of the access policy (ProcurAuth 1.1)
+
+- When the PDP answers a use with a reason of approval (`approval_required`, `approval_pending`, `approval_denied` or
+  `approval_expired`), Stowr answers `403` with the body `{"error":"approval_cannot_wait"}`. No route of Stowr waits for
+  an approval. The operation has no effect.
+- The questions of the other permissions of an operation have `"context":{"permission_only":true}` and no usage. Stowr
+  asks the use in a separate question. The answer cache keeps the two kinds of answers apart.
+- The interface, the pages, `GET /api/build`, `OPTIONS /s3` and `/api/jobs` without an id ask the action `access` on the
+  service node. A `false` answer gives `403 forbidden`. `/healthz` and `/.well-known/procurauth/actions` need no token
+  and ask the PDP nothing.
+- Stowr reads the metadata of the PDP at `/.well-known/authzen-configuration` before its first question, and again after
+  one hour. It uses the endpoints and the limits of the metadata. A PDP without metadata gets the default paths.
+- The default of `access.pdp.usage_timeout` is `6s`. For a question with usage, Stowr waits for the longer of two times:
+  `usage_timeout`, and the time that the PDP publishes plus 1 second.
+- `iat`, `exp` and `nbf` of the identity token must be whole numbers of seconds (JSON integers with digits only). Stowr
+  refuses a fraction, an exponent and a sign.
+- Stowr checks `nbf` when the token has it, with the clock skew.
+- When `public_keys` holds more than one key, a token without `kid` is refused. With one key, a token without `kid`
+  stays valid.
+- The unit of the ceiling `max_object_size` in the action document is `bytes`.
+
+### Other changes that a client can see
+
+- Stowr sends the trailers `X-Stowr-Storage-Requests`, `X-Stowr-Storage-Bytes`, `X-Stowr-Elapsed-Ms` and
+  `X-Stowr-Archive-*` only when the request has the header `TE: trailers`.
+- A JSON request body must use the exact names of the members. A name with other upper and lower case letters, for
+  example `"Instance"`, is an unknown member and gives `400 invalid_json`.
+- The connections to the providers, to the admin APIs and to the PDP use HTTP/1.1.
+- An archive entry that is a symbolic link gives `403 archive_symlink_blocked`.
+- A read of a file of a volume that is not a regular file (a device, a socket or a pipe) gives `403 volume_not_file`.
+- `server.memory_limit_bytes` keeps its key and its range. It is a soft limit of the memory of the process: the server
+  accepts the value and shows it.
+
+### Build
+
+- The release has one static binary for each architecture, with no dynamic loader and no shared library. The archives
+  are `stowr_0.3.0_linux_amd64.tar.gz` and `stowr_0.3.0_linux_arm64.tar.gz`, with `checksums.txt`.
+- `scripts/cargo.sh` runs the build, the tests and the checks in Docker. `scripts/static.sh` builds the static binary.
+  Refer to `docs/DEVELOPMENT.md`.
+
+### Upgrade steps from 0.2.1
+
+1. Make the edge write `iat`, `exp` and `nbf` as whole numbers of seconds.
+2. When `public_keys` holds more than one key, make the edge write `kid` in the header of each token.
+3. In the PDP, give the action `access` on the service node to each person who uses the interface.
+4. Make sure that the PDP gives no reason of approval for the action `access` and for the other permissions.
+5. If the PDP reads the unit of `max_object_size`, change it to `bytes`.
+6. A client that reads the `X-Stowr-*` trailers must send `TE: trailers`.
+7. A client of the JSON API must use the exact names of the members.
+
 ## 0.2.1 (2026-11-08)
 
 ### Changes
@@ -102,7 +157,7 @@ behaviour of the storage operations do not change.
 
 ## 0.1.0 (2026-10-23)
 
-The first release of Stowr: one Go binary that browses S3-compatible buckets, Google Cloud Storage buckets and the
+The first release of Stowr: one static binary that browses S3-compatible buckets, Google Cloud Storage buckets and the
 folders of the server (volumes), with an embedded browser interface.
 
 - Storage: S3-compatible providers (AWS S3, MinIO, SeaweedFS, Garage), Google Cloud Storage, and volumes (a folder of

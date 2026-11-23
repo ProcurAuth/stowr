@@ -12,11 +12,15 @@ This document uses ASD-STE100 Simplified Technical English.
 | Script | Use |
 |---|---|
 | `scripts/cargo.sh <arguments>` | Run cargo in the development image (`stowr-dev:1`). The script runs as the user of the host. The cargo registry and the target folder are Docker volumes: no file of root appears in the repository. |
-| `scripts/static.sh` | Build the static program for `x86_64-unknown-linux-musl`. `--check` also checks that the file is static and runs it. `--copy <folder>` copies the file to a folder of the host. |
+| `scripts/static.sh` | Build the static program for the musl target of the host architecture: `x86_64-unknown-linux-musl` or `aarch64-unknown-linux-musl`. `--check` also checks that the file is static and runs it. `--copy <folder>` copies the file to a folder of the host. |
 | `scripts/check-invariants.sh` | Check the rules of the runtime that the compiler does not check. Refer to "Rules of the runtime". |
 
 The release build reads `STOWR_BUILD_VERSION`, `STOWR_BUILD_COMMIT` and `STOWR_BUILD_DATE` at compile time. `stowr version`
 and `/api/build` show them. A build without them shows `dev`.
+
+The test images also set `STOWR_MULTIPART_COPY_THRESHOLD` and `STOWR_MULTIPART_COPY_PART_SIZE` at compile time: a copy
+then goes in parts with small objects. A release build does not set them. Refer to [ARCHITECTURE.md](ARCHITECTURE.md),
+"Copy in parts".
 
 ## Validation
 
@@ -68,6 +72,8 @@ Parquet reader, DER reader, CSV reader, MIME reader, image and media header read
 | `quick-xml` | The pull reader of XML: the provider answers, the Office Open XML parts, EPUB and SVG headers. It expands no external entity. |
 | `base64` | The base64 forms of the checksums, of the tokens and of the previews. |
 | `libc` | `statfs`, `O_NOFOLLOW` and the error numbers of the volume back end. |
+| `tower-service` | The connector trait of the provider client: TCP, then TLS, with a time limit for each step. |
+| `procurauth-pep`, `procurauth-core` | The PEP of ProcurAuth for the mode `authzen`: the check of the identity token, the questions to the PDP and the kept answers. The two crates come from one commit of the ProcurAuth repository. |
 
 ## Rules of the runtime
 
@@ -84,8 +90,7 @@ Parquet reader, DER reader, CSV reader, MIME reader, image and media header read
 - Each dependency has an exact version.
 
 The compiler and clippy also refuse `unwrap`, `expect`, `panic!`, `todo!`, `unimplemented!`, `dbg!` and the print macros in
-the code of the program. The tests can use them. A function that is not written yet returns `Error::not_served`: the answer
-`501 not_served`.
+the code of the program. The tests can use them.
 
 The program keeps no state on the local file system. It runs as a static binary in a scratch container with a read-only
 root file system. Only the HCL file, the credential files and the folders of the `volume` blocks are mounted.
@@ -125,7 +130,10 @@ buckets and in the volume `files`, and runs `browser-tests.js` in a Playwright c
 ## FUSE test of the volumes
 
 `test/volume-fuse/run.sh` runs the tests of the volumes and a browser smoke test on a FUSE mount of SeaweedFS
-(`weed mount`). Only the container of the mount gets `/dev/fuse`, `SYS_ADMIN` and no AppArmor profile.
+(`weed mount`). Only the container of the mount gets `/dev/fuse`, `SYS_ADMIN` and no AppArmor profile. The container
+has the pinned Rust image, the source and the compiled tests. The script runs `cargo test volume::` in it, with the
+variable `STOWR_TEST_VOLUME_DIR` set to a folder of the mount. Only the tests (`src/volume/tests.rs`) read this
+variable. Without it, the tests use a folder of the temporary folder of the system.
 
 ```sh
 ./test/volume-fuse/run.sh
@@ -168,6 +176,31 @@ Keep the Apache-2.0 license notice in the same folder. The program does not get 
 
 The test builds the scratch image, checks the numeric user and the identity of the static binary, starts the container with
 `--read-only`, and runs the health check of the program.
+
+## Release
+
+`.github/workflows/release.yaml` makes the release when you push a tag `vX.Y.Z` (or `vX.Y.Z-suffix`, a prerelease). Do
+these steps:
+
+1. Set the version `X.Y.Z` in `Cargo.toml`. Run `scripts/cargo.sh check` without `--locked`: cargo writes the version into
+   `Cargo.lock`.
+2. Add the section `## X.Y.Z (date)` at the top of `CHANGELOG.md`. The text of this section becomes the notes of the
+   release.
+3. Merge the change into `main`, then tag the commit: `git tag vX.Y.Z`, `git push origin vX.Y.Z`.
+
+The workflow does these steps:
+
+1. It makes sure that the tag is equal to the version of `Cargo.toml`, that `CHANGELOG.md` has the section, and that no
+   workflow publishes a container image.
+2. It runs the format check, clippy, the tests and `scripts/check-invariants.sh`.
+3. It builds the static binary on an amd64 runner and on an arm64 runner with `scripts/static.sh`. The compile-time
+   values are the version (`X.Y.Z`), the commit and the date of the commit. It makes sure that each binary is static,
+   has the correct architecture, and shows the version.
+4. It packs `stowr_X.Y.Z_linux_amd64.tar.gz` and `stowr_X.Y.Z_linux_arm64.tar.gz`. Each archive has one file at its
+   root: `stowr`, mode 0755.
+5. It writes `checksums.txt` (SHA-256, the format of `sha256sum`) and creates the GitHub release with the three files.
+
+No workflow builds an image for a registry or publishes an image.
 
 ## Release validation
 

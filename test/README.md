@@ -6,6 +6,8 @@ The SeaweedFS service is one process: it has the master, the volume server, the 
 
 `config.hcl` defines one S3 authentication shared by two buckets. Each bucket has its own permission ceiling and navigation scan limit.
 
+`browser/Dockerfile` builds the static binary of Stowr (musl target) in the pinned Rust image, and puts it on `scratch` with the CA bundle. Docker keeps the crates and the build files in cache mounts between two builds. The image stays on the machine: no script pushes it to a registry.
+
 The browser container:
 
 - uses the HCL file read-only;
@@ -46,7 +48,7 @@ Each provider reads the first `access_key_id` and the first `secret_access_key_f
 
 The seed (`frontend/seed.js`) enables the versioning of the bucket `default` on SeaweedFS and MinIO. It puts the same objects in `smoke/` on each provider: one file with tags where the provider has tags, and one file with two versions. On SeaweedFS, the seed also puts the data of the other tests: files with several versions in `versions/`, tags, a lifecycle rule, and a JSON file, a CSV file and a binary file for the comparison. The other browser tests use SeaweedFS only.
 
-The image of Stowr in this stack copies in parts from 8 KiB up, in parts of 5 MiB (the build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `browser/Dockerfile`). The seed puts `copy/source.bin` (11 MiB, three parts) with standard headers, a user metadata and tags on each provider. On SeaweedFS and MinIO, it also puts `copy/versioned.bin` with two versions. The tests of the copy in parts copy and rename `source.bin` through the page and compare the SHA-256, the headers and the tags. They also restore the older version of `versioned.bin`.
+The image of Stowr in this stack copies in parts from 8 KiB up, in parts of 5 MiB (the build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `browser/Dockerfile`, which become the compile-time values `STOWR_MULTIPART_COPY_THRESHOLD` and `STOWR_MULTIPART_COPY_PART_SIZE`). The seed puts `copy/source.bin` (11 MiB, three parts) with standard headers, a user metadata and tags on each provider. On SeaweedFS and MinIO, it also puts `copy/versioned.bin` with two versions. The tests of the copy in parts copy and rename `source.bin` through the page and compare the SHA-256, the headers and the tags. They also restore the older version of `versioned.bin`.
 
 The seed also puts the objects of the metadata tests in `meta/` on each provider: `small.txt` (under the threshold of the copy in parts), `large.bin` (20000 bytes, above it) and `conflict.txt`, each with `Cache-Control: max-age=60` and the user metadata `owner`. `small.txt` and `large.bin` have tags where the provider has them. `versioned.txt` has two versions on SeaweedFS and MinIO. The metadata tests edit these objects through the details on each provider. They check each sentence that the form shows before the save against the result: the date, the ETag, the versions and the tags. They also check that the form shows and sends the stored `Cache-Control`, not the value of the gateway (`private, no-store, max-age=60`). Refer to the section "Edit of the metadata" of [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md).
 
@@ -126,31 +128,28 @@ the banner of a full volume.
 [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md#fuse-test-of-the-volumes).
 
 - The service `seaweedfs` is the SeaweedFS 4.41 of the browser tests, with its configuration.
-- The service `mount` (`volume-fuse/Dockerfile`) has the same pinned `weed` binary, FUSE 3, the Go toolchain and
-  Stowr. Only this container has `/dev/fuse`, `SYS_ADMIN` and `apparmor:unconfined`. Its entrypoint runs `weed
-  mount -filer=seaweedfs:8888 -filer.path=/ -dir=/mnt/sw -volumeServerAccess=filerProxy`. The volume servers of the
-  service `seaweedfs` listen on their own address only, so the data goes through the filer. Stowr then starts
-  with the volume `sw` on `/mnt/sw/stowr` (`volume-fuse/config.hcl`).
-- `run.sh` runs the Go tests of the volumes on the mount (`go test -run TestVolume -args -volume-dir=/mnt/sw/stowr-go`),
-  then `volume-fuse/smoke.js` in the Playwright container: the list, a folder, an upload with SHA-256, a rename, a
-  copy, a range read, a resumed upload of 40 MiB, and the copy, the move and the delete of a folder.
+- The service `mount` (`volume-fuse/Dockerfile`) has the same pinned `weed` binary, FUSE 3, the pinned Rust image,
+  the source of Stowr with its compiled tests, and Stowr. Only this container has `/dev/fuse`, `SYS_ADMIN` and
+  `apparmor:unconfined`. Its entrypoint runs `weed mount -filer=seaweedfs:8888 -filer.path=/ -dir=/mnt/sw
+  -volumeServerAccess=filerProxy`. The volume servers of the service `seaweedfs` listen on their own address only, so
+  the data goes through the filer. Stowr then starts with the volume `sw` on `/mnt/sw/stowr` (`volume-fuse/config.hcl`).
+- `run.sh` runs the unit tests of the volumes on the mount: `cargo test --locked --offline volume::`, with
+  `STOWR_TEST_VOLUME_DIR=/mnt/sw/stowr-tests`. Each test makes its own folder in this folder. Then `run.sh` runs
+  `volume-fuse/smoke.js` in the Playwright container: the list, a folder, an upload with SHA-256, a rename, a copy, a
+  range read, a resumed upload of 40 MiB, and the copy, the move and the delete of a folder.
 
-These facts come from the run of 2026-10-21 on a Debian 13 host (Linux 6.12, Docker 29.9, `/dev/fuse` present):
+These facts come from the runs on a Debian 13 host (Linux 6.12, Docker 29.9, `/dev/fuse` present):
 
 - FUSE works in Docker on this host with these three options. The mount is `fuse.seaweedfs` with `allow_other`.
-- The 22 Go tests of the volumes pass on the mount, also the symbolic links, the rename that keeps the inode, the
-  dates of the files (`os.Chtimes`), `O_EXCL`, `fsync` and the hard links. The test of a folder that the process cannot
-  write is skipped, because the process is root.
-- The six steps of the browser smoke test pass. The writes of Stowr are visible at once through the mount.
-- The count of the folder of the volume works on the mount: after the smoke uploads, the volume holds 41943084 bytes
-  in 3 files, as the browser smoke test expects. The page showed "40 MB, 3 files" and the storage with `~`.
+- The 44 unit tests of the volumes pass on the mount. They include the symbolic links, the atomic replacement of a
+  file, the copy and the move of files and folders, the temporary files of the resumable uploads, the incomplete
+  uploads with their date and size, the count of a folder and `statfs`. The writes of Stowr are visible at once through
+  the mount.
 - `statfs` of the mount gives the capacity of the volume servers: 30 volumes of 64 MiB (2013265920 bytes). One run
   gave a size of 0 after the delete of a folder: the server then gives `storageError` ("a size of 0") and keeps what the
-  volume holds. The used
-  bytes follow with a delay: two runs gave 0 bytes after the first writes, and 0 or 256512 bytes after an upload of
-  40 MiB and its delete. The
-  server finds the type FUSE in the answer of `statfs`: the usage of the volume is approximate, and the page shows it
-  with `~` and the reason.
+  volume holds. The used bytes follow with a delay: the runs gave 0 bytes after the first writes, and 0 or 256512 bytes
+  after an upload of 40 MiB and its delete. The server finds the type FUSE in the answer of `statfs`: the usage of the
+  volume is approximate, and the page shows it with `~` and the reason.
 
 When a host refuses FUSE in Docker (no `/dev/fuse`, or a security profile that refuses the mount), `run.sh` stops with
 the log of `weed mount` and a message. The tests of the browser test stack then cover a volume on a plain Docker volume.
@@ -177,7 +176,7 @@ The files:
 | `conformance/expected.txt` | The failed cases that are known. It has no case now. |
 
 The fixture is a volume with the file `reports/a.txt` (12 bytes) and the empty folder `reports/2026`. The runner is the client,
-the edge and the PDP. Stowr never reaches a real PDP. The expected result is 99 cases: 74 passed, 0 failed and 25 skipped.
+the edge and the PDP. Stowr never reaches a real PDP. [docs/CONFORMANCE.md](../docs/CONFORMANCE.md) gives the expected result.
 
 ## Functions of each provider
 

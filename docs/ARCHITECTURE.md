@@ -2,7 +2,7 @@
 
 ## Runtime shape
 
-The application is one static Go binary with embedded frontend assets. It does not execute helper processes, require CGO, or write application state to disk. The only files that it writes on the local disk are the files of a `volume` block, in the folder of that block (refer to "Volumes").
+The application is one static binary. The files of the browser interface are in the binary. The binary needs no shared library and no dynamic loader. It runs no other program and writes no application state to disk. The only files that it writes on the local disk are the files of a `volume` block, in the folder of that block (refer to "Volumes").
 
 The runtime can be placed in a scratch container with a read-only root filesystem. Only the HCL file and any credential files need to be mounted read-only.
 
@@ -24,7 +24,7 @@ rules, the routes and the resource tree are in [ACCESS.md](ACCESS.md).
 
 ## Storage interfaces
 
-The backend separates listing, object reads, ranged reads, writes, deletion, copy/rewrite, multipart upload, and version operations. Read-only preview code receives only the operations it needs.
+The backend separates listing, object reads, ranged reads, writes, deletion, copy (also with new metadata), multipart upload, and version operations. Read-only preview code receives only the operations it needs.
 
 All provider traffic passes through:
 
@@ -211,7 +211,7 @@ A key that an active Object Lock keeps does not stop a delete job or a move job.
 
 ## Copy in parts
 
-`CopyObject` of S3 refuses a source above 5 GiB. Thus a copy, a move, a rename and the restore of a version use a copy in parts from a threshold up. The threshold is 5 GiB minus 256 MiB. The engine is in the S3 backend (`src/s3_copy.go`), behind the optional interface `ObjectMultipartCopier`. The GCS backend does not have it: its copy has no such limit.
+`CopyObject` of S3 refuses a source above 5 GiB. Thus a copy, a move, a rename and the restore of a version use a copy in parts from a threshold up. The threshold is 5 GiB minus 256 MiB. The engine is in the S3 backend (`src/provider/s3/copy.rs`), behind the optional trait `MultipartCopier` of the backend. The GCS backend does not have it: its copy has no such limit.
 
 The engine does these steps:
 
@@ -231,9 +231,9 @@ The engine has an options structure: the source version, new metadata, new tags,
 
 A prefix copy and a prefix move use the size of each object in the listing. An object from the threshold up goes in parts. The job counts `copiedBytes`, with the parts of the object in progress.
 
-The restore of a version from the threshold up uses the engine with the version as the source. It is a synchronous request, as before.
+The restore of a version from the threshold up uses the engine with the version as the source. It stays one synchronous request.
 
-The threshold and the part size are unexported variables. Go tests set them. The test image sets them at build with `-ldflags -X main.multipartCopyThresholdBuild=<bytes> -X main.multipartCopyPartSizeBuild=<bytes>` (Docker build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `test/browser/Dockerfile`). These are not configuration keys. A release build leaves them empty. A value that is not an integer in its range stops the program at start. The log shows each value that the build changed.
+The threshold and the part size are values of the program. The unit tests change them. The test image sets them at compile time with the variables `STOWR_MULTIPART_COPY_THRESHOLD` and `STOWR_MULTIPART_COPY_PART_SIZE`: the Docker build arguments `MULTIPART_COPY_THRESHOLD` and `MULTIPART_COPY_PART_SIZE` of `test/browser/Dockerfile` give them. These are not configuration keys. A release build does not set them. A value that is not an integer in its range stops the program at start: the threshold is 1 byte to 5 GiB, the part size is 5 MiB to 5 GiB. The log shows each value that the build changed.
 
 ## Edit of the metadata
 
@@ -278,7 +278,7 @@ On all three providers, the tags stay. A copy with REPLACE and no `Content-Type`
 
 ## Cleanup of incomplete multipart uploads
 
-An incomplete multipart upload keeps its parts on the provider until a person completes it or aborts it. The parts use storage, but no listing shows them. The code is in `src/multiparts.go`, behind the optional interface `MultipartUploadLister` of the S3 backend.
+An incomplete multipart upload keeps its parts on the provider until a person completes it or aborts it. The parts use storage, but no listing shows them. The code is in `src/uploads/`, behind the optional trait `MultipartUploadLister` of the backend.
 
 `GET /api/multiparts?prefix=&max=&token=` gives the incomplete uploads under `prefix`. The answer has `uploads`, `nextToken`, `now` (the clock of the server), `minimumAbortAgeHours` and `partsPageSize`. Each upload has `key`, `uploadId`, `initiated`, `parts`, `bytes`, `partsAtLeast`, `partsUnknown` and `active`. `max` is from 1 to 500, and the default is 100. Another value gives `400 invalid_multipart_request`.
 
@@ -301,7 +301,7 @@ The job counts `aborted`, `skippedUndated`, `skippedRecent`, `skippedActive` and
 
 - The job never aborts an upload without a start date. The provider does not let Stowr know its age.
 - The job never aborts an upload younger than 24 hours, also when the cutoff is later.
-- No request aborts an upload that the resumable-upload store of this process sends now (status `uploading`, `src/uploads.go`). The list shows such an upload with `active: true`.
+- No request aborts an upload that the resumable-upload store of this process sends now (status `uploading`, `src/uploads/`). The list shows such an upload with `active: true`.
 
 `GET /api/multiparts` needs the read permission of the instance. An abort needs the read and the write permissions.
 
@@ -311,7 +311,7 @@ The item "Incomplete uploads" of the Actions menu opens a large window for the c
 
 ## Edit of the lifecycle rules
 
-`PutBucketLifecycleConfiguration` replaces the whole configuration of a bucket. The providers do not keep the same settings, and some drop a setting without an error. The code is in `src/lifecycle.go`, behind the optional interface `BucketLifecycleWriter` of the S3 backend. The GCS backend has no lifecycle rules: it answers `501 lifecycle_unsupported`.
+`PutBucketLifecycleConfiguration` replaces the whole configuration of a bucket. The providers do not keep the same settings, and some drop a setting without an error. The code is in `src/lifecycle/`, behind the optional trait `BucketRules` of the backend. The GCS backend has no lifecycle rules: it answers `501 lifecycle_unsupported`.
 
 ### The state of the editor
 
@@ -405,7 +405,7 @@ The note of the window "Incomplete uploads" has a link to the part "Lifecycle ru
 
 ## Object Lock
 
-Object Lock keeps one version of an object: a legal hold, or a retention until a date. The code is in `src/objectlock.go`, behind the optional interface `ObjectLockManager` of the S3 backend. A bucket gets Object Lock only at its creation, and such a bucket always keeps versions. Each lock applies to one version.
+Object Lock keeps one version of an object: a legal hold, or a retention until a date. The code is in `src/bucket/object_lock.rs`, behind the optional trait `ObjectLockManager` of the backend. A bucket gets Object Lock only at its creation, and such a bucket always keeps versions. Each lock applies to one version.
 
 ### Detection
 
@@ -495,7 +495,7 @@ The form refuses an earlier date for an active Compliance retention, and says wh
 
 ## Encryption
 
-The code is in `src/encryption.go`. Stowr shows the server-side encryption that the provider reports. It can also ask for SSE-S3 for each object that it writes. It does not support SSE-C or SSE-KMS for the writes. It never shows, asks for or keeps a key of the client.
+The code is in `src/bucket/encryption.rs`. Stowr shows the server-side encryption that the provider reports. It can also ask for SSE-S3 for each object that it writes. It does not support SSE-C or SSE-KMS for the writes. It never shows, asks for or keeps a key of the client.
 
 ### Encryption of the writes
 
@@ -558,7 +558,7 @@ The bar of the preview page shows the key and the padlock of the version on the 
 
 ## Usage and quota of a bucket
 
-The code is in `src/usage.go`, with one reader for each source: `src/usage_garage.go`, `src/usage_seaweedfs.go` and `src/usage_minio.go`. The S3 API gives no usage and no quota of a bucket. Each provider gives them in its own admin API. The `usage` block of an `auth` block names the source and its URLs. The server never guesses the source from the provider. Refer to [CONFIGURATION.md](CONFIGURATION.md).
+The code is in `src/bucket/usage.rs`, with one reader for each source: `src/bucket/usage_garage.rs`, `src/bucket/usage_seaweedfs.rs` and `src/bucket/usage_minio.rs`. The S3 API gives no usage and no quota of a bucket. Each provider gives them in its own admin API. The `usage` block of an `auth` block names the source and its URLs. The server never guesses the source from the provider. Refer to [CONFIGURATION.md](CONFIGURATION.md).
 
 ### Sources
 
@@ -705,9 +705,9 @@ The body of the details of a file is a container (`container-type: inline-size`)
 
 A `volume` block shows a folder of the server as the browser shows a bucket. The folder can be a Docker volume, an NFS
 or CephFS mount, or a FUSE mount such as `weed mount` of SeaweedFS. The server reads and writes the files with the
-system calls of its process, under the identity of the process. The code is in the files `src/volume_*.go`. These files
-are the only files of the program that write to the local file system: the CI checks it (refer to
-[DEVELOPMENT.md](DEVELOPMENT.md)). The configuration is in [CONFIGURATION.md](CONFIGURATION.md), section "Volume
+system calls of its process, under the identity of the process. The code is in the folder `src/volume/`. This folder
+has the only code of the program that writes to the local file system: `scripts/check-invariants.sh` checks it in the CI
+(refer to [DEVELOPMENT.md](DEVELOPMENT.md)). The configuration is in [CONFIGURATION.md](CONFIGURATION.md), section "Volume
 block". The test with a real `weed mount` is in [test/README.md](../test/README.md).
 
 ### Instance and address
@@ -843,15 +843,14 @@ for `versioningSupported`, `tagsSupported`, `metadataEditSupported`, `lifecycleS
   (`weed mount` gave it once, after a delete) gives `storageError`.
 
 A volume has no quota: the storage is its limit, and the warning applies from 90 % of the file system. The server reads
-a volume at each request, without the cache: a read is a `statfs` call and the count in memory. Only a Linux build reads
-`statfs`: on an other system, a volume has no usage.
+a volume at each request, without the cache: a read is a `statfs` call and the count in memory.
 
 ### File systems
 
 - The server needs a file system with rename in a folder, `fsync`, and `O_EXCL`. A hard link (for the archive
   extraction that must not replace a file) is optional: without it, the server checks the target and renames.
-- The test with a real `weed mount` of SeaweedFS 4.41 (test/volume-fuse) passes: the Go tests of the volumes and a
-  browser smoke test run on the mount. The facts of that test are in [test/README.md](../test/README.md).
+- The test with a real `weed mount` of SeaweedFS 4.41 (test/volume-fuse) runs the unit tests of the volumes and a
+  browser smoke test on the mount. The facts of that test are in [test/README.md](../test/README.md).
 - A network file system can show a change of an other client with a delay. A listing can then be old by a few
   seconds. The writes of Stowr through the same mount are visible at once.
 
@@ -918,7 +917,7 @@ The tree contains these pages and scripts:
 - `assets/js/app.js` is the browser page. `uploads.js` is the bulk upload. `tags.js` and `metadata.js` are the sections of the details that edit the tags and the metadata. `theme.js` applies the theme before the first paint. `session.js` gives one message for an ended sign-in (401) or a server that does not answer.
 - `assets/css/dialogs.css` and `assets/css/viewers.css` have the rules for the dialogs and the previews. Each colour is a token of `stowr.css`, so these rules follow the theme.
 - `assets/icons/tabler/` has one Tabler icon (MIT) for each name. `assets/css/icons.css` gives the icon for each `mdi-*` name of the shared scripts.
-- `assets/vendor/` has the vendored libraries: PDF.js, highlight.js and marked. A Go test makes sure that a page or a script loads each of them.
+- `assets/vendor/` has the vendored libraries: PDF.js, highlight.js and marked. A unit test of the server makes sure that a page or a script loads each of them.
 
 The header has these heights at every width, from 320 px up:
 

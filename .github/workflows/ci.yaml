@@ -1,112 +1,95 @@
 name: CI
 
+# Each job runs the scripts of the repository (docs/DEVELOPMENT.md). The scripts run cargo in the pinned Rust image, in
+# Docker: the runner needs Docker only. No job logs in to a registry or pushes an image.
 on:
   push:
-    branches: ["main", "master"]
+    branches: ["main"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# bash with -e and -o pipefail: a failure in a pipe stops the step.
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src
+  policy:
+    name: Policy (no image is published)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          go-version: "1.22"
-          cache-dependency-path: src/go.sum
-
-      - name: Check formatting
-        run: test -z "$(gofmt -l *.go)"
-
-      - name: Unit tests with race detector
-        run: go test -race ./...
-
-      - name: Go vet
-        run: go vet ./...
-
-      - name: Shell syntax
-        working-directory: .
+          persist-credentials: false
+      - name: Never publish container images
         run: |
-          for file in test/*.sh test/seaweedfs/scripts/*.sh test/minio/scripts/*.sh test/garage/scripts/*.sh test/frontend/*.sh test/volume-fuse/*.sh test/volume-fuse/scripts/*.sh; do
+          # The pattern is split so that this line does not match itself.
+          if grep -rnE 'ghcr''\.io|docker/login''-action|docker push''\b|packages: *wr''ite|push: *tr''ue' .github/workflows; then
+            echo "::error::workflows must not publish container images"
+            exit 1
+          fi
+
+  rust:
+    name: Format, clippy, tests and rules of the runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Format
+        run: scripts/cargo.sh fmt --all -- --check
+      - name: Clippy
+        run: scripts/cargo.sh clippy --all-targets --locked -- -D warnings
+      - name: Tests
+        run: scripts/cargo.sh test --locked
+      - name: Rules of the runtime
+        run: scripts/check-invariants.sh
+      - name: Shell syntax of the scripts
+        run: |
+          for file in scripts/*.sh test/*.sh test/*/*.sh test/*/scripts/*.sh; do
             [ -e "$file" ] || continue
-            sh -n "$file"
+            bash -n "$file"
           done
 
-      - name: Verify self-contained and private runtime
-        working-directory: .
-        shell: bash
+  static:
+    name: Static binary and scratch image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # scripts/static.sh --check builds the static binary for the architecture of the runner, makes sure that it needs
+      # no dynamic loader, and runs `stowr version`.
+      - name: Static binary
+        env:
+          STOWR_BUILD_VERSION: ci
+          STOWR_BUILD_COMMIT: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          test "$(cd src && go list -m all | wc -l | tr -d ' ')" = "1"
-          if grep -R --include='*.go' '"os/exec"' src; then
-            echo "runtime source must not invoke external commands" >&2
-            exit 1
-          fi
-          if grep -R --include='*.go' -E 'os\.(Getenv|Environ)|ProxyFromEnvironment' src; then
-            echo "runtime configuration and provider clients must not use process environment variables" >&2
-            exit 1
-          fi
-          # Only the _env attributes of the configuration read the environment, in one place.
-          if grep -R --include='*.go' --exclude='config_env.go' -E 'os\.LookupEnv' src; then
-            echo "only src/config_env.go may read an environment variable that the configuration names" >&2
-            exit 1
-          fi
-          # Only the files of the volume backend (src/volume_*.go) write to the local filesystem: the files of a volume
-          # block. No other runtime file writes application state.
-          if grep -R --include='*.go' --exclude='*_test.go' --exclude='volume_*.go' -E 'os\.(Create|Mkdir|MkdirAll|WriteFile|OpenFile|Remove|RemoveAll|Rename|Link|Symlink|Truncate|Chmod|Chown|Lchown|Chtimes)\b|CreateTemp|MkdirTemp|syscall\.(Open|Creat|Mkdir|Rmdir|Unlink|Rename|Link|Symlink|Truncate)\b' src; then
-            echo "runtime source must not write application state to the local filesystem; only src/volume_*.go may write (the files of a volume block)" >&2
-            exit 1
-          fi
-          if find . -type f \( -iname '*.ttf' -o -iname '*.otf' -o -iname '*.woff' -o -iname '*.woff2' -o -iname '*.eot' \) | grep -q .; then
-            echo "font binaries must not be shipped" >&2
-            exit 1
-          fi
-          if grep -R -E --exclude-dir=vendor --include='*.html' --include='*.js' --include='*.css' 'https?://|//cdn\.' src/public; then
-            echo "runtime frontend must not contact external asset domains" >&2
-            exit 1
-          fi
-
-      - name: Build static binary
-        shell: bash
-        run: |
-          set -euo pipefail
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-            go build \
-              -tags=netgo,osusergo \
-              -trimpath \
-              -ldflags="-s -w -buildid= -X main.buildVersion=ci -X main.buildCommit=${GITHUB_SHA}" \
-              -o /tmp/stowr-static .
-          file /tmp/stowr-static
-          if readelf -l /tmp/stowr-static | grep -q 'Requesting program interpreter'; then
-            echo "binary unexpectedly requires a dynamic loader" >&2
-            exit 1
-          fi
-          go version -m /tmp/stowr-static | grep -F 'CGO_ENABLED=0'
-          short_sha=$(printf '%s' "$GITHUB_SHA" | cut -c1-9)
-          /tmp/stowr-static version | grep -F "ci · $short_sha"
-
-      - name: Build and run scratch image
-        working-directory: .
+          scripts/static.sh --check | tee "$RUNNER_TEMP/version.txt"
+          grep -F "ci · ${GITHUB_SHA:0:9}" "$RUNNER_TEMP/version.txt"
+      - name: Scratch image
         env:
           BUILD_VERSION: ci
           BUILD_COMMIT: ${{ github.sha }}
-          BUILD_DATE: ${{ github.event.repository.updated_at }}
         run: ./test/scratch-runtime.sh
 
   frontend:
-    runs-on: ubuntu-latest
+    name: Browser tests of the interface
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Browser tests of the interface
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Browser tests
         run: ./test/frontend/run.sh
