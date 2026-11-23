@@ -712,7 +712,10 @@ async fn a_save_whose_read_back_fails_says_that_the_rules_are_saved() {
             .starts_with("The rules are saved, but Stowr cannot read them again"),
         "answer = {answer}"
     );
-    assert!(rig.wire.stored().contains("<ID>a</ID>"), "the rule did not reach the provider");
+    assert!(
+        rig.wire.stored().contains("<ID>a</ID>"),
+        "the rule did not reach the provider"
+    );
 }
 
 #[tokio::test]

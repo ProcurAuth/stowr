@@ -1,16 +1,17 @@
 //! The editor of the lifecycle rules of a bucket (`PUT /api/lifecycle`), the start probes, and the facts of the
 //! bucket.
 //!
-//! `PutBucketLifecycleConfiguration` replaces the whole configuration. Thus the server reads the configuration, keeps
-//! each element that the editor does not edit byte for byte, puts the edited rules next to them and writes the whole
-//! document. The page sends the SHA-256 hash of the document that it read: a different hash stops the write.
+//! `PutBucketLifecycleConfiguration` replaces the whole configuration. Thus the server reads the configuration first.
+//! It keeps each element that the editor does not edit, byte for byte. It puts the edited rules next to them and
+//! writes the whole document. The page sends the SHA-256 hash of the document that it read. A different hash stops
+//! the write.
 //!
 //! The providers do not keep the same settings, and some drop a setting without an error. Garage drops a tag
 //! filter, and the rule then applies to every object under the prefix. Thus the editor offers a field only where the
-//! provider keeps it: a table for each known provider, and for an unknown provider the expiration after N days with a
-//! prefix only, plus each field that a rule of the bucket already uses. After each write the server reads the
-//! configuration again and compares it with the document that it sent. It restores nothing: it tells the person what
-//! the provider changed, and does not offer again a field that the provider dropped.
+//! provider keeps it. Each known provider has a table. An unknown provider keeps the expiration after N days with a
+//! prefix, and each field that a rule of the bucket already uses. After each write the server reads the
+//! configuration again and compares it with the document that it sent. It restores nothing. It tells the person what
+//! the provider changed, and it does not offer again a field that the provider dropped.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::Ordering;
@@ -158,8 +159,8 @@ fn node_id(node: &Element) -> String {
 
 // --- Document of a save ------------------------------------------------------------------------------------------
 
-/// The document of a save: the start tag of the root as the provider sent it, the rules of the editor, then each
-/// other element of the configuration with its bytes. `None` when no element stays.
+/// The document of a save. It has the start tag of the root as the provider sent it, the rules of the editor, and
+/// each other element of the configuration with its bytes. `None` when no element stays.
 pub fn lifecycle_document_for(state: &LifecycleState, rules: &[EditRule], root_prefix: &str) -> Option<Vec<u8>> {
     let mut kept: Vec<&LifecycleItem> = Vec::with_capacity(state.config.items.len());
     let mut rule_index = 0usize;
@@ -532,11 +533,11 @@ impl Instance {
         }
     }
 
-    /// The fields of the editor. A field needs the provider (the table of a known provider, or for an unknown
-    /// provider a rule of the bucket that uses it), and its condition: the tags of the instance for the tag filter,
-    /// and the versioning of the bucket for the noncurrent versions and the delete markers. A field that the provider
-    /// dropped after a save in this process is never offered again. The reason of the provider table comes before the
-    /// reason of a condition: it tells what the provider does with the field.
+    /// The fields of the editor. A field needs the provider: the table of a known provider, or for an unknown
+    /// provider a rule of the bucket that uses the field. A field also needs its condition. The tag filter needs the
+    /// tags of the instance. The noncurrent versions and the delete markers need the versioning of the bucket. A field
+    /// that the provider dropped after a save in this process is never offered again. The reason of the provider table
+    /// comes before the reason of a condition: it tells what the provider does with the field.
     pub fn lifecycle_fields_for(
         &self,
         flavour: &str,

@@ -1,16 +1,17 @@
 //! The object tags and the lifecycle rules of a bucket (docs/ARCHITECTURE.md, "Object tags and lifecycle" and
 //! "Edit of the lifecycle rules").
 //!
-//! This work package owns the tag routes (`/api/tags`, `/api/tags/bulk`), the lifecycle route (`/api/lifecycle`,
-//! `GET` and `PUT`), the job `tag_prefix`, the start probes of the tags and of the lifecycle rules, the provider
-//! flavour, the facts of the bucket in `/api/instances` (versioning state, number of rules), and the S3 requests
-//! of these functions (`impl ObjectTagger for S3Backend`, `impl BucketRules for S3Backend`).
+//! This folder has the tag routes (`/api/tags`, `/api/tags/bulk`) and the lifecycle route (`/api/lifecycle`, `GET`
+//! and `PUT`). It has the job `tag_prefix` and the start probes of the tags and of the lifecycle rules. It finds the
+//! provider flavour. It keeps the facts of the bucket for `/api/instances` (versioning state, number of rules). It
+//! sends the S3 requests of these functions (`impl ObjectTagger for S3Backend`, `impl BucketRules for S3Backend`).
 //!
 //! The instance gets these methods in this folder: `tags_available`, `probe_tags`, `require_tags`, `get_tags`,
 //! `put_tags`, `tag_version`, `lifecycle_available`, `probe_lifecycle`, `lifecycle_rule_count`, `known_flavour`,
 //! `lifecycle_flavour`, `mark_bucket_facts_read`, `refresh_bucket_facts`, `read_lifecycle_state`,
 //! `save_lifecycle`. The public facts of `/api/instances` use `tags_available`, `lifecycle_available`,
-//! `lifecycle_rule_count` and `known_flavour`.
+//! `lifecycle_rule_count` and `known_flavour`. The S3 back end of the upload sends the value of
+//! `upload_tagging_header(ctx)` in the header `x-amz-tagging`.
 
 mod editor;
 mod md5;
@@ -88,7 +89,7 @@ pub struct TagChange {
     pub remove: Vec<String>,
 }
 
-/// A value of a JSON request: `null` gives the default value, as a missing member does.
+/// A value of a JSON request: `null` gives the default value, as an absent member does.
 pub(crate) fn nullable<'de, D, T>(deserializer: D) -> std::result::Result<T, D::Error>
 where
     D: Deserializer<'de>,

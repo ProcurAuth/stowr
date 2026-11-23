@@ -398,8 +398,8 @@ fn is_control(c: char) -> bool {
     c < ' ' || c == '\u{7f}'
 }
 
-/// Check one rule of the editor. The checks follow the limits of S3: AWS refuses the abort of incomplete uploads
-/// and the removal of delete markers in a rule with a tag filter, and the removal of delete markers next to an
+/// Check one rule of the editor. The checks follow the limits of S3. AWS refuses the abort of incomplete uploads in
+/// a rule with a tag filter. AWS also refuses the removal of delete markers in such a rule, and next to an
 /// expiration in days.
 pub fn validate_edit_rule(rule: &EditRule) -> Result<()> {
     let name = rule_name(&rule.id);

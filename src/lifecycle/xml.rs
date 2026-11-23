@@ -7,7 +7,7 @@
 //! The editor of the lifecycle rules keeps the bytes of each element that it does not edit. Thus the reader gives
 //! the exact offsets of each token.
 
-/// The deepest nesting that the reader accepts.
+/// The deepest level of elements that the reader accepts.
 const MAX_DEPTH: usize = 128;
 
 /// Why a document is not valid.
@@ -117,7 +117,7 @@ pub enum Token {
     End,
     /// Text or CDATA, with the entities expanded.
     Text(String),
-    /// A comment, a processing instruction or a directive.
+    /// A comment, an instruction or a directive.
     Other,
 }
 
