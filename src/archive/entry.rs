@@ -45,9 +45,8 @@ use crate::common::misc::{clean_relative_key, hex};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
 use crate::instance::ceiling::check_object_ceiling;
-use crate::instance::range::RangeSource;
+use crate::instance::range::{ObjectVersion, RangeSource};
 use crate::jobs::{JobRun, JobState, job_type};
-use crate::pv_media::MediaSourceMetadata;
 
 /// The wait of the integrity route for a job that ends at once.
 const ANALYSIS_INLINE_WAIT: Duration = Duration::from_millis(100);
@@ -91,22 +90,34 @@ fn find_instance(app: &App, id: &str) -> Option<Arc<Instance>> {
     app.instances.iter().find(|instance| instance.cfg.id == id).cloned()
 }
 
-/// Open the range reader of an archive, bound to the size and the ETag of the listing when they are known.
+/// What the listing tells about an archive: its size (0 when not known), its ETag and the date of its last change,
+/// as the client sends them.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ListedArchive {
+    /// The size, or 0.
+    pub size: i64,
+    /// The ETag.
+    pub etag: String,
+    /// The date of the last change.
+    pub modified: String,
+}
+
+/// Open the range reader of an archive (a relative key), bound to the size, the ETag and the date of the listing when
+/// they are known.
 pub async fn open_archive_source(
     ctx: &OpCtx,
     instance: &Arc<Instance>,
     key: &str,
     version: &str,
-    listed: &MediaSourceMetadata,
+    listed: &ListedArchive,
 ) -> Result<RangeSource> {
-    let ctx = ctx.with_version(Some(version));
-    let mut source = RangeSource::open(&ctx, instance, &instance.full_key(key)).await?;
-    if listed.size > 0 {
-        source.set_known_size(listed.size);
-    }
-    if !listed.etag.is_empty() {
-        source.set_expected_etag(&listed.etag);
-    }
+    let mut source = RangeSource::open_version(ctx, instance, key, version).await?;
+    source.set_known_size(listed.size);
+    source.set_expected_version(&ObjectVersion {
+        etag: listed.etag.clone(),
+        version: String::new(),
+        modified: listed.modified.clone(),
+    });
     Ok(source)
 }
 
@@ -125,7 +136,7 @@ pub async fn open_archive_reader(
     instance: &Arc<Instance>,
     key: &str,
     version: &str,
-    listed: &MediaSourceMetadata,
+    listed: &ListedArchive,
     max_entries: usize,
 ) -> Result<ZipReader<RangeSource>> {
     let extension = archive_extension(key);
@@ -255,10 +266,10 @@ async fn serve_archive_entry(app: Arc<App>, req: Req) -> Result<Response> {
         ));
     }
     authorize_read(&app, &req.ctx, &instance, &key).await?;
-    let listed = MediaSourceMetadata {
+    let listed = ListedArchive {
         size: req.query.get("size").trim().parse().unwrap_or(0),
         etag: req.query.get("etag").trim().to_owned(),
-        ..MediaSourceMetadata::default()
+        modified: req.query.get("lastModified").trim().to_owned(),
     };
     let max_entries = app.config.runtime.max_archive_entries as usize;
     let reader = open_archive_reader(&req.ctx, &instance, &key, &version, &listed, max_entries).await?;
@@ -621,7 +632,7 @@ pub async fn run_extraction(run: &JobRun, job: &mut JobState) -> Result<()> {
         &source,
         &job.source,
         &job.version,
-        &MediaSourceMetadata::default(),
+        &ListedArchive::default(),
         app.config.runtime.max_archive_entries as usize,
     )
     .await?;
@@ -804,7 +815,7 @@ pub async fn run_entry_integrity(run: &JobRun, job: &mut JobState) -> Result<()>
         &instance,
         &request.key,
         &request.version,
-        &MediaSourceMetadata::default(),
+        &ListedArchive::default(),
         app.config.runtime.max_archive_entries as usize,
     )
     .await?;

@@ -1,8 +1,7 @@
 //! The tests of the archive routes and of the archive jobs, over the memory back end.
 //!
-//! The tests of the routes that read an archive through the range reader of the instance and the tests that run a
-//! whole job are marked `ignore` until the range reader, the create-only write and the job manager serve: run them
-//! with `cargo test -- --ignored`. The same rules have tests over an archive in memory here.
+//! The test that runs whole jobs is marked `ignore` until the job manager serves: run it with
+//! `cargo test -- --ignored`. The same rules have tests over an archive in memory here.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -1102,7 +1101,7 @@ async fn the_entry_routes_check_their_request() {
     assert_eq!(answer.header("allow"), "GET, HEAD");
 }
 
-// The routes over the range reader of the instance and the whole jobs.
+// The routes over the range reader of the instance, and the whole jobs.
 
 fn entry_request(method: Method, key: &str, entry: &str, size: usize, inline: bool, headers: &[(&str, &str)]) -> Req {
     let mut target = format!(
@@ -1124,7 +1123,6 @@ fn entry_request(method: Method, key: &str, entry: &str, size: usize, inline: bo
 }
 
 #[tokio::test]
-#[ignore = "needs the range reader of the instance"]
 async fn the_archive_entry_route_never_serves_active_same_origin_content() {
     let rw = default_objects();
     let archive = stored_zip(&[
@@ -1171,7 +1169,6 @@ async fn the_archive_entry_route_never_serves_active_same_origin_content() {
 }
 
 #[tokio::test]
-#[ignore = "needs the range reader of the instance"]
 async fn the_archive_entry_route_rejects_an_oversized_central_directory() {
     let rw = default_objects();
     let names: Vec<String> = (0..5).map(|index| format!("file-{index}.txt")).collect();
@@ -1191,7 +1188,6 @@ async fn the_archive_entry_route_rejects_an_oversized_central_directory() {
 }
 
 #[tokio::test]
-#[ignore = "needs the range reader of the instance"]
 async fn the_archive_entry_route_streams_a_selected_entry() {
     let rw = default_objects();
     let archive = super::zip::tests::build(
@@ -1203,13 +1199,25 @@ async fn the_archive_entry_route_streams_a_selected_entry() {
     );
     let size = archive.len();
     put_object(&rw, "tenant/archive.zip", archive);
-    let app = application(RuntimePolicy::default(), rw, Vec::new());
+    rw.state().get_ranges.clear();
+    let app = application(RuntimePolicy::default(), rw.clone(), Vec::new());
     let req = entry_request(Method::GET, "archive.zip", "folder/readme.txt", size, false, &[]);
     let answer = collect(handle_archive_entry(app, req).await).await;
     assert_eq!(answer.status, 200, "{}", answer.text());
     assert_eq!(answer.text(), "inside archive");
     let disposition = answer.header("content-disposition");
     assert!(disposition.starts_with("attachment") && disposition.contains("readme.txt"));
+    // Each read of the archive is an exact byte range.
+    let ranges = rw.state().get_ranges.clone();
+    assert!(!ranges.is_empty(), "expected at least one byte-range request");
+    for value in ranges {
+        let (start, end) = value
+            .strip_prefix("bytes=")
+            .and_then(|range| range.split_once('-'))
+            .unwrap_or_else(|| panic!("range {value:?} is not an exact byte range"));
+        let (start, end): (i64, i64) = (start.trim().parse().unwrap(), end.trim().parse().unwrap());
+        assert!(start >= 0 && end >= start, "range {value:?} is invalid");
+    }
 }
 
 /// A back end that holds each write until two writes have started: both extraction jobs own a storage slot before
@@ -1269,7 +1277,7 @@ impl Backend for BarrierPutBackend {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
-#[ignore = "needs the range reader, the create-only write and the job manager"]
+#[ignore = "needs the job manager"]
 async fn concurrent_extract_jobs_do_not_deadlock_on_storage_gates() {
     let backend = Arc::new(BarrierPutBackend {
         inner: MemoryBackend::default(),
@@ -1303,6 +1311,87 @@ async fn concurrent_extract_jobs_do_not_deadlock_on_storage_gates() {
     for id in &ids {
         let job = app.jobs.wait_for_terminal(id, Duration::from_secs(30)).await.unwrap();
         assert_eq!(job.status, "completed", "{job:?}");
+    }
+    let objects = backend.inner.objects.lock().unwrap();
+    for index in 0..2 {
+        assert_eq!(objects[&format!("tenant/out-{index}/payload.bin")].data.len(), 12 << 20);
+    }
+}
+
+/// The target instance of a job, without the job manager: the create-only write of the instance, no save.
+struct InstanceTarget {
+    instance: Arc<Instance>,
+}
+
+impl ExtractTarget for InstanceTarget {
+    fn put<'a>(
+        &'a self,
+        ctx: &'a OpCtx,
+        key: &'a str,
+        body: Body,
+        size: i64,
+        content_type: &'a str,
+    ) -> BoxFuture<'a, Result<()>> {
+        Box::pin(async move {
+            self.instance
+                .put_if_absent(ctx, &self.instance.full_key(key), body, size, content_type)
+                .await
+        })
+    }
+
+    fn save(&self, _job: &JobState) -> Result<()> {
+        Ok(())
+    }
+}
+
+#[tokio::test]
+async fn concurrent_extractions_do_not_deadlock_on_storage_gates() {
+    let backend = Arc::new(BarrierPutBackend {
+        inner: MemoryBackend::default(),
+        started: Mutex::new(0),
+    });
+    for index in 0..2u8 {
+        let payload = vec![b'a' + index; 12 << 20];
+        put_object(
+            &backend.inner,
+            &format!("tenant/big-{index}.zip"),
+            stored_zip(&[("payload.bin", &payload)]),
+        );
+    }
+    // Two slots: each write holds one while its archive reads take none.
+    let runtime = RuntimePolicy {
+        max_concurrent_requests_per_storage: 2,
+        ..RuntimePolicy::default()
+    };
+    let app = application(runtime, backend.clone(), Vec::new());
+    let rw = app.instance("rw").unwrap().clone();
+    let extract = |index: usize| {
+        let rw = rw.clone();
+        async move {
+            let ctx = OpCtx::default().gated(GateMode::Unbounded);
+            let key = format!("big-{index}.zip");
+            let reader = super::entry::open_archive_reader(
+                &ctx.gated(GateMode::Exempt),
+                &rw,
+                &key,
+                "",
+                &super::entry::ListedArchive::default(),
+                0,
+            )
+            .await?;
+            let mut job = extraction_job(&["payload.bin"]);
+            job.source = key;
+            job.target = format!("out-{index}/");
+            let target = InstanceTarget { instance: rw.clone() };
+            extract_archive(&ctx, Arc::new(reader), &mut job, true, 0, &target).await?;
+            Ok::<_, Error>(job)
+        }
+    };
+    let (first, second) = tokio::time::timeout(Duration::from_secs(30), async { tokio::join!(extract(0), extract(1)) })
+        .await
+        .expect("the extractions wait on each other");
+    for job in [first.unwrap(), second.unwrap()] {
+        assert_eq!(job.archive_extract.unwrap().bytes, 12 << 20);
     }
     let objects = backend.inner.objects.lock().unwrap();
     for index in 0..2 {
