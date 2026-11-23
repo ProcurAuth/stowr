@@ -565,7 +565,7 @@ pub async fn abort_selected_multiparts(
 }
 
 /// What the abort job needs from the job that runs it: the control of the person and the save of the progress.
-pub trait JobProgress {
+pub trait JobProgress: Sync {
     /// `Err(Error::Interrupted)` when a person paused or canceled the job.
     fn check_control(&self) -> Result<()>;
     /// Save the progress of the job.

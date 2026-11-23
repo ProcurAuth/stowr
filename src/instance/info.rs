@@ -174,7 +174,7 @@ fn multipart_uploads_supported(instance: &Instance) -> bool {
 }
 
 fn lifecycle_supported(instance: &Instance) -> bool {
-    instance.backend.bucket_rules().is_some() && instance.rules.inner.lock().is_ok_and(|inner| inner.supported)
+    instance.lifecycle_available()
 }
 
 fn lifecycle_rules(instance: &Instance) -> Option<usize> {
