@@ -27,8 +27,8 @@ access {
     # The token is a secret: give token_env or token_file.
     token_file    = "/run/secrets/pdp-token"
     timeout       = "500ms"
-    # The deadline of a question with context.usage.
-    usage_timeout = "2s"
+    # The shortest wait for a question with context.usage.
+    usage_timeout = "6s"
     # 0s keeps no answer of the PDP.
     cache_ttl     = "30s"
     max_evaluations = 64

@@ -8,7 +8,6 @@ use base64::engine::general_purpose::STANDARD;
 use http::header::{AUTHORIZATION, HeaderValue};
 use http::{HeaderMap, Method};
 
-use super::md5::md5;
 use super::s3::sigv4;
 use super::test_server::{Problems, TestRequest, TestResponse, TestServer};
 use super::testing::{anonymous_s3, signed_s3};
@@ -16,6 +15,7 @@ use super::{ChecksumTransfer, S3Backend, S3Request};
 use crate::common::ctx::OpCtx;
 use crate::common::error::Error;
 use crate::common::http::{full, read_limited};
+use crate::common::md5::md5;
 use crate::common::storage::{
     Backend, BatchDeleter, CapabilityStateName, CompletedPart, ConditionalWriter, ListOptions, MultipartPartLister,
     MultipartUploadApi, VersionStore,

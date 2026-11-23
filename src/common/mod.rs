@@ -9,6 +9,8 @@ pub mod ctx;
 pub mod error;
 pub mod http;
 pub mod json;
+pub mod md5;
+pub mod mediatype;
 pub mod misc;
 pub mod query;
 pub mod storage;

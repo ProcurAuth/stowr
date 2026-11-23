@@ -91,7 +91,7 @@ fn authzen_values_and_defaults() {
     assert!(!pdp.plain_http);
     assert_eq!(pdp.token, TEST_PDP_TOKEN);
     assert_eq!(pdp.timeout, Duration::from_millis(500));
-    assert_eq!(pdp.usage_timeout, Duration::from_secs(2));
+    assert_eq!(pdp.usage_timeout, Duration::from_secs(6));
     assert_eq!(pdp.cache_ttl, Duration::from_secs(30));
     assert_eq!(pdp.max_evaluations, 64);
     assert!(!format!("{pdp:?}").contains(TEST_PDP_TOKEN));
@@ -862,8 +862,8 @@ fn contradictions_name_both_keys() {
         ),
         (
             "timeout above the default usage_timeout",
-            format!("{GOOD_PDP}\n    timeout = \"5s\""),
-            vec!["access.pdp.usage_timeout = \"2s\"", "access.pdp.timeout = \"5s\""],
+            format!("{GOOD_PDP}\n    timeout = \"10s\""),
+            vec!["access.pdp.usage_timeout = \"6s\"", "access.pdp.timeout = \"10s\""],
         ),
         (
             "http url without plain_http",
@@ -1058,7 +1058,7 @@ fn print_config_in_authzen_mode() {
             "access.pdp.plain_http = false  # file".to_owned(),
             format!("access.pdp.token = <hidden>  # file:{}", dir.join("pdp-token")),
             "access.pdp.timeout = \"1s\"  # file".to_owned(),
-            "access.pdp.usage_timeout = \"2s\"  # default".to_owned(),
+            "access.pdp.usage_timeout = \"6s\"  # default".to_owned(),
             "access.pdp.cache_ttl = \"30s\"  # default".to_owned(),
             "access.pdp.max_evaluations = 64  # default".to_owned(),
         ]

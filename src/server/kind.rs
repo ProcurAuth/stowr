@@ -1,7 +1,9 @@
 //! The kind of an object for Insights and the details, and the media types of the object routes: the type that a key
 //! gives when the provider gives a generic type, and the types that a browser opens inline.
 
-use super::mediatype::{base_media_type, type_by_extension};
+pub use crate::common::mediatype::{browser_inline_content, preview_content_type};
+
+use super::mediatype::base_media_type;
 use super::paths;
 
 /// The kind of a key: `image`, `video`, `audio`, `pdf`, `markdown`, `document`, `spreadsheet`, `presentation`,
@@ -78,125 +80,6 @@ pub fn is_generic_object_content_type(value: &str) -> bool {
     matches!(
         base_media_type(value).as_str(),
         "" | "application/octet-stream" | "binary/octet-stream" | "application/binary" | "application/unknown"
-    )
-}
-
-/// The media type of a key from its extension, for an object that the provider gives with a generic type.
-pub fn preview_content_type(key: &str) -> &'static str {
-    let extension = paths::ext(key).to_lowercase();
-    let known = match extension.as_str() {
-        ".mp4" => "video/mp4",
-        ".m4v" => "video/x-m4v",
-        ".mov" => "video/quicktime",
-        ".webm" => "video/webm",
-        ".mkv" => "video/x-matroska",
-        ".mxf" => "application/mxf",
-        ".avi" => "video/x-msvideo",
-        ".ogv" => "video/ogg",
-        ".mpg" | ".mpeg" => "video/mpeg",
-        ".m2ts" | ".mts" | ".ts" => "video/mp2t",
-        ".vob" => "video/dvd",
-        ".mp3" => "audio/mpeg",
-        ".m4a" => "audio/mp4",
-        ".aac" => "audio/aac",
-        ".flac" => "audio/flac",
-        ".wav" => "audio/wav",
-        ".ogg" => "audio/ogg",
-        ".opus" => "audio/ogg; codecs=opus",
-        ".aif" | ".aiff" => "audio/aiff",
-        ".jpg" | ".jpeg" => "image/jpeg",
-        ".png" => "image/png",
-        ".gif" => "image/gif",
-        ".webp" => "image/webp",
-        ".avif" => "image/avif",
-        ".svg" => "image/svg+xml",
-        ".bmp" => "image/bmp",
-        ".ico" => "image/x-icon",
-        ".vcf" | ".vcard" => "text/vcard; charset=utf-8",
-        ".ics" | ".ifb" => "text/calendar; charset=utf-8",
-        ".eml" | ".mime" => "message/rfc822",
-        ".pem" => "application/x-pem-file",
-        ".crt" => "application/x-x509-ca-cert",
-        ".cer" | ".der" => "application/pkix-cert",
-        ".tif" | ".tiff" => "image/tiff",
-        ".pdf" => "application/pdf",
-        _ => "",
-    };
-    if !known.is_empty() {
-        return known;
-    }
-    type_by_extension(&extension)
-}
-
-/// True when a browser opens the object inline without a plugin. A media type of the provider alone is not enough
-/// for a codec that browsers do not play (MKV, AVI, WMA): such an object downloads with its own name.
-pub fn browser_inline_content(key: &str, content_type: &str) -> bool {
-    let extension = paths::ext(key).to_lowercase();
-    if matches!(
-        extension.as_str(),
-        ".pdf"
-            | ".txt"
-            | ".log"
-            | ".css"
-            | ".json"
-            | ".xml"
-            | ".html"
-            | ".htm"
-            | ".png"
-            | ".jpg"
-            | ".jpeg"
-            | ".gif"
-            | ".webp"
-            | ".avif"
-            | ".bmp"
-            | ".ico"
-            | ".svg"
-            | ".mp3"
-            | ".m4a"
-            | ".aac"
-            | ".flac"
-            | ".wav"
-            | ".ogg"
-            | ".oga"
-            | ".opus"
-            | ".mp4"
-            | ".m4v"
-            | ".mov"
-            | ".webm"
-            | ".ogv"
-    ) {
-        return true;
-    }
-    matches!(
-        base_media_type(content_type).as_str(),
-        "application/pdf"
-            | "text/plain"
-            | "text/css"
-            | "text/html"
-            | "application/json"
-            | "application/xml"
-            | "text/xml"
-            | "image/png"
-            | "image/jpeg"
-            | "image/gif"
-            | "image/webp"
-            | "image/avif"
-            | "image/bmp"
-            | "image/x-icon"
-            | "image/vnd.microsoft.icon"
-            | "image/svg+xml"
-            | "audio/mpeg"
-            | "audio/mp4"
-            | "audio/aac"
-            | "audio/flac"
-            | "audio/wav"
-            | "audio/x-wav"
-            | "audio/ogg"
-            | "audio/opus"
-            | "video/mp4"
-            | "video/quicktime"
-            | "video/webm"
-            | "video/ogg"
     )
 }
 

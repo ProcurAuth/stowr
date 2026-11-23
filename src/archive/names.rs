@@ -9,17 +9,7 @@ use crate::common::error::{Error, Result};
 /// The limit of entries when the configuration gives none.
 pub const DEFAULT_MAX_ARCHIVE_ENTRIES: usize = 10_000;
 
-/// The extension of the last element of a path: from its last `.`, or an empty text.
-pub fn path_ext(path: &str) -> &str {
-    for (index, byte) in path.bytes().enumerate().rev() {
-        match byte {
-            b'/' => return "",
-            b'.' => return &path[index..],
-            _ => {}
-        }
-    }
-    ""
-}
+pub use crate::common::mediatype::path_ext;
 
 /// The last element of a path, without the `/` at its end. An empty path gives `.`; a path of `/` only gives `/`.
 pub fn path_base(path: &str) -> &str {
@@ -36,14 +26,7 @@ pub fn path_base(path: &str) -> &str {
     }
 }
 
-/// A prefix with one `/` at its end and none at its start, or an empty text.
-pub fn normalize_prefix(value: &str) -> String {
-    let value = value.trim_start_matches('/');
-    if value.is_empty() {
-        return String::new();
-    }
-    format!("{}/", value.trim_end_matches('/'))
-}
+pub use crate::common::misc::normalize_prefix;
 
 /// The safe relative name of an archive entry. `\` becomes `/` and the name loses its empty elements. A control
 /// character becomes `_`. A first element with `:` as its second byte (a drive letter) gets a `_` before it. A name
@@ -189,48 +172,9 @@ pub fn normalize_archive_entry_selection(entries: &[String], maximum: usize) -> 
     Ok(result.into_iter().collect())
 }
 
-/// True for a character that a quoted name shows as it is: a letter, a mark, a number, a punctuation, a symbol or
-/// the ASCII space.
-fn printable(c: char) -> bool {
-    let code = u32::from(c);
-    if code <= 0xff {
-        return (0x20..=0x7e).contains(&code) || (code >= 0xa1 && code != 0xad);
-    }
-    !(c.is_control()
-        || c.is_whitespace()
-        || (0x200b..=0x200f).contains(&code)
-        || (0x2028..=0x202e).contains(&code)
-        || (0x2060..=0x206f).contains(&code)
-        || (0xe000..=0xf8ff).contains(&code)
-        || (0xfff9..=0xfffb).contains(&code)
-        || code == 0xfeff
-        || code >= 0xf_0000
-        || (code & 0xfffe) == 0xfffe)
-}
-
 /// The name between double quotes, with the escapes of a text literal: `\"`, `\\`, `\n`, `\x01`, `\u200b`...
 pub fn quote(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            c if printable(c) => out.push(c),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            c if u32::from(c) < 0x20 || c == '\u{7f}' => out.push_str(&format!("\\x{:02x}", u32::from(c))),
-            c if u32::from(c) < 0x1_0000 => out.push_str(&format!("\\u{:04x}", u32::from(c))),
-            c => out.push_str(&format!("\\U{:08x}", u32::from(c))),
-        }
-    }
-    out.push('"');
-    out
+    crate::config::quote::quote(value)
 }
 
 #[cfg(test)]

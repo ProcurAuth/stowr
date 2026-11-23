@@ -9,13 +9,13 @@ use super::editor::{LifecycleResponse, lifecycle_deletes};
 use super::rules::{EditRule, invalid_lifecycle};
 use super::tags::{MAX_OBJECT_TAGS, TagsResponse, apply_tag_change, tag_job, validate_tags};
 use super::{Tag, TagChange, nullable};
-use crate::access::{self, ACTION_BUCKET_ADMIN, ACTION_DELETE, ACTION_READ, ACTION_WRITE, Operation};
+use crate::access::{self, ACTION_READ, ACTION_WRITE, Operation};
 use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::{PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE};
 use crate::common::error::{Error, Result};
 use crate::common::http::{Req, Response, api_error, decode_json, json, method_not_allowed};
-use crate::common::misc::clean_relative_key;
+use crate::common::misc::{clean_relative_key, normalize_prefix};
 use crate::common::time::Timestamp;
 use crate::instance::Instance;
 use crate::jobs::JobState;
@@ -30,37 +30,6 @@ fn invalid_tags(message: &str) -> Error {
 
 fn invalid_key() -> Error {
     Error::api(400, "invalid_key", "object key is required")
-}
-
-/// A prefix with one `/` at its end and none at its start. An empty prefix stays empty.
-fn normalize_prefix(value: &str) -> String {
-    let trimmed = value.trim_start_matches('/');
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    format!("{}/", trimmed.trim_end_matches('/'))
-}
-
-/// The permissions of a write of each object under a prefix: the bulk change of tags.
-fn write_prefix_operation(app: &App, instance: &Instance, prefix: &str) -> Operation {
-    Operation {
-        others: vec![access::object_ask(app, ACTION_READ, instance, prefix)],
-        use_ask: access::object_ask(app, ACTION_WRITE, instance, prefix),
-        continuation: false,
-    }
-}
-
-/// The permissions of the save of the lifecycle rules. The two other permissions are always asked, whatever the
-/// rules are.
-fn lifecycle_operation(app: &App, instance: &Instance) -> Operation {
-    Operation {
-        others: vec![
-            access::object_ask(app, ACTION_READ, instance, ""),
-            access::object_ask(app, ACTION_DELETE, instance, ""),
-        ],
-        use_ask: access::object_ask(app, ACTION_BUCKET_ADMIN, instance, ""),
-        continuation: false,
-    }
 }
 
 // --- /api/tags ---------------------------------------------------------------------------------------------------
@@ -239,7 +208,7 @@ async fn tags_bulk_route(app: Arc<App>, req: Req) -> Result<Response> {
     let request: TagsBulkRequest = decode_json(body).await?;
     let instance = app.instance_of(&request.instance, query.get("instance"))?.clone();
     let (prefix, change) = bulk_change(&instance, &request)?;
-    access::authorize(&app, &ctx, write_prefix_operation(&app, &instance, &prefix)).await?;
+    access::authorize(&app, &ctx, app.access.write_prefix_operation(&instance, &prefix)).await?;
     let job = app.jobs.create(tag_job(&instance.cfg.id, &prefix, change))?;
     Ok(json(202, &CreatedJob::from(job)))
 }
@@ -319,7 +288,7 @@ async fn lifecycle_save(app: Arc<App>, req: Req) -> Result<Response> {
     if lifecycle_deletes(&current, &request.rules) {
         instance.require_permission(PERMISSION_DELETE)?;
     }
-    access::authorize(&app, &ctx, lifecycle_operation(&app, &instance)).await?;
+    access::authorize(&app, &ctx, app.access.lifecycle_operation(&instance)).await?;
     let (state, warnings) = instance.save_lifecycle(&ctx, &request.hash, &request.rules).await?;
     let mut response = LifecycleResponse {
         instance: instance.cfg.id.clone(),

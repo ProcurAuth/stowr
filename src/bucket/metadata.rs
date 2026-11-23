@@ -22,8 +22,8 @@ use super::MetadataEditor;
 use super::encryption::{kept_encryption_headers, write_encryption_headers};
 use super::object_lock::null_default;
 use super::support::{
-    MAX_ANSWER_BYTES, S3Call, begin_request, copy_source_header, embedded_error, is_success, observe_permission,
-    printable_ascii, provider_refused_feature, quote,
+    MAX_ANSWER_BYTES, S3Call, copy_source_header, embedded_error, is_success, printable_ascii,
+    provider_refused_feature, quote,
 };
 use crate::access;
 use crate::common::BoxFuture;
@@ -729,7 +729,7 @@ impl Instance {
             for (name, value) in &kept {
                 merged.insert(name.clone(), value.clone());
             }
-            let slot = begin_request(self, ctx).await?;
+            let slot = self.begin_storage_request(ctx).await?;
             let result = editor.replace_metadata(ctx, key, version, etag, &merged).await;
             drop(slot);
             if let Err(error) = &result
@@ -738,7 +738,7 @@ impl Instance {
                 self.metadata.off.store(true, Ordering::SeqCst);
                 return Err(metadata_edit_unsupported());
             }
-            observe_permission(self, PERMISSION_WRITE, result.as_ref().err());
+            self.observe_permission(PERMISSION_WRITE, result.as_ref().err());
             result
         };
         match result {

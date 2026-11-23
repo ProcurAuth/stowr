@@ -29,7 +29,8 @@ $binary version"
     --copy)
         destination="$(cd "${2:?give the destination directory}" && pwd)"
         mounts=(--volume "$destination:/out")
-        after="cp $binary /out/stowr"
+        after="
+cp $binary /out/stowr"
         ;;
     "") ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;

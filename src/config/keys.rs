@@ -146,7 +146,7 @@ pub static KEYS: &[Key] = &[
     key("access.pdp", "plain_http", "boolean", "false", "true with an http URL. false with an https URL", VALUE, false, "true accepts an http URL: the server then sends the token and the questions without TLS. Use it only on a trusted network."),
     key("access.pdp", "token", "text", "(required)", "1 to 4096 bytes, no space and no control character", INDIRECT, true, "The bearer token that the server sends to the PDP. It is a secret: the form in clear text stops the start."),
     key("access.pdp", "timeout", "duration", "\"500ms\"", "10ms to 1m", VALUE, false, "The deadline of one request to the PDP, without context.usage."),
-    key("access.pdp", "usage_timeout", "duration", "\"2s\"", "100ms to 1m, and not less than timeout", VALUE, false, "The deadline of one question with context.usage."),
+    key("access.pdp", "usage_timeout", "duration", "\"6s\"", "100ms to 1m, and not less than timeout", VALUE, false, "The shortest wait for one question with context.usage. The server waits for the longer of this value and procurauth_usage_max_seconds plus 1s."),
     key("access.pdp", "cache_ttl", "duration", "\"30s\"", "0s to 1h", VALUE, false, "The life of an answer of the PDP in memory. 0s keeps no answer."),
     key("access.pdp", "max_evaluations", "integer", "64", "1 to 1024", VALUE, false, "The most items in one Access Evaluations request."),
 

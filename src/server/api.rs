@@ -11,7 +11,8 @@ use serde::{Deserialize, Serialize};
 use super::paths::normalize_prefix;
 use super::seams;
 use super::{RequestHead, split};
-use crate::access::{ACTION_DELETE, ACTION_READ, ACTION_WRITE, Operation, object_ask};
+use crate::access::mutation::clean_object_pair;
+use crate::access::{ACTION_READ, ACTION_WRITE};
 use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::{PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE, RuntimePolicy};
@@ -40,7 +41,7 @@ pub fn handle_instances(app: Arc<App>, req: Req) -> BoxFuture<'static, Response>
         if req.method != Method::GET {
             return method_not_allowed(&["GET"]);
         }
-        api_result(instances(&app, &split(req).0))
+        api_result(instances(&app, &split(req).0).await)
     })
 }
 
@@ -83,8 +84,8 @@ struct InstancesAnswer {
     runtime: PublicRuntime,
 }
 
-fn instances(app: &App, req: &RequestHead) -> Result<Response> {
-    let (instances, default) = seams::visible_instances(app, &req.ctx)?;
+async fn instances(app: &App, req: &RequestHead) -> Result<Response> {
+    let (instances, default) = seams::visible_instances(app, &req.ctx).await?;
     Ok(json(
         200,
         &InstancesAnswer {
@@ -129,15 +130,7 @@ struct RefreshAnswer {
 
 async fn permission_refresh(app: &App, req: &RequestHead) -> Result<Response> {
     let instance = app.instance_of("", req.query.get("instance"))?;
-    crate::access::authorize(
-        app,
-        &req.ctx,
-        Operation {
-            use_ask: object_ask(app, ACTION_READ, instance, ""),
-            ..Operation::default()
-        },
-    )
-    .await?;
+    crate::access::authorize_read_bucket(app, &req.ctx, instance).await?;
     let ctx = req.ctx.with_timeout(Duration::from_secs(15));
     let capabilities = instance.refresh_capabilities(&ctx).await;
     Ok(json(
@@ -209,7 +202,7 @@ pub struct ListAnswer {
     pub sort_available: bool,
     /// The decisions at the node, in mode `authzen`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub access: Option<seams::ListAccess>,
+    pub access: Option<crate::access::display::ListAccess>,
 }
 
 /// Read pages of a listing: at most `max_pages` pages (0: no limit). Gives the pages and true when the scan read the
@@ -299,7 +292,7 @@ async fn list(app: &App, req: &RequestHead) -> Result<Response> {
     let instance = app.instance_of("", req.query.get("instance"))?;
     let prefix = clean_relative_key(req.query.get("prefix"));
     instance.require_permission(PERMISSION_READ)?;
-    let display = seams::list_display(app, &req.ctx, instance, &prefix)?;
+    let display = seams::list_display(app, &req.ctx, instance, &prefix).await?;
     let delimiter = if req.query.has("delimiter") {
         req.query.get("delimiter").to_owned()
     } else {
@@ -360,7 +353,7 @@ async fn list(app: &App, req: &RequestHead) -> Result<Response> {
     }
     sort_list_items(&mut items);
     if display.navigation {
-        items = seams::navigation_items(app, &req.ctx, instance, items)?;
+        items = seams::navigation_items(app, &req.ctx, instance, items).await?;
     }
     let answer_body = ListAnswer {
         instance: instance.cfg.id.clone(),
@@ -476,48 +469,6 @@ pub fn validate_prefix_operation(source: &str, target: &str) -> Result<(String, 
         ));
     }
     Ok((source, target))
-}
-
-/// Clean the source and the target of a copy or a move of one object. It makes no storage call.
-pub fn clean_object_pair(source: &str, target: &str) -> Result<(String, String)> {
-    let (source, target) = (clean_relative_key(source), clean_relative_key(target));
-    if source.is_empty() || target.is_empty() {
-        return Err(Error::api(400, "invalid_path", "src and dst are required"));
-    }
-    if source == target {
-        return Err(Error::api(400, "same_path", "src and dst must be different"));
-    }
-    Ok((source, target))
-}
-
-/// The permissions of a copy: read the source, then write the target (the use).
-pub fn copy_operation(app: &App, instance: &Instance, source: &str, target: &str) -> Operation {
-    Operation {
-        others: vec![object_ask(app, ACTION_READ, instance, source)],
-        use_ask: object_ask(app, ACTION_WRITE, instance, target),
-        continuation: false,
-    }
-}
-
-/// The permissions of a move: read the source and write the target, then delete the source (the use).
-pub fn move_operation(app: &App, instance: &Instance, source: &str, target: &str) -> Operation {
-    Operation {
-        others: vec![
-            object_ask(app, ACTION_READ, instance, source),
-            object_ask(app, ACTION_WRITE, instance, target),
-        ],
-        use_ask: object_ask(app, ACTION_DELETE, instance, source),
-        continuation: false,
-    }
-}
-
-/// The permissions of the delete of a prefix: read it, then delete it (the use).
-pub fn delete_prefix_operation(app: &App, instance: &Instance, prefix: &str) -> Operation {
-    Operation {
-        others: vec![object_ask(app, ACTION_READ, instance, prefix)],
-        use_ask: object_ask(app, ACTION_DELETE, instance, prefix),
-        continuation: false,
-    }
 }
 
 /// The ceilings that a job keeps: a copy of the ceilings of the request, or `None` in mode `open`.
@@ -789,9 +740,9 @@ async fn copy_or_rename(app: &App, req: Req, move_object: bool) -> Result<Respon
     }
     let operation = |source: &str, target: &str| {
         if move_object {
-            move_operation(app, instance, source, target)
+            app.access.move_operation(instance, source, target)
         } else {
-            copy_operation(app, instance, source, target)
+            app.access.copy_operation(instance, source, target)
         }
     };
     if request.is_prefix {
@@ -849,7 +800,7 @@ async fn delete_prefix(app: &App, req: Req) -> Result<Response> {
             "refusing to delete the whole bucket; prefix is required",
         ));
     }
-    crate::access::authorize(app, &ctx, delete_prefix_operation(app, instance, &prefix)).await?;
+    crate::access::authorize(app, &ctx, app.access.delete_prefix_operation(instance, &prefix)).await?;
     let job = app.jobs.create(JobState {
         job_type: job_type::DELETE_PREFIX.to_owned(),
         instance: instance.cfg.id.clone(),

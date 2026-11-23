@@ -182,7 +182,7 @@ impl Instance {
         if !self.versioning_available() {
             return prefixes;
         }
-        let flavour = super::info::provider_flavour(self, ctx).await;
+        let flavour = self.lifecycle_flavour(ctx).await;
         if matches!(flavour.as_str(), "aws" | "seaweedfs" | "garage") {
             return prefixes;
         }

@@ -2,7 +2,6 @@
 //! the XML form of S3) and `/open/` (an object with its own name, inline when a browser can show it).
 
 use std::pin::Pin;
-use std::sync::atomic::Ordering;
 use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll};
 
@@ -129,24 +128,7 @@ pub fn apply_open_original_headers(headers: &mut HeaderMap, key: &str, filename:
     headers.insert(ACCEPT_RANGES, HeaderValue::from_static("bytes"));
 }
 
-/// The headers of each answer with object bytes: the objects share the origin of the application, so an object that
-/// a browser can run (HTML, SVG) runs in a sandbox without access to the page.
-pub fn apply_object_safety_headers(headers: &mut HeaderMap) {
-    headers.insert(
-        http::header::CONTENT_SECURITY_POLICY,
-        HeaderValue::from_static(
-            "sandbox; default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline'",
-        ),
-    );
-    headers.insert(
-        HeaderName::from_static("cross-origin-resource-policy"),
-        HeaderValue::from_static("same-origin"),
-    );
-    headers.insert(
-        http::header::X_CONTENT_TYPE_OPTIONS,
-        HeaderValue::from_static("nosniff"),
-    );
-}
+pub use crate::common::mediatype::apply_object_safety_headers;
 
 /// A decimal integer with an optional sign.
 fn parse_i64(text: &str) -> Option<i64> {
@@ -371,19 +353,6 @@ pub fn key_from_gateway_path(req: &RequestHead) -> Result<String> {
     Ok(key)
 }
 
-/// The tags of an upload need an instance that keeps the tags: a provider without tags would drop them.
-fn require_tags(instance: &Instance, tags: &[crate::lifecycle::Tag]) -> Result<()> {
-    let available = instance.backend.tagger().is_some() && !instance.tags.off.load(Ordering::SeqCst);
-    if !tags.is_empty() && !available {
-        return Err(Error::api(
-            501,
-            "tagging_unsupported",
-            "this storage provider does not support object tags",
-        ));
-    }
-    Ok(())
-}
-
 /// The size of a request body: `Content-Length`, -1 for a chunked body, 0 for no body.
 fn request_body_size(headers: &HeaderMap) -> i64 {
     let length = header_text(headers, &CONTENT_LENGTH).trim();
@@ -495,7 +464,7 @@ async fn object_gateway(app: &Arc<App>, req: Req) -> Result<Response> {
         instance.require_permission(PERMISSION_WRITE)?;
         let digest = crate::uploads::parse_checksum_header(&req.headers)?;
         let tags = crate::lifecycle::parse_tagging_header(&req.headers)?;
-        require_tags(&instance, &tags)?;
+        instance.require_tags(&tags)?;
         // The decision comes before the read of the body.
         crate::access::authorize_use(app, &req.ctx, crate::access::ACTION_WRITE, &instance, &key).await?;
         let mut ctx = req.ctx.clone();
@@ -536,6 +505,8 @@ async fn object_gateway(app: &Arc<App>, req: Req) -> Result<Response> {
         return Ok(answer(204, HeaderMap::new(), empty()));
     }
     if method == Method::OPTIONS {
+        // The answer holds no data of the bucket: the request asks the action `access` on the service node.
+        crate::access::authorize_service(app, &req.ctx).await?;
         let mut headers = HeaderMap::new();
         headers.insert(ALLOW, HeaderValue::from_static("GET, HEAD, PUT, DELETE, OPTIONS"));
         return Ok(answer(204, headers, empty()));

@@ -1,12 +1,15 @@
-//! MD5 (RFC 1321) for the integrity of an archive entry: the digest that a person compares with a value of the
-//! provider or of another tool. It is not a security function.
+//! The MD5 digest (RFC 1321). S3 asks for it in the header `Content-MD5` of the batch delete, of the lifecycle and of
+//! the Object Lock requests. The integrity of an archive entry gives it to a person, who compares it with a value of
+//! the provider or of another tool. It is not a security function.
 
+/// The shift of each step.
 const SHIFTS: [u32; 64] = [
     7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
     4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15,
     21,
 ];
 
+/// The constant of each step: the integer part of `abs(sin(i + 1)) * 2^32`.
 const CONSTANTS: [u32; 64] = [
     0xd76a_a478,
     0xe8c7_b756,
@@ -173,6 +176,19 @@ impl Md5 {
     }
 }
 
+/// The MD5 digest of bytes.
+pub fn md5(data: &[u8]) -> [u8; 16] {
+    let mut digest = Md5::new();
+    digest.update(data);
+    digest.finish()
+}
+
+/// The value of the header `Content-MD5`: the base64 text of the digest.
+pub fn content_md5(data: &[u8]) -> String {
+    use base64::Engine as _;
+    base64::engine::general_purpose::STANDARD.encode(md5(data))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -187,20 +203,57 @@ mod tests {
     }
 
     #[test]
+    fn the_constants_are_the_sine_table() {
+        for (index, constant) in CONSTANTS.iter().enumerate() {
+            let expected = ((index as f64 + 1.0).sin().abs() * 4_294_967_296.0).floor() as u32;
+            assert_eq!(*constant, expected, "constant {index}");
+        }
+    }
+
+    #[test]
     fn the_digests_of_rfc_1321() {
-        assert_eq!(digest(&[b""]), "d41d8cd98f00b204e9800998ecf8427e");
-        assert_eq!(digest(&[b"a"]), "0cc175b9c0f1b6a831c399e269772661");
-        assert_eq!(digest(&[b"abc"]), "900150983cd24fb0d6963f7d28e17f72");
-        assert_eq!(digest(&[b"message digest"]), "f96b697d7cb7938d525a2f31aaf161d0");
-        assert_eq!(
-            digest(&[b"abcdefghijklmnopqrstuvwxyz"]),
-            "c3fcd3d76192e4007dfb496cca67e13b"
-        );
+        let cases: [(&str, &str); 7] = [
+            ("", "d41d8cd98f00b204e9800998ecf8427e"),
+            ("a", "0cc175b9c0f1b6a831c399e269772661"),
+            ("abc", "900150983cd24fb0d6963f7d28e17f72"),
+            ("message digest", "f96b697d7cb7938d525a2f31aaf161d0"),
+            ("abcdefghijklmnopqrstuvwxyz", "c3fcd3d76192e4007dfb496cca67e13b"),
+            (
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+                "d174ab98d277d9f5a5611c2c9f419d9f",
+            ),
+            (
+                "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+                "57edf4a22be3c955ac49da2e2107b67a",
+            ),
+        ];
+        for (text, want) in cases {
+            assert_eq!(hex(&md5(text.as_bytes())), want, "digest of {text:?}");
+            assert_eq!(digest(&[text.as_bytes()]), want, "streamed digest of {text:?}");
+        }
         let digits = b"12345678901234567890123456789012345678901234567890123456789012345678901234567890";
-        assert_eq!(digest(&[digits]), "57edf4a22be3c955ac49da2e2107b67a");
         assert_eq!(
             digest(&[&digits[..3], &digits[3..70], &digits[70..]]),
             "57edf4a22be3c955ac49da2e2107b67a"
         );
+    }
+
+    #[test]
+    fn each_length_around_a_block_gives_the_digest_of_one_update() {
+        let data: Vec<u8> = (0..200u8).collect();
+        for length in [55, 56, 57, 63, 64, 65, 119, 120, 128, 200] {
+            let whole = md5(&data[..length]);
+            let mut parts = Md5::new();
+            for chunk in data[..length].chunks(7) {
+                parts.update(chunk);
+            }
+            assert_eq!(parts.finish(), whole, "length {length}");
+        }
+        assert_ne!(md5(&data[..55]), md5(&data[..56]));
+    }
+
+    #[test]
+    fn the_header_value_is_the_base64_digest() {
+        assert_eq!(content_md5(b""), "1B2M2Y8AsgTpgAmY7PhCfg==");
     }
 }

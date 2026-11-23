@@ -17,7 +17,7 @@ use crate::common::BoxFuture;
 use crate::common::app::App;
 use crate::common::config::{AuthConfig, Provider};
 use crate::common::ctx::OpCtx;
-use crate::common::error::{Error, Result};
+use crate::common::error::Result;
 use crate::common::http::{Body, empty};
 use crate::common::storage::{CompletedPart, MultipartPart, ObjectResponse};
 use crate::instance::Instance;
@@ -198,16 +198,7 @@ impl UploadTarget for InstanceTarget {
     }
 
     fn require_tags(&self, tags: &[Tag]) -> Result<()> {
-        let available = self.instance.backend.tagger().is_some()
-            && !self.instance.tags.off.load(std::sync::atomic::Ordering::SeqCst);
-        if !tags.is_empty() && !available {
-            return Err(Error::api(
-                501,
-                "tagging_unsupported",
-                "this storage provider does not support object tags",
-            ));
-        }
-        Ok(())
+        self.instance.require_tags(tags)
     }
 
     fn put_empty<'a>(&'a self, ctx: &'a OpCtx, key: &'a str, content_type: &'a str) -> BoxFuture<'a, Result<()>> {
@@ -414,56 +405,4 @@ pub fn initiation_context(ctx: &OpCtx, checksum: &str) -> OpCtx {
         next.checksum = Some(Arc::new(ChecksumTransfer::default()));
     }
     next
-}
-
-/// Validate the tags of a request with the limits of S3: 10 tags, a key of 1 to 128 characters that is unique and does
-/// not start with `aws:`, and a value of 0 to 256 characters. A tag has letters, digits, spaces and `+ - = . _ : / @`
-/// only.
-pub(super) fn validate_upload_tags(tags: &[Tag]) -> Result<()> {
-    const MAXIMUM_TAGS: usize = 10;
-    const MAXIMUM_KEY_CHARACTERS: usize = 128;
-    const MAXIMUM_VALUE_CHARACTERS: usize = 256;
-    let invalid = |message: String| Error::api(400, "invalid_tags", message);
-    if tags.len() > MAXIMUM_TAGS {
-        return Err(invalid(format!(
-            "an object has at most {MAXIMUM_TAGS} tags, got {}",
-            tags.len()
-        )));
-    }
-    let mut seen = std::collections::BTreeSet::new();
-    for tag in tags {
-        let key_length = tag.key.chars().count();
-        if key_length == 0 || key_length > MAXIMUM_KEY_CHARACTERS {
-            return Err(invalid(format!(
-                "a tag key has 1 to {MAXIMUM_KEY_CHARACTERS} characters, got {key_length}"
-            )));
-        }
-        if tag.value.chars().count() > MAXIMUM_VALUE_CHARACTERS {
-            return Err(invalid(format!(
-                "the value of the tag {:?} has at most {MAXIMUM_VALUE_CHARACTERS} characters",
-                tag.key
-            )));
-        }
-        if tag.key.to_lowercase().starts_with("aws:") {
-            return Err(invalid(format!(
-                "the tag key {:?} starts with the reserved prefix aws:",
-                tag.key
-            )));
-        }
-        if !valid_tag_text(&tag.key) || !valid_tag_text(&tag.value) {
-            return Err(invalid(format!(
-                "the tag {:?} has a character that S3 does not allow: use letters, digits, spaces and + - = . _ : / @",
-                tag.key
-            )));
-        }
-        if !seen.insert(tag.key.as_str()) {
-            return Err(invalid(format!("the tag key {:?} is twice in the request", tag.key)));
-        }
-    }
-    Ok(())
-}
-
-fn valid_tag_text(text: &str) -> bool {
-    text.chars()
-        .all(|c| c.is_alphabetic() || c.is_numeric() || c.is_whitespace() || "+-=._:/@".contains(c))
 }

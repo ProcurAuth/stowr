@@ -339,8 +339,7 @@ async fn the_s3_requests_of_object_lock_send_the_right_queries_and_documents() {
             "<Retention xmlns=\"{NAMESPACE}\"><Mode>COMPLIANCE</Mode><RetainUntilDate>2027-01-02T03:04:05Z</RetainUntilDate></Retention>"
         )
     );
-    use base64::Engine as _;
-    let digest = base64::engine::general_purpose::STANDARD.encode(crate::bucket::support::md5(put.body.as_bytes()));
+    let digest = crate::common::md5::content_md5(put.body.as_bytes());
     assert_eq!(put.header("content-md5"), digest);
     let bypass = &requests[4];
     assert_eq!(bypass.header("x-amz-bypass-governance-retention"), "true");

@@ -663,28 +663,7 @@ pub fn log_token(value: &str) -> String {
 
 /// A text in double quotes for a log line: `"` and `\` get a `\`, a control character gets its escape.
 pub fn quote(value: &str) -> String {
-    let mut out = String::with_capacity(value.len() + 2);
-    out.push('"');
-    for c in value.chars() {
-        match c {
-            '"' => out.push_str("\\\""),
-            '\\' => out.push_str("\\\\"),
-            '\u{7}' => out.push_str("\\a"),
-            '\u{8}' => out.push_str("\\b"),
-            '\u{c}' => out.push_str("\\f"),
-            '\n' => out.push_str("\\n"),
-            '\r' => out.push_str("\\r"),
-            '\t' => out.push_str("\\t"),
-            '\u{b}' => out.push_str("\\v"),
-            c if (c as u32) < 0x20 || c as u32 == 0x7f => out.push_str(&format!("\\x{:02x}", c as u32)),
-            c if c.is_control() || (c.is_whitespace() && c != ' ') => {
-                out.push_str(&format!("\\u{:04x}", c as u32));
-            }
-            c => out.push(c),
-        }
-    }
-    out.push('"');
-    out
+    crate::config::quote::quote(value)
 }
 
 /// The JSON formatter of the access routes: the form of the answers without the escape of `<`, `>` and `&`.

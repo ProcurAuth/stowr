@@ -3,118 +3,10 @@
 //! The module gives the media type of a file name and the rules of inline display. It also gives the active types
 //! that never display inline, the sandbox headers and the value of `Content-Disposition`.
 
-use http::HeaderMap;
-use http::header::{HeaderName, HeaderValue};
-
-use super::names::path_ext;
-
-/// The media types of the previews, by extension (lower case, with the dot).
-const PREVIEW_TYPES: &[(&str, &str)] = &[
-    (".mp4", "video/mp4"),
-    (".m4v", "video/x-m4v"),
-    (".mov", "video/quicktime"),
-    (".webm", "video/webm"),
-    (".mkv", "video/x-matroska"),
-    (".mxf", "application/mxf"),
-    (".avi", "video/x-msvideo"),
-    (".ogv", "video/ogg"),
-    (".mpg", "video/mpeg"),
-    (".mpeg", "video/mpeg"),
-    (".m2ts", "video/mp2t"),
-    (".mts", "video/mp2t"),
-    (".ts", "video/mp2t"),
-    (".vob", "video/dvd"),
-    (".mp3", "audio/mpeg"),
-    (".m4a", "audio/mp4"),
-    (".aac", "audio/aac"),
-    (".flac", "audio/flac"),
-    (".wav", "audio/wav"),
-    (".ogg", "audio/ogg"),
-    (".opus", "audio/ogg; codecs=opus"),
-    (".aif", "audio/aiff"),
-    (".aiff", "audio/aiff"),
-    (".jpg", "image/jpeg"),
-    (".jpeg", "image/jpeg"),
-    (".png", "image/png"),
-    (".gif", "image/gif"),
-    (".webp", "image/webp"),
-    (".avif", "image/avif"),
-    (".svg", "image/svg+xml"),
-    (".bmp", "image/bmp"),
-    (".ico", "image/x-icon"),
-    (".vcf", "text/vcard; charset=utf-8"),
-    (".vcard", "text/vcard; charset=utf-8"),
-    (".ics", "text/calendar; charset=utf-8"),
-    (".ifb", "text/calendar; charset=utf-8"),
-    (".eml", "message/rfc822"),
-    (".mime", "message/rfc822"),
-    (".pem", "application/x-pem-file"),
-    (".crt", "application/x-x509-ca-cert"),
-    (".cer", "application/pkix-cert"),
-    (".der", "application/pkix-cert"),
-    (".tif", "image/tiff"),
-    (".tiff", "image/tiff"),
-    (".pdf", "application/pdf"),
-];
-
-/// The built-in table of media types by extension.
-const EXTENSION_TYPES: &[(&str, &str)] = &[
-    (".avif", "image/avif"),
-    (".css", "text/css; charset=utf-8"),
-    (".gif", "image/gif"),
-    (".htm", "text/html; charset=utf-8"),
-    (".html", "text/html; charset=utf-8"),
-    (".jpeg", "image/jpeg"),
-    (".jpg", "image/jpeg"),
-    (".js", "text/javascript; charset=utf-8"),
-    (".json", "application/json"),
-    (".mjs", "text/javascript; charset=utf-8"),
-    (".pdf", "application/pdf"),
-    (".png", "image/png"),
-    (".svg", "image/svg+xml"),
-    (".wasm", "application/wasm"),
-    (".webp", "image/webp"),
-    (".xml", "text/xml; charset=utf-8"),
-];
-
-/// The extensions that a browser displays inline.
-const INLINE_EXTENSIONS: &[&str] = &[
-    ".pdf", ".txt", ".log", ".css", ".json", ".xml", ".html", ".htm", ".png", ".jpg", ".jpeg", ".gif", ".webp",
-    ".avif", ".bmp", ".ico", ".svg", ".mp3", ".m4a", ".aac", ".flac", ".wav", ".ogg", ".oga", ".opus", ".mp4", ".m4v",
-    ".mov", ".webm", ".ogv",
-];
-
-/// The media types that a browser displays inline.
-const INLINE_TYPES: &[&str] = &[
-    "application/pdf",
-    "text/plain",
-    "text/css",
-    "text/html",
-    "application/json",
-    "application/xml",
-    "text/xml",
-    "image/png",
-    "image/jpeg",
-    "image/gif",
-    "image/webp",
-    "image/avif",
-    "image/bmp",
-    "image/x-icon",
-    "image/vnd.microsoft.icon",
-    "image/svg+xml",
-    "audio/mpeg",
-    "audio/mp4",
-    "audio/aac",
-    "audio/flac",
-    "audio/wav",
-    "audio/x-wav",
-    "audio/ogg",
-    "audio/opus",
-    "video/mp4",
-    "video/quicktime",
-    "video/webm",
-    "video/ogg",
-];
+use crate::common::mediatype::base_media_type;
+pub use crate::common::mediatype::{
+    apply_object_safety_headers, browser_inline_content, path_ext, preview_content_type, type_by_extension,
+};
 
 /// The extensions of the documents and scripts that a browser can run.
 const ACTIVE_EXTENSIONS: &[&str] = &[
@@ -122,47 +14,13 @@ const ACTIVE_EXTENSIONS: &[&str] = &[
     ".wasm", ".hta",
 ];
 
-fn lookup(table: &[(&str, &'static str)], key: &str) -> Option<&'static str> {
-    table
-        .iter()
-        .find(|(extension, _)| *extension == key)
-        .map(|(_, value)| *value)
-}
-
-/// The media type of an extension in the built-in table (the case of the extension does not matter), or an empty
-/// text.
-pub fn type_by_extension(extension: &str) -> &'static str {
-    lookup(EXTENSION_TYPES, &extension.to_ascii_lowercase()).unwrap_or("")
-}
-
-/// The media type of a key for the previews: the table of the previews, else the built-in table, else an empty
-/// text.
-pub fn preview_content_type(key: &str) -> &'static str {
-    let extension = path_ext(key).to_lowercase();
-    lookup(PREVIEW_TYPES, &extension).unwrap_or_else(|| type_by_extension(&extension))
-}
-
-/// The media type of a `Content-Type` value: the part before `;`, without spaces, in lower case.
-fn media_type(content_type: &str) -> String {
-    content_type.split(';').next().unwrap_or("").trim().to_lowercase()
-}
-
-/// True when a browser displays the content inline without a plug-in: by the extension, else by the media type.
-pub fn browser_inline_content(key: &str, content_type: &str) -> bool {
-    let extension = path_ext(key).to_lowercase();
-    if INLINE_EXTENSIONS.contains(&extension.as_str()) {
-        return true;
-    }
-    INLINE_TYPES.contains(&media_type(content_type).as_str())
-}
-
 /// True for an entry that a browser can run as a document or a script on the origin of the application: HTML, SVG,
 /// XML, XSL, JavaScript, WebAssembly, HTA.
 pub fn archive_entry_active_content(filename: &str, content_type: &str) -> bool {
     if ACTIVE_EXTENSIONS.contains(&path_ext(filename).to_lowercase().as_str()) {
         return true;
     }
-    let media = media_type(content_type);
+    let media = base_media_type(content_type);
     matches!(
         media.as_str(),
         "text/html" | "image/svg+xml" | "text/xml" | "application/xml" | "application/wasm" | "text/xsl"
@@ -174,24 +32,6 @@ pub fn archive_entry_active_content(filename: &str, content_type: &str) -> bool 
 /// True for an SVG image: by the extension or by the media type.
 pub fn is_svg_content(filename: &str, content_type: &str) -> bool {
     path_ext(filename).eq_ignore_ascii_case(".svg") || content_type.trim().to_lowercase().starts_with("image/svg+xml")
-}
-
-/// The sandbox headers of each answer that carries object bytes.
-pub fn apply_object_safety_headers(headers: &mut HeaderMap) {
-    headers.insert(
-        HeaderName::from_static("content-security-policy"),
-        HeaderValue::from_static(
-            "sandbox; default-src 'none'; img-src data: blob:; media-src data: blob:; style-src 'unsafe-inline'",
-        ),
-    );
-    headers.insert(
-        HeaderName::from_static("cross-origin-resource-policy"),
-        HeaderValue::from_static("same-origin"),
-    );
-    headers.insert(
-        HeaderName::from_static("x-content-type-options"),
-        HeaderValue::from_static("nosniff"),
-    );
 }
 
 fn is_tspecial(byte: u8) -> bool {

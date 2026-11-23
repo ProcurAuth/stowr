@@ -1,10 +1,9 @@
 //! The tests of the helpers: the MD5 digest, the XML tree, the quoting, the URL of an admin API and the signature.
 
 use crate::bucket::sign::{SigningInput, amz_date, authorization, canonical_query, sha256_hex};
-use crate::bucket::support::{
-    aws_uri_encode, copy_source_header, embedded_error, md5, parse_xml, printable_ascii, quote,
-};
+use crate::bucket::support::{aws_uri_encode, copy_source_header, embedded_error, parse_xml, printable_ascii, quote};
 use crate::bucket::usage_admin::{AdminUrl, join_host_port, split_host_port};
+use crate::common::md5::md5;
 use crate::common::misc::hex;
 use crate::common::time::Timestamp;
 

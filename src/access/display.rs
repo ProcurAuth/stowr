@@ -17,8 +17,9 @@ use super::{
 use crate::common::config::{PERMISSION_DELETE, PERMISSION_READ, PERMISSION_WRITE};
 use crate::common::ctx::OpCtx;
 use crate::common::error::Result;
-use crate::common::storage::{Capabilities, CapabilityState, CapabilityStateName};
+use crate::common::storage::Capabilities;
 use crate::instance::Instance;
+use crate::instance::capability::denied;
 
 /// The actions of the display questions on a bucket node, in the order of the questions.
 pub const DISPLAY_ACTIONS: [&str; 5] = [
@@ -69,74 +70,11 @@ impl std::fmt::Debug for VisibleInstance {
     }
 }
 
-/// A denied state with a source, a reason and the proof flag.
-fn denied(source: &str, reason: &str, verified: bool) -> CapabilityState {
-    CapabilityState {
-        state: CapabilityStateName::Denied,
-        allowed: false,
-        verified,
-        source: source.to_owned(),
-        reason: reason.to_owned(),
-        expires: None,
-    }
-}
-
 /// The state of several permissions together: the first denial, else unknown when one is unknown, else allowed.
 /// The reasons join with `; `.
-pub fn combine_states(states: &[&CapabilityState]) -> CapabilityState {
-    if states.is_empty() {
-        return denied("application", "operation is not implemented", true);
-    }
-    let mut unknown = false;
-    let mut reasons: Vec<&str> = Vec::new();
-    for state in states {
-        if !state.reason.is_empty() && !reasons.contains(&state.reason.as_str()) {
-            reasons.push(&state.reason);
-        }
-        match state.state {
-            CapabilityStateName::Denied => return denied(&state.source, &state.reason, state.verified),
-            CapabilityStateName::Unknown => unknown = true,
-            CapabilityStateName::Allowed => {}
-        }
-    }
-    let reason = reasons.join("; ");
-    if unknown {
-        CapabilityState {
-            state: CapabilityStateName::Unknown,
-            allowed: true,
-            verified: false,
-            source: "derived".to_owned(),
-            reason,
-            expires: None,
-        }
-    } else {
-        CapabilityState {
-            state: CapabilityStateName::Allowed,
-            allowed: true,
-            verified: true,
-            source: "derived".to_owned(),
-            reason,
-            expires: None,
-        }
-    }
-}
-
+pub use crate::instance::capability::combine as combine_states;
 /// The operations of an instance from its three permissions.
-pub fn operations_of(caps: &Capabilities) -> BTreeMap<String, CapabilityState> {
-    let (read, write, remove) = (&caps.read, &caps.write, &caps.delete);
-    let mut out = BTreeMap::new();
-    for name in ["list", "preview", "download"] {
-        out.insert(name.to_owned(), read.clone());
-    }
-    for name in ["upload", "overwrite", "createFolder"] {
-        out.insert(name.to_owned(), write.clone());
-    }
-    out.insert("copy".to_owned(), combine_states(&[read, write]));
-    out.insert("move".to_owned(), combine_states(&[read, write, remove]));
-    out.insert("rename".to_owned(), combine_states(&[read, write, remove]));
-    out.insert("delete".to_owned(), remove.clone());
-    out
-}
+pub use crate::instance::capability::operation_capabilities as operations_of;
 
 /// Mark as denied, with the source `access`, each permission whose action the person holds nowhere in the bucket.
 /// The caller computes the operations again with [`operations_of`]. This is display only: the server still checks

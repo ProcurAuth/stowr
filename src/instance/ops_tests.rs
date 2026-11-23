@@ -127,7 +127,7 @@ fn delimited() -> ListOptions {
 
 #[tokio::test]
 async fn the_folder_of_a_delete_marker_leaves_the_listing_of_minio_with_versions() {
-    let (instance, backend) = ghost_instance(info::FLAVOUR_MINIO, true);
+    let (instance, backend) = ghost_instance(crate::lifecycle::FLAVOUR_MINIO, true);
     let page = instance.list(&OpCtx::default(), &delimited()).await.unwrap();
     let got: std::collections::BTreeSet<&str> = page.prefixes.iter().map(String::as_str).collect();
     assert!(
@@ -139,16 +139,16 @@ async fn the_folder_of_a_delete_marker_leaves_the_listing_of_minio_with_versions
     // The probes are bounded: the folders after the limit stay without a probe.
     assert_eq!(backend.probes.load(Ordering::SeqCst), ops::MAX_PREFIX_PROBES as i64);
     assert!(got.contains("many-249/"));
-    assert_eq!(info::known_flavour(&instance), "minio");
+    assert_eq!(instance.known_flavour(), "minio");
 }
 
 #[tokio::test]
 async fn each_folder_stays_where_the_provider_has_no_such_folder() {
     for (flavour, versioning) in [
-        (info::FLAVOUR_SEAWEEDFS, true),
-        (info::FLAVOUR_AWS, true),
-        (info::FLAVOUR_GARAGE, true),
-        (info::FLAVOUR_MINIO, false),
+        (crate::lifecycle::FLAVOUR_SEAWEEDFS, true),
+        (crate::lifecycle::FLAVOUR_AWS, true),
+        (crate::lifecycle::FLAVOUR_GARAGE, true),
+        (crate::lifecycle::FLAVOUR_MINIO, false),
     ] {
         let (instance, backend) = ghost_instance(flavour, versioning);
         let page = instance.list(&OpCtx::default(), &delimited()).await.unwrap();
@@ -159,7 +159,7 @@ async fn each_folder_stays_where_the_provider_has_no_such_folder() {
 
 #[tokio::test]
 async fn a_listing_without_a_delimiter_adds_no_probe() {
-    let (instance, backend) = ghost_instance(info::FLAVOUR_MINIO, true);
+    let (instance, backend) = ghost_instance(crate::lifecycle::FLAVOUR_MINIO, true);
     let options = ListOptions {
         prefix: "live/".to_owned(),
         ..ListOptions::default()
@@ -170,7 +170,7 @@ async fn a_listing_without_a_delimiter_adds_no_probe() {
 
 #[tokio::test]
 async fn the_probes_of_the_folders_count_in_the_budget() {
-    let (instance, _) = ghost_instance(info::FLAVOUR_MINIO, true);
+    let (instance, _) = ghost_instance(crate::lifecycle::FLAVOUR_MINIO, true);
     let budget = Arc::new(Budget::new(0, 0));
     instance
         .list(&OpCtx::with_budget(budget.clone()), &delimited())
@@ -900,7 +900,7 @@ async fn the_versioning_probe_hides_a_provider_without_versions() {
 
 #[tokio::test]
 async fn the_versioning_probe_reads_the_status_of_the_bucket() {
-    let (instance, _) = ghost_instance(info::FLAVOUR_MINIO, false);
+    let (instance, _) = ghost_instance(crate::lifecycle::FLAVOUR_MINIO, false);
     // The ghost lister has no version store: the probe finds no versions.
     assert!(!instance.probe_versioning(&OpCtx::default()).await);
     assert_eq!(instance.versioning_state(), Some("off"));
