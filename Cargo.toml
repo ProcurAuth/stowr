@@ -1,0 +1,69 @@
+[package]
+name = "stowr"
+version = "0.2.1"
+edition = "2024"
+rust-version = "1.99"
+license = "Apache-2.0"
+description = "A self-contained browser for S3-compatible storage, Google Cloud Storage and folders of the server"
+repository = "https://github.com/SCcagg5/stowr"
+publish = false
+build = "build.rs"
+
+[lib]
+name = "stowr"
+path = "src/lib.rs"
+
+[[bin]]
+name = "stowr"
+path = "src/main.rs"
+
+# Each version is exact. docs/DEVELOPMENT.md gives the reason of each crate.
+[dependencies]
+# The asynchronous runtime: the listener, the timers, the signals and the tasks of the jobs.
+tokio = { version = "=1.53.1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "signal", "macros", "io-util"] }
+# The HTTP/1.1 server and the HTTP/1.1 client of the providers.
+hyper = { version = "=1.11.0", default-features = false, features = ["http1", "server", "client"] }
+hyper-util = { version = "=0.1.20", default-features = false, features = ["tokio", "client-legacy", "http1"] }
+http = { version = "=1.5.0", default-features = false, features = ["std"] }
+http-body = "=1.1.0"
+http-body-util = "=0.1.4"
+bytes = "=1.12.1"
+# TLS to the providers and to the PDP, with the aws-lc provider. No system proxy, no environment variable.
+rustls = { version = "=0.23.46", default-features = false, features = ["std", "tls12", "aws_lc_rs"] }
+tokio-rustls = { version = "=0.26.6", default-features = false, features = ["tls12", "aws_lc_rs"] }
+hyper-rustls = { version = "=0.27.10", default-features = false, features = ["http1", "tls12", "aws-lc-rs"] }
+# SHA-256, HMAC, AES-GCM, RSA signatures, random bytes.
+aws-lc-rs = { version = "=1.18.1", default-features = false, features = ["aws-lc-sys", "alloc"] }
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.151"
+# Deflate, gzip and zlib with the pure Rust back end.
+flate2 = { version = "=1.1.11", default-features = false, features = ["rust_backend"] }
+# The pull reader of XML: provider answers, Office Open XML parts, EPUB, SVG headers.
+quick-xml = { version = "=0.42.0", default-features = false }
+base64 = "=0.22.1"
+# statfs, O_NOFOLLOW and the error numbers of the volume back end.
+libc = "=0.2.191"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = "symbols"
+# A panic in a job or in a request handler stops that task only: the job fails, the server goes on.
+panic = "unwind"
+
+[lints.rust]
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+exit = "deny"

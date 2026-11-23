@@ -1,0 +1,7 @@
+# Image for the static Linux program: the development image plus the musl target and the musl C compiler.
+# The C code of the cryptography library (aws-lc) compiles with musl-gcc for this target.
+FROM stowr-dev:1
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends musl-tools file \
+    && rm -rf /var/lib/apt/lists/* \
+    && rustup target add x86_64-unknown-linux-musl
