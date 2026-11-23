@@ -134,6 +134,7 @@ impl AccessLayer {
             return Ok((visible, default));
         }
         let request = ctx.access.as_deref().ok_or_else(unauthenticated)?;
+        let who = request.identity();
         let mut slots: Vec<(usize, &'static str)> = Vec::new();
         let mut asks: Vec<Ask> = Vec::new();
         for (position, instance) in instances.iter().enumerate() {
@@ -151,7 +152,7 @@ impl AccessLayer {
         } else {
             run_guarded(
                 ctx,
-                || self.guard.display(&request.request_id, &request.subject, &asks),
+                || self.guard.display(&request.request_id, &who, &asks),
                 || vec![Answer::failure(); count],
             )
             .await
@@ -195,6 +196,7 @@ impl AccessLayer {
             return Ok(ListDisplay::default());
         }
         let request = ctx.access.as_deref().ok_or_else(unauthenticated)?;
+        let who = request.identity();
         if !self.document.published(ACTION_READ) {
             return Err(forbidden(ACTION_READ));
         }
@@ -215,7 +217,7 @@ impl AccessLayer {
         let count = asks.len();
         let answers = run_guarded(
             ctx,
-            || self.guard.decide(&request.request_id, &request.subject, &asks, false),
+            || self.guard.decide(&request.request_id, &who, &asks),
             || vec![Answer::failure(); count],
         )
         .await;
@@ -269,6 +271,7 @@ impl AccessLayer {
         prefixes: &[Option<&str>],
     ) -> Result<Vec<bool>> {
         let request = ctx.access.as_deref().ok_or_else(unauthenticated)?;
+        let who = request.identity();
         let mut asks: Vec<Ask> = Vec::new();
         let mut index_of: BTreeMap<String, usize> = BTreeMap::new();
         let mut node_of: Vec<Option<usize>> = Vec::with_capacity(prefixes.len());
@@ -291,7 +294,7 @@ impl AccessLayer {
         let count = asks.len();
         let answers = run_guarded(
             ctx,
-            || self.guard.display(&request.request_id, &request.subject, &asks),
+            || self.guard.display(&request.request_id, &who, &asks),
             || vec![Answer::failure(); count],
         )
         .await;

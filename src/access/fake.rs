@@ -1,13 +1,12 @@
-//! The fake guard of the tests: a fake PDP and a fake check of the token behind [`AccessGuard`].
+//! The fake PDP of the tests, behind the real guard of the mode `authzen`.
 //!
-//! The fake follows the rules of a real guard: one question is one Access Evaluation; two or more questions are
-//! Access Evaluations requests of `max_evaluations` items at most; a repeated question of one call goes one time;
-//! one deadline (`timeout`) covers a call without usage; a usage question waits for [`usage_wait`]; a failed request
-//! stops the call, and each question without an answer fails; the answers of the PDP follow the rules of an answer
-//! (a JSON boolean `decision`, a whole `retry_after` of 1 or more with `budget_exceeded`, whole limits of 0 or more,
-//! `units` 0 or 1); a true answer to a usage question without `units` is false; the kept answers follow ProcurAuth
-//! 10.1 (two tables, `permission_only` and the match in the key, no failure, no reason of an approval, no true
-//! answer with one unit).
+//! [`FakePdp`] is an [`AccessGuard`]. It checks the token with a table of texts that the test gives. It asks each
+//! question through the real guard ([`PepGuard`]) and the library `procurauth-pep`, over a fake transport: the fake
+//! PDP. The fake PDP records each request and gives the answers of a function that the test gives. It can also fail:
+//! an HTTP status, a delay, a body, a lost connection.
+//!
+//! The time does not run: the clock of the guard is a manual clock. A delay of the fake PDP moves the clock. A delay
+//! longer than the wait of the request makes the request fail at once.
 //!
 //! Use it as follows:
 //!
@@ -18,24 +17,34 @@
 //! fake.questions()  // each question, also the items of a batch
 //! fake.requests()   // the number of requests to the PDP
 //! ```
-//!
-//! The time does not run: a delay longer than the deadline makes a request fail at once.
 
-use std::collections::{BTreeMap, HashMap};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use http::HeaderMap;
-use serde_json::{Map, Value, json};
+use procurauth_core::jws::{KeySet, SigningKey};
+use procurauth_pep::clock::{Clock, ManualClock};
+use procurauth_pep::transport::{HttpResponse, PdpTransport, TransportError};
+use serde_json::{Value, json};
 
-use super::guard::{AccessGuard, Answer, Ask, Identity, REASON_BUDGET, is_approval_reason, usage_wait};
-use super::tree::{Node, Resource};
+use super::actions::ActionDocument;
+use super::guard::{AccessGuard, Answer, Ask, Identity, OperationAnswers};
+use super::pdp_link::{REQUEST_ID_HEADER, describe};
+use super::pep_guard::{CACHE_ENTRIES, Parts, PepGuard};
+use super::tree::Node;
 use crate::common::BoxFuture;
+use crate::common::config::Config;
+use crate::common::error::Result;
+
+pub use super::pdp_link::parse_answer;
 
 /// The path of one Access Evaluation.
 pub const EVALUATION_PATH: &str = "/access/v1/evaluation";
 /// The path of an Access Evaluations request.
 pub const EVALUATIONS_PATH: &str = "/access/v1/evaluations";
+/// The path of the metadata of the PDP.
+pub const METADATA_PATH: &str = "/.well-known/authzen-configuration";
 
 /// One question that the fake PDP received. A batch gives one record for each item.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -98,19 +107,14 @@ impl Default for FakeSettings {
             usage_max_seconds: None,
             cache_ttl: Duration::ZERO,
             max_evaluations: 64,
-            max_entries: 16384,
+            max_entries: CACHE_ENTRIES,
         }
     }
 }
 
 type AnswerFn = Arc<dyn Fn(&FakeQuestion) -> Value + Send + Sync>;
 
-#[derive(Clone)]
-struct Kept {
-    answer: Answer,
-    expires_ms: u64,
-}
-
+/// The state of the fake PDP: the answers, the failures and the records.
 #[derive(Default)]
 struct State {
     answer: Option<AnswerFn>,
@@ -118,26 +122,24 @@ struct State {
     delay: Duration,
     raw: Option<Vec<u8>>,
     close_connection: bool,
+    usage_max_seconds: Option<u64>,
     questions: Vec<FakeQuestion>,
     requests: Vec<FakeRequest>,
-    now_ms: u64,
-    plain_kept: HashMap<String, Kept>,
-    usage_kept: HashMap<String, Kept>,
-    tokens: BTreeMap<String, Identity>,
-    refusals: BTreeMap<String, String>,
 }
 
-/// The fake guard.
-pub struct FakePdp {
+/// The fake PDP: the transport of the guard.
+struct FakeServer {
     state: Mutex<State>,
-    settings: Mutex<FakeSettings>,
-    header: String,
+    clock: ManualClock,
+    base: String,
 }
 
-impl Default for FakePdp {
-    fn default() -> Self {
-        Self::new()
-    }
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn millis(duration: Duration) -> u64 {
+    u64::try_from(duration.as_millis()).unwrap_or(u64::MAX)
 }
 
 /// The text form of an id in a path, written again here: a fault in the encoder of the service cannot hide itself.
@@ -153,86 +155,182 @@ fn encode_id(id: &str) -> String {
     out
 }
 
-/// Read a JSON integer without fraction, exponent or sign, of 18 digits at most.
-fn whole(value: &Value) -> Option<u64> {
-    let text = value.as_number()?.to_string();
-    if text.is_empty() || text.len() > 18 || !text.bytes().all(|byte| byte.is_ascii_digit()) {
-        return None;
-    }
-    text.parse().ok()
-}
-
-/// Read the answer to one question with the rules of an answer. `None` for an answer that is not valid.
-pub fn parse_answer(value: &Value, usage: bool) -> Option<Answer> {
-    let members = value.as_object()?;
-    let decision = members.get("decision")?.as_bool()?;
-    let mut answer = Answer {
-        decision,
-        ..Answer::default()
+/// The questions of the JSON body of a request.
+fn questions_of(body: &Value, request_id: &str) -> Vec<FakeQuestion> {
+    let (kind, _, batch) = describe(body);
+    let subject = body
+        .get("subject")
+        .and_then(|subject| subject.get("id"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let items: Vec<&Value> = match body.get("evaluations").and_then(Value::as_array) {
+        Some(items) => items.iter().collect(),
+        None => vec![body],
     };
-    if let Some(context) = members.get("context") {
-        let context = context.as_object()?;
-        let reason = match context.get("reason") {
-            None => String::new(),
-            Some(reason) => reason.as_str()?.to_owned(),
-        };
-        if !decision {
-            if reason == REASON_BUDGET {
-                let retry = whole(context.get("retry_after")?)?;
-                if retry < 1 {
-                    return None;
-                }
-                answer.retry_after = retry;
+    items
+        .into_iter()
+        .map(|item| {
+            let text = |value: Option<&Value>, name: &str| {
+                value
+                    .and_then(|value| value.get(name))
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_owned()
+            };
+            let resource = item.get("resource");
+            let ancestors: Vec<Node> = resource
+                .and_then(|resource| resource.get("properties"))
+                .and_then(|properties| properties.get("ancestors"))
+                .and_then(Value::as_array)
+                .map(|list| {
+                    list.iter()
+                        .map(|node| Node::new(&text(Some(node), "type"), &text(Some(node), "id")))
+                        .collect()
+                })
+                .unwrap_or_default();
+            let resource_type = text(resource, "type");
+            let resource_id = text(resource, "id");
+            let mut parts: Vec<String> = ancestors
+                .iter()
+                .map(|node| format!("{}:{}", node.node_type, encode_id(&node.id)))
+                .collect();
+            parts.push(format!("{resource_type}:{}", encode_id(&resource_id)));
+            FakeQuestion {
+                subject: subject.clone(),
+                action: text(item.get("action"), "name"),
+                resource_type,
+                resource_id,
+                ancestors,
+                path: parts.join("/"),
+                match_mode: if kind.subtree { "subtree" } else { "node" }.to_owned(),
+                usage: kind.usage,
+                permission_only: kind.permission_only,
+                batch,
+                request_id: request_id.to_owned(),
             }
-            answer.reason = reason;
+        })
+        .collect()
+}
+
+impl PdpTransport for FakeServer {
+    fn supports_scheme(&self, scheme: &str) -> bool {
+        scheme == "http" || scheme == "https"
+    }
+
+    fn post_json(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        body: &[u8],
+        timeout: Duration,
+    ) -> std::result::Result<HttpResponse, TransportError> {
+        let value: Value = serde_json::from_slice(body).unwrap_or(Value::Null);
+        let request_id = headers
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(REQUEST_ID_HEADER))
+            .map(|(_, value)| value.clone())
+            .unwrap_or_default();
+        let questions = questions_of(&value, &request_id);
+        let path = if url.ends_with(EVALUATIONS_PATH) {
+            EVALUATIONS_PATH
         } else {
-            if let Some(limits) = context.get("limits") {
-                for (name, value) in limits.as_object()? {
-                    answer.limits.insert(name.clone(), i64::try_from(whole(value)?).ok()?);
-                }
-            }
-            if let Some(usage) = context.get("usage")
-                && let Some(units) = usage.as_object()?.get("units")
-            {
-                let units = whole(units)?;
-                if units > 1 {
-                    return None;
-                }
-                answer.units = Some(units);
-            }
+            EVALUATION_PATH
+        };
+        let (answer, status, delay, raw, close) = {
+            let mut state = lock(&self.state);
+            state.requests.push(FakeRequest { path, body: value });
+            state.questions.extend(questions.iter().cloned());
+            (
+                state.answer.clone(),
+                state.status,
+                state.delay,
+                state.raw.clone(),
+                state.close_connection,
+            )
+        };
+        if delay > timeout {
+            self.clock.advance_millis(millis(timeout));
+            return Err(TransportError::Timeout);
         }
+        self.clock.advance_millis(millis(delay));
+        if close {
+            return Err(TransportError::Lost("the PDP closed the connection".to_owned()));
+        }
+        let reply = |status: u16, body: Vec<u8>| HttpResponse {
+            status,
+            headers: vec![("Content-Type".to_owned(), "application/json".to_owned())],
+            body,
+        };
+        if status != 0 && status != 200 {
+            return Ok(reply(status, Vec::new()));
+        }
+        if let Some(raw) = raw {
+            return Ok(reply(200, raw));
+        }
+        let documents: Vec<Value> = questions
+            .iter()
+            .map(|question| match &answer {
+                Some(answer) => answer(question),
+                None => json!({"decision": true}),
+            })
+            .collect();
+        let document = if path == EVALUATIONS_PATH {
+            json!({ "evaluations": documents })
+        } else {
+            documents.into_iter().next().unwrap_or(Value::Null)
+        };
+        Ok(reply(200, document.to_string().into_bytes()))
     }
-    if usage && answer.decision && answer.units.is_none() {
-        return Some(Answer::default());
+
+    fn get_json(
+        &self,
+        _url: &str,
+        _headers: &[(String, String)],
+        _timeout: Duration,
+    ) -> std::result::Result<HttpResponse, TransportError> {
+        let usage_max_seconds = lock(&self.state).usage_max_seconds;
+        Ok(match usage_max_seconds {
+            Some(seconds) => HttpResponse {
+                status: 200,
+                headers: Vec::new(),
+                body: json!({"policy_decision_point": self.base, "procurauth_usage_max_seconds": seconds})
+                    .to_string()
+                    .into_bytes(),
+            },
+            None => HttpResponse {
+                status: 404,
+                headers: Vec::new(),
+                body: Vec::new(),
+            },
+        })
     }
-    Some(answer)
 }
 
-/// How a call of the fake asks one question.
-#[derive(Clone, Copy)]
-struct Kind {
-    subtree: bool,
-    permission_only: bool,
-    usage: bool,
+/// The key set of the guard of the tests. The fake checks the tokens with its own table.
+fn test_keys() -> KeySet {
+    KeySet::from_keys(vec![SigningKey::from_ed25519_seed(&[7; 32]).public_key(Some("test"))])
 }
 
-impl Kind {
-    fn match_text(self) -> &'static str {
-        if self.subtree { "subtree" } else { "node" }
-    }
+#[derive(Default)]
+struct Tokens {
+    accepted: BTreeMap<String, Identity>,
+    refused: BTreeMap<String, String>,
+}
 
-    fn context(self) -> Map<String, Value> {
-        let mut context = Map::new();
-        if self.subtree {
-            context.insert("match".to_owned(), json!("subtree"));
-        }
-        if self.permission_only {
-            context.insert("permission_only".to_owned(), json!(true));
-        }
-        if self.usage {
-            context.insert("usage".to_owned(), json!({"units": 1}));
-        }
-        context
+/// The fake PDP and the fake check of the token, behind the real guard.
+pub struct FakePdp {
+    server: Arc<FakeServer>,
+    settings: Mutex<FakeSettings>,
+    tokens: Mutex<Tokens>,
+    bound: Mutex<Option<(Config, ActionDocument)>>,
+    guard: Mutex<Option<Arc<PepGuard>>>,
+    header: String,
+}
+
+impl Default for FakePdp {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -240,24 +338,63 @@ impl FakePdp {
     /// A fake that answers `{"decision": true}` to each question, with the default settings.
     pub fn new() -> Self {
         Self {
-            state: Mutex::new(State::default()),
+            server: Arc::new(FakeServer {
+                state: Mutex::new(State::default()),
+                clock: ManualClock::at_seconds(1_800_000_000),
+                base: "http://127.0.0.1:8181".to_owned(),
+            }),
             settings: Mutex::new(FakeSettings::default()),
+            tokens: Mutex::new(Tokens::default()),
+            bound: Mutex::new(None),
+            guard: Mutex::new(None),
             header: "x-identity-token".to_owned(),
         }
     }
 
     fn state(&self) -> MutexGuard<'_, State> {
-        self.state.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        lock(&self.server.state)
     }
 
     /// The settings of the client.
     pub fn settings(&self) -> FakeSettings {
-        *self.settings.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+        *lock(&self.settings)
     }
 
-    /// Change the settings of the client.
+    /// Change the settings of the client. The guard starts again with no kept answer.
     pub fn configure(&self, change: impl FnOnce(&mut FakeSettings)) {
-        change(&mut self.settings.lock().unwrap_or_else(std::sync::PoisonError::into_inner));
+        change(&mut lock(&self.settings));
+        self.state().usage_max_seconds = self.settings().usage_max_seconds;
+        *lock(&self.guard) = None;
+    }
+
+    /// The guard over the fake PDP, built at the first use after the access layer gave the configuration.
+    fn guard(&self) -> Option<Arc<PepGuard>> {
+        let mut guard = lock(&self.guard);
+        if let Some(guard) = guard.as_ref() {
+            return Some(Arc::clone(guard));
+        }
+        let bound = lock(&self.bound);
+        let (config, document) = bound.as_ref()?;
+        let settings = self.settings();
+        let mut config = config.clone();
+        if let Some(pdp) = config.access.pdp.as_mut() {
+            pdp.url = self.server.base.clone();
+            pdp.plain_http = true;
+            pdp.timeout = settings.timeout;
+            pdp.usage_timeout = settings.usage_timeout;
+            pdp.cache_ttl = settings.cache_ttl;
+            pdp.max_evaluations = u32::try_from(settings.max_evaluations).unwrap_or(u32::MAX);
+        }
+        let clock: Arc<dyn Clock> = Arc::new(self.server.clock.clone());
+        let parts = Parts {
+            inner: Arc::clone(&self.server) as Arc<dyn PdpTransport>,
+            clock,
+            trusted: test_keys(),
+            cache_entries: settings.max_entries,
+        };
+        let built = Arc::new(PepGuard::with_parts(&config, document, parts).ok()?);
+        *guard = Some(Arc::clone(&built));
+        Some(built)
     }
 
     /// Set the function that gives the JSON object of the decision of each question.
@@ -285,11 +422,9 @@ impl FakePdp {
         self.state().close_connection = on;
     }
 
-    /// Move the clock of the kept answers.
+    /// Move the clock of the guard.
     pub fn advance(&self, by: Duration) {
-        let millis = u64::try_from(by.as_millis()).unwrap_or(u64::MAX);
-        let mut state = self.state();
-        state.now_ms = state.now_ms.saturating_add(millis);
+        self.server.clock.advance_millis(millis(by));
     }
 
     /// Each question that the fake received, in order of arrival.
@@ -307,10 +442,9 @@ impl FakePdp {
         self.state().requests.clone()
     }
 
-    /// The number of kept answers.
+    /// The number of kept answers of the guard.
     pub fn kept(&self) -> usize {
-        let state = self.state();
-        state.plain_kept.len() + state.usage_kept.len()
+        self.guard().map_or(0, |guard| guard.kept_answers())
     }
 
     /// Clear the records and the failure injection. Keep the answer function, the tokens and the kept answers.
@@ -326,243 +460,31 @@ impl FakePdp {
 
     /// Accept a token for a subject. The token is the text of the header.
     pub fn accept_token(&self, token: &str, subject: &str, owner: &str) {
-        self.state().tokens.insert(
+        lock(&self.tokens).accepted.insert(
             token.to_owned(),
             Identity {
                 subject: subject.to_owned(),
                 owner: owner.to_owned(),
+                issued_at: 1_800_000_000,
+                expires_at: 1_800_000_300,
             },
         );
     }
 
     /// Refuse a token with a reason of the log.
     pub fn refuse_token(&self, token: &str, reason: &str) {
-        self.state().refusals.insert(token.to_owned(), reason.to_owned());
-    }
-
-    /// The key of a kept answer: the subject, the action, the resource with its chain, the match, and the mark of
-    /// an other permission.
-    fn cache_key(subject: &str, ask: &Ask, kind: Kind) -> String {
-        format!(
-            "{}:{subject}\x1f{}\x1f{}\x1f{}\x1f{}",
-            subject.len(),
-            ask.action,
-            ask.resource,
-            kind.match_text(),
-            kind.permission_only
-        )
-    }
-
-    fn question_of(subject: &str, request_id: &str, ask: &Ask, kind: Kind, batch: bool) -> FakeQuestion {
-        let resource = Resource::parse(&ask.resource).unwrap_or_default();
-        let mut parts: Vec<String> = resource
-            .ancestors
-            .iter()
-            .map(|node| format!("{}:{}", node.node_type, encode_id(&node.id)))
-            .collect();
-        parts.push(format!("{}:{}", resource.node_type, encode_id(&resource.id)));
-        FakeQuestion {
-            subject: subject.to_owned(),
-            action: ask.action.clone(),
-            resource_type: resource.node_type.clone(),
-            resource_id: resource.id.clone(),
-            ancestors: resource.ancestors.clone(),
-            path: parts.join("/"),
-            match_mode: kind.match_text().to_owned(),
-            usage: kind.usage,
-            permission_only: kind.permission_only,
-            batch,
-            request_id: request_id.to_owned(),
-        }
-    }
-
-    /// The JSON body of one request, as a guard sends it.
-    fn body_of(subject: &str, asks: &[&Ask], kind: Kind) -> (&'static str, Value) {
-        let resource =
-            |ask: &Ask| serde_json::to_value(Resource::parse(&ask.resource).unwrap_or_default()).unwrap_or_default();
-        let subject = json!({"type": "user", "id": subject});
-        let context = kind.context();
-        if let [ask] = asks {
-            let mut body = json!({"subject": subject, "action": {"name": ask.action}, "resource": resource(ask)});
-            if !context.is_empty()
-                && let Some(map) = body.as_object_mut()
-            {
-                map.insert("context".to_owned(), Value::Object(context));
-            }
-            return (EVALUATION_PATH, body);
-        }
-        let items: Vec<Value> = asks
-            .iter()
-            .map(|ask| json!({"action": {"name": ask.action}, "resource": resource(ask)}))
-            .collect();
-        let mut body = json!({"subject": subject, "evaluations": items});
-        if !context.is_empty()
-            && let Some(map) = body.as_object_mut()
-        {
-            map.insert("context".to_owned(), Value::Object(context));
-        }
-        (EVALUATIONS_PATH, body)
-    }
-
-    /// Send one request: record it, then give one answer for each question, or `None` when the request failed.
-    fn exchange(
-        &self,
-        subject: &str,
-        request_id: &str,
-        asks: &[&Ask],
-        kind: Kind,
-        budget: &mut Duration,
-    ) -> Option<Vec<Answer>> {
-        let batch = asks.len() > 1;
-        let (path, body) = Self::body_of(subject, asks, kind);
-        let questions: Vec<FakeQuestion> = asks
-            .iter()
-            .map(|ask| Self::question_of(subject, request_id, ask, kind, batch))
-            .collect();
-        let (answer, status, delay, raw, close) = {
-            let mut state = self.state();
-            state.requests.push(FakeRequest { path, body });
-            state.questions.extend(questions.iter().cloned());
-            (
-                state.answer.clone(),
-                state.status,
-                state.delay,
-                state.raw.clone(),
-                state.close_connection,
-            )
-        };
-        if delay > *budget {
-            *budget = Duration::ZERO;
-            return None;
-        }
-        *budget -= delay;
-        if close || (status != 0 && status != 200) {
-            return None;
-        }
-        let documents: Vec<Value> = match raw {
-            Some(raw) => {
-                let value: Value = serde_json::from_slice(&raw).ok()?;
-                if batch {
-                    let items = value.get("evaluations")?.as_array()?.clone();
-                    if items.len() != asks.len() {
-                        return None;
-                    }
-                    items
-                } else {
-                    vec![value]
-                }
-            }
-            None => questions
-                .iter()
-                .map(|question| match &answer {
-                    Some(answer) => answer(question),
-                    None => json!({"decision": true}),
-                })
-                .collect(),
-        };
-        Some(
-            documents
-                .iter()
-                .map(|document| parse_answer(document, kind.usage).unwrap_or_else(Answer::failure))
-                .collect(),
-        )
-    }
-
-    fn lookup(table: &mut HashMap<String, Kept>, key: &str, now: u64) -> Option<Kept> {
-        let kept = table.get(key)?.clone();
-        if now >= kept.expires_ms {
-            table.remove(key);
-            return None;
-        }
-        Some(kept)
-    }
-
-    fn store(&self, usage: bool, key: String, answer: &Answer, life: Duration) {
-        let ttl = self.settings().cache_ttl;
-        let life = life.min(ttl);
-        if life.is_zero() || answer.failed || is_approval_reason(&answer.reason) {
-            return;
-        }
-        let max_entries = self.settings().max_entries;
-        let mut state = self.state();
-        let now = state.now_ms;
-        let expires_ms = now.saturating_add(u64::try_from(life.as_millis()).unwrap_or(u64::MAX));
-        let full = |state: &State| state.plain_kept.len() + state.usage_kept.len() >= max_entries;
-        let present = if usage {
-            state.usage_kept.contains_key(&key)
-        } else {
-            state.plain_kept.contains_key(&key)
-        };
-        if !present && full(&state) {
-            state.plain_kept.retain(|_, kept| kept.expires_ms > now);
-            state.usage_kept.retain(|_, kept| kept.expires_ms > now);
-            if full(&state) {
-                return;
-            }
-        }
-        let table = if usage {
-            &mut state.usage_kept
-        } else {
-            &mut state.plain_kept
-        };
-        table.insert(
-            key,
-            Kept {
-                answer: answer.clone(),
-                expires_ms,
-            },
-        );
-    }
-
-    /// Ask questions without usage, with the kept answers, the removal of the repeated questions, the batches and
-    /// one deadline.
-    fn ask_plain(&self, request_id: &str, subject: &str, asks: &[Ask], kind: Kind) -> Vec<Answer> {
-        let settings = self.settings();
-        let mut out = vec![Answer::failure(); asks.len()];
-        let mut groups: Vec<(String, Vec<usize>)> = Vec::new();
-        for (index, ask) in asks.iter().enumerate() {
-            let key = Self::cache_key(subject, ask, kind);
-            match groups.iter_mut().find(|(known, _)| *known == key) {
-                Some((_, indexes)) => indexes.push(index),
-                None => groups.push((key, vec![index])),
-            }
-        }
-        let mut pending = Vec::new();
-        {
-            let mut state = self.state();
-            let now = state.now_ms;
-            for (position, (key, indexes)) in groups.iter().enumerate() {
-                match Self::lookup(&mut state.plain_kept, key, now) {
-                    Some(kept) => indexes.iter().for_each(|index| out[*index] = kept.answer.clone()),
-                    None => pending.push(position),
-                }
-            }
-        }
-        let mut budget = settings.timeout;
-        let mut stopped = false;
-        for chunk in pending.chunks(settings.max_evaluations.max(1)) {
-            let answers = if stopped {
-                None
-            } else {
-                let chunk_asks: Vec<&Ask> = chunk.iter().map(|position| &asks[groups[*position].1[0]]).collect();
-                self.exchange(subject, request_id, &chunk_asks, kind, &mut budget)
-            };
-            stopped = answers.is_none();
-            let answers = answers.unwrap_or_else(|| vec![Answer::failure(); chunk.len()]);
-            for (position, answer) in chunk.iter().zip(answers) {
-                let (key, indexes) = &groups[*position];
-                for index in indexes {
-                    out[*index] = answer.clone();
-                }
-                self.store(false, key.clone(), &answer, settings.cache_ttl);
-            }
-        }
-        out
+        lock(&self.tokens).refused.insert(token.to_owned(), reason.to_owned());
     }
 }
 
 impl AccessGuard for FakePdp {
-    fn authenticate(&self, headers: &HeaderMap) -> Result<Option<Identity>, String> {
+    fn bind(&self, config: &Config, document: &ActionDocument) -> Result<()> {
+        *lock(&self.bound) = Some((config.clone(), document.clone()));
+        *lock(&self.guard) = None;
+        Ok(())
+    }
+
+    fn authenticate(&self, headers: &HeaderMap) -> std::result::Result<Option<Identity>, String> {
         let values: Vec<&[u8]> = headers
             .get_all(self.header.as_str())
             .iter()
@@ -576,80 +498,57 @@ impl AccessGuard for FakePdp {
         if token.is_empty() {
             return Err("missing".to_owned());
         }
-        let state = self.state();
-        if let Some(reason) = state.refusals.get(&token) {
+        let tokens = lock(&self.tokens);
+        if let Some(reason) = tokens.refused.get(&token) {
             return Err(reason.clone());
         }
-        match state.tokens.get(&token) {
+        match tokens.accepted.get(&token) {
             Some(identity) => Ok(Some(identity.clone())),
             None => Err("malformed".to_owned()),
         }
     }
 
-    fn decide<'a>(
+    fn operation<'a>(
         &'a self,
         request_id: &'a str,
-        subject: &'a str,
-        asks: &'a [Ask],
-        permission_only: bool,
-    ) -> BoxFuture<'a, Vec<Answer>> {
-        let kind = Kind {
-            subtree: false,
-            permission_only,
-            usage: false,
-        };
-        let answers = self.ask_plain(request_id, subject, asks, kind);
-        Box::pin(async move { answers })
+        who: &'a Identity,
+        others: &'a [Ask],
+        use_ask: &'a Ask,
+        usage: bool,
+    ) -> BoxFuture<'a, OperationAnswers> {
+        Box::pin(async move {
+            match self.guard() {
+                Some(guard) => guard.operation(request_id, who, others, use_ask, usage).await,
+                None => OperationAnswers::failure(others.len()),
+            }
+        })
     }
 
-    fn use_one<'a>(&'a self, request_id: &'a str, subject: &'a str, ask: &'a Ask) -> BoxFuture<'a, Answer> {
-        let kind = Kind {
-            subtree: false,
-            permission_only: false,
-            usage: true,
-        };
-        let settings = self.settings();
-        let key = Self::cache_key(subject, ask, kind);
-        let kept = {
-            let mut state = self.state();
-            let now = state.now_ms;
-            Self::lookup(&mut state.usage_kept, &key, now).map(|kept| (kept, now))
-        };
-        let answer = match kept {
-            Some((kept, now)) => {
-                let mut answer = kept.answer;
-                if !answer.decision && answer.reason == REASON_BUDGET {
-                    // The seconds that remain, at least 1 and never more than the first value.
-                    let remaining = kept.expires_ms.saturating_sub(now).div_ceil(1000).max(1);
-                    answer.retry_after = answer.retry_after.min(remaining);
-                }
-                answer
+    fn decide<'a>(&'a self, request_id: &'a str, who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
+        Box::pin(async move {
+            match self.guard() {
+                Some(guard) => guard.decide(request_id, who, asks).await,
+                None => vec![Answer::failure(); asks.len()],
             }
-            None => {
-                let mut budget = usage_wait(settings.usage_timeout, settings.usage_max_seconds);
-                let answer = self
-                    .exchange(subject, request_id, &[ask], kind, &mut budget)
-                    .and_then(|answers| answers.into_iter().next())
-                    .unwrap_or_else(Answer::failure);
-                if answer.decision && answer.units == Some(0) {
-                    self.store(true, key, &answer, settings.cache_ttl);
-                } else if !answer.decision && answer.reason == REASON_BUDGET && answer.retry_after >= 1 {
-                    self.store(true, key, &answer, Duration::from_secs(answer.retry_after));
-                }
-                answer
-            }
-        };
-        Box::pin(async move { answer })
+        })
     }
 
-    fn display<'a>(&'a self, request_id: &'a str, subject: &'a str, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
-        let kind = Kind {
-            subtree: true,
-            permission_only: false,
-            usage: false,
-        };
-        let answers = self.ask_plain(request_id, subject, asks, kind);
-        Box::pin(async move { answers })
+    fn service<'a>(&'a self, request_id: &'a str, who: &'a Identity) -> BoxFuture<'a, Answer> {
+        Box::pin(async move {
+            match self.guard() {
+                Some(guard) => guard.service(request_id, who).await,
+                None => Answer::failure(),
+            }
+        })
+    }
+
+    fn display<'a>(&'a self, request_id: &'a str, who: &'a Identity, asks: &'a [Ask]) -> BoxFuture<'a, Vec<Answer>> {
+        Box::pin(async move {
+            match self.guard() {
+                Some(guard) => guard.display(request_id, who, asks).await,
+                None => vec![Answer::failure(); asks.len()],
+            }
+        })
     }
 }
 

@@ -977,28 +977,36 @@ async fn a_true_answer_to_a_usage_question_without_units_is_a_refusal() {
         fn authenticate(&self, _headers: &HeaderMap) -> std::result::Result<Option<Identity>, String> {
             Ok(None)
         }
+        fn operation<'a>(
+            &'a self,
+            _request_id: &'a str,
+            _who: &'a Identity,
+            others: &'a [Ask],
+            _use_ask: &'a Ask,
+            _usage: bool,
+        ) -> crate::common::BoxFuture<'a, OperationAnswers> {
+            let answers = OperationAnswers {
+                others: vec![Answer::allow(); others.len()],
+                use_answer: Some(Answer::allow()),
+            };
+            Box::pin(async move { answers })
+        }
         fn decide<'a>(
             &'a self,
             _request_id: &'a str,
-            _subject: &'a str,
+            _who: &'a Identity,
             asks: &'a [Ask],
-            _permission_only: bool,
         ) -> crate::common::BoxFuture<'a, Vec<Answer>> {
             let answers = vec![Answer::allow(); asks.len()];
             Box::pin(async move { answers })
         }
-        fn use_one<'a>(
-            &'a self,
-            _request_id: &'a str,
-            _subject: &'a str,
-            _ask: &'a Ask,
-        ) -> crate::common::BoxFuture<'a, Answer> {
+        fn service<'a>(&'a self, _request_id: &'a str, _who: &'a Identity) -> crate::common::BoxFuture<'a, Answer> {
             Box::pin(async move { Answer::allow() })
         }
         fn display<'a>(
             &'a self,
             _request_id: &'a str,
-            _subject: &'a str,
+            _who: &'a Identity,
             asks: &'a [Ask],
         ) -> crate::common::BoxFuture<'a, Vec<Answer>> {
             let answers = vec![Answer::allow(); asks.len()];

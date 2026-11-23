@@ -569,7 +569,12 @@ async fn walk(
     candidates: &mut Candidates,
     limit: usize,
 ) -> Walk {
-    let (subject, request_id) = who;
+    let (_, request_id) = who;
+    let identity = ctx
+        .access
+        .as_deref()
+        .map(super::AccessRequest::identity)
+        .unwrap_or_default();
     let mut out = Walk {
         items: Vec::new(),
         next: None,
@@ -618,7 +623,7 @@ async fn walk(
             let count = asks.len();
             let answers = run_guarded(
                 ctx,
-                || layer.guard.display(request_id, subject, &asks),
+                || layer.guard.display(request_id, &identity, &asks),
                 || vec![Answer::failure(); count],
             )
             .await;
