@@ -7,25 +7,25 @@ use super::*;
 
 /// One entry of a test archive.
 #[derive(Clone)]
-struct Spec {
-    name: Vec<u8>,
-    data: Vec<u8>,
-    method: u16,
-    flags: u16,
+pub(crate) struct Spec {
+    pub(crate) name: Vec<u8>,
+    pub(crate) data: Vec<u8>,
+    pub(crate) method: u16,
+    pub(crate) flags: u16,
     /// The data descriptor: `Some(true)` with a signature, `Some(false)` without.
-    descriptor: Option<bool>,
-    crc: Option<u32>,
-    size: Option<u64>,
-    creator: u16,
-    attributes: u32,
-    date: u16,
-    time: u16,
-    extra: Vec<u8>,
-    zip64: bool,
+    pub(crate) descriptor: Option<bool>,
+    pub(crate) crc: Option<u32>,
+    pub(crate) size: Option<u64>,
+    pub(crate) creator: u16,
+    pub(crate) attributes: u32,
+    pub(crate) date: u16,
+    pub(crate) time: u16,
+    pub(crate) extra: Vec<u8>,
+    pub(crate) zip64: bool,
 }
 
 impl Spec {
-    fn new(name: &str, data: &[u8]) -> Self {
+    pub(crate) fn new(name: &str, data: &[u8]) -> Self {
         Self {
             name: name.as_bytes().to_vec(),
             data: data.to_vec(),
@@ -43,7 +43,7 @@ impl Spec {
         }
     }
 
-    fn deflated(mut self) -> Self {
+    pub(crate) fn deflated(mut self) -> Self {
         self.method = METHOD_DEFLATE;
         self
     }
@@ -71,7 +71,7 @@ fn crc_of(data: &[u8]) -> u32 {
 }
 
 /// Build an archive: a prefix, the entries, the central directory, the ZIP64 records when asked, the end record.
-fn build(specs: &[Spec], prefix: &[u8], comment: &[u8], zip64_end: bool, records: Option<u16>) -> Vec<u8> {
+pub(crate) fn build(specs: &[Spec], prefix: &[u8], comment: &[u8], zip64_end: bool, records: Option<u16>) -> Vec<u8> {
     let mut out = prefix.to_vec();
     let mut central = Vec::new();
     for spec in specs {
@@ -178,7 +178,7 @@ fn build(specs: &[Spec], prefix: &[u8], comment: &[u8], zip64_end: bool, records
     out
 }
 
-fn simple(specs: &[Spec]) -> Bytes {
+pub(crate) fn simple(specs: &[Spec]) -> Bytes {
     Bytes::from(build(specs, b"", b"", false, None))
 }
 

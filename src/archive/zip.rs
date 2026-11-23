@@ -265,7 +265,7 @@ impl ZipEntry {
 /// Why a read of the archive stopped.
 #[derive(Debug)]
 enum Fault {
-    /// The source failed: the error goes to the caller as it is.
+    /// The source failed: the caller gets the error as it is.
     Source(Error),
     /// The bytes are not a valid ZIP structure, or the archive ends too soon.
     Format,
@@ -644,7 +644,7 @@ struct DirectoryEnd {
 }
 
 /// The position of the end record in a block: the last signature whose comment ends in the block. A last
-/// signature whose comment goes after the block stops the search.
+/// signature whose comment continues after the block stops the search.
 fn find_end_record(block: &[u8]) -> Option<usize> {
     if block.len() < DIRECTORY_END_LEN {
         return None;
@@ -759,7 +759,7 @@ pub fn crx_zip_offset(header: &[u8], size: u64) -> Option<u64> {
 impl<S: ByteSource> ZipReader<S> {
     /// Read the central directory of the object: at most `max_entries` entries (0: no limit). A larger central
     /// directory gives `413 archive_too_many_entries` after the read of all its headers. An object without a
-    /// readable central directory gives `422 invalid_zip`; an error of the source goes to the caller as it is.
+    /// readable central directory gives `422 invalid_zip`; the caller gets an error of the source as it is.
     /// When the size is not known, the reader reads the last 128 KiB first.
     pub async fn open(source: S, max_entries: usize) -> Result<Self> {
         Self::open_at(source, 0, max_entries).await
@@ -819,7 +819,7 @@ impl<S: ByteSource> ZipReader<S> {
     }
 
     /// Each entry with this exact name. A name of the archive that is not valid UTF-8 never matches.
-    pub fn entries_named<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a ZipEntry> + 'a {
+    pub fn entries_named<'a>(&'a self, name: &str) -> impl Iterator<Item = &'a ZipEntry> {
         self.entries
             .iter()
             .filter(move |entry| entry.name_is_utf8 && entry.name == name)
@@ -1197,8 +1197,8 @@ impl<S: ByteSource, R: Deref<Target = ZipReader<S>>> EntryStream<R> {
     }
 
     /// The next decompressed bytes, or `None` at the end. The end checks the size and the CRC-32 of the central
-    /// directory, and the data descriptor when the entry has one. An error of the source goes to the caller as it
-    /// is; an error of the data is an internal error.
+    /// directory, and the data descriptor when the entry has one. The caller gets an error of the source as it is;
+    /// an error of the data is an internal error.
     pub async fn next_chunk(&mut self) -> Result<Option<Bytes>> {
         match &self.state {
             StreamState::Data => {}
@@ -1332,4 +1332,4 @@ impl<S: ByteSource, R: Deref<Target = ZipReader<S>>> EntryStream<R> {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
