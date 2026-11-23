@@ -85,8 +85,8 @@ pub fn refresh_bucket_facts(instance: &Instance) {
     let _ = instance;
 }
 
-/// A recent Insights job of the same instance and prefix: a completed one of the last 30 seconds, else a queued or
-/// running one. No job: the route makes a new job.
+/// A recent Insights job of the same instance and prefix: a completed one of the last 30 seconds, else one that
+/// waits or runs. No job: the route makes a new job.
 pub fn reusable_stats_job(app: &App, instance: &str, prefix: &str) -> Option<JobState> {
     let _ = (app, instance, prefix);
     None

@@ -97,7 +97,7 @@ pub fn version_html(html: &[u8], version: &str) -> Vec<u8> {
 /// Add the fingerprint to the icon URLs (`url("../icons/...")`) and to the imported stylesheets
 /// (`@import url("name.css")`) of a stylesheet.
 pub fn version_css(css: &[u8], version: &str) -> Vec<u8> {
-    let icons = rewrite(css, b"url(\"../icons/", |rest| {
+    let icons = find_matches(css, b"url(\"../icons/", |rest| {
         let length = rest
             .iter()
             .take_while(|byte| !matches!(byte, b'"' | b'?' | b')'))
@@ -105,7 +105,7 @@ pub fn version_css(css: &[u8], version: &str) -> Vec<u8> {
         (length > 0 && rest.get(length..length + 2) == Some(b"\")".as_slice())).then_some(length)
     });
     let icons = splice_version(&icons.0, &icons.1, b"url(\"../icons/".len(), version);
-    let imports = rewrite(&icons, b"@import url(\"", |rest| {
+    let imports = find_matches(&icons, b"@import url(\"", |rest| {
         let first = *rest.first()?;
         if !(first.is_ascii_alphanumeric() || first == b'_') {
             return None;
@@ -121,7 +121,7 @@ pub fn version_css(css: &[u8], version: &str) -> Vec<u8> {
 
 /// The positions of the matches of a marker that the check accepts: the start of each marker and the length of the
 /// path after it.
-fn rewrite(text: &[u8], marker: &[u8], check: impl Fn(&[u8]) -> Option<usize>) -> (Vec<u8>, Vec<(usize, usize)>) {
+fn find_matches(text: &[u8], marker: &[u8], check: impl Fn(&[u8]) -> Option<usize>) -> (Vec<u8>, Vec<(usize, usize)>) {
     let mut matches = Vec::new();
     let mut index = 0;
     while let Some(offset) = find(&text[index..], marker) {

@@ -244,7 +244,7 @@ struct MultipartBody {
     size: u64,
     boundary: String,
     next: usize,
-    // The data of the current part that waits: the head of the part was sent.
+    // The data of the current part that waits: the head of the part is already out.
     pending: Option<Bytes>,
     done: bool,
 }

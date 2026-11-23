@@ -909,7 +909,7 @@ mod tests {
         ];
         sort_list_items(&mut items);
         let names: Vec<&str> = items.iter().map(|item| item.name.as_str()).collect();
-        // Stable for names that differ only by case: "A.txt" was listed before "a.txt".
+        // The sort is stable: "A.txt" comes before "a.txt" in the input and in the result.
         assert_eq!(names, vec!["alpha/", "Zeta/", "A.txt", "a.txt", "b.txt"]);
     }
 

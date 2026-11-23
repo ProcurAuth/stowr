@@ -496,28 +496,30 @@ pub struct LogLine {
 }
 
 impl LogLine {
-    fn write(&self, bytes: u64) {
+    /// The text of the line, without the date: the method, the quoted path, the status, the bytes, the time, and the
+    /// subject and the request id in mode `authzen`.
+    pub fn text(&self, bytes: u64) -> String {
         let elapsed = duration_ms(self.started.elapsed());
-        match &self.identity {
-            Some((subject, request_id)) => crate::log!(
-                "{} {} {} {}B {} subject={} request_id={}",
-                self.method,
-                quote(&self.path),
-                self.status,
-                bytes,
-                elapsed,
+        let mut text = format!(
+            "{} {} {} {}B {}",
+            self.method,
+            quote(&self.path),
+            self.status,
+            bytes,
+            elapsed
+        );
+        if let Some((subject, request_id)) = &self.identity {
+            text.push_str(&format!(
+                " subject={} request_id={}",
                 quote(subject.as_bytes()),
                 request_id
-            ),
-            None => crate::log!(
-                "{} {} {} {}B {}",
-                self.method,
-                quote(&self.path),
-                self.status,
-                bytes,
-                elapsed
-            ),
+            ));
         }
+        text
+    }
+
+    fn write(&self, bytes: u64) {
+        crate::log!("{}", self.text(bytes));
     }
 }
 

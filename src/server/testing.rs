@@ -1,4 +1,4 @@
-//! The test kit of the HTTP layer: an application over back ends in memory, and requests that go through the whole
+//! The test kit of the HTTP layer: an application over back ends in memory, and requests that pass the whole
 //! dispatch (the middlewares, the router and the final form of the answer) without a network.
 //!
 //! ```ignore
@@ -115,7 +115,7 @@ impl TestRequest {
         self
     }
 
-    /// Send the request through the whole dispatch.
+    /// Send the request to the whole dispatch.
     pub async fn send(self, app: &Arc<App>) -> TestResponse {
         let uri: Uri = self.target.parse().unwrap_or_else(|_| Uri::from_static("/"));
         let body: Body = match self.body {

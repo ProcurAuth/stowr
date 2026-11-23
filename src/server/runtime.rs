@@ -292,6 +292,7 @@ pub async fn finalize(method: &Method, response: Response) -> Response {
     }
     if ended && error.is_none() && !trailers && !has_encoding && end_trailers.is_none() {
         // The whole answer is short: it gets its length.
+        parts.headers.insert(CONTENT_LENGTH, HeaderValue::from(head.len()));
         return Response::from_parts(parts, full(head));
     }
     let head = Some(head).filter(|head| !head.is_empty());
@@ -626,7 +627,7 @@ async fn stop_signal() -> &'static str {
 }
 
 /// Accept the connections of a listener until the stop future ends, then stop gracefully: no new connection, each
-/// idle connection closes, each running request ends. After 10 seconds the remaining connections close.
+/// idle connection closes, each request in progress ends. After 10 seconds the remaining connections close.
 pub async fn run_listener(app: Arc<App>, listener: TcpListener, stop: impl Future<Output = &'static str>) {
     let (shutdown_sender, shutdown) = tokio::sync::watch::channel(false);
     let mut connections = tokio::task::JoinSet::new();
