@@ -299,3 +299,24 @@ async fn a_request_without_a_body_sends_a_zero_length_except_get_and_head() {
     let answer = client.fetch(&OpCtx::default(), request, 1024).await.unwrap();
     assert_eq!(String::from_utf8_lossy(&answer.body), format!("3|{host}"));
 }
+
+#[tokio::test]
+async fn an_answer_with_many_headers_is_read() {
+    let server = TestServer::start(|_| {
+        let mut reply = TestResponse::status(200);
+        for index in 0..150 {
+            reply.headers.insert(
+                http::header::HeaderName::from_bytes(format!("x-amz-meta-key-{index}").as_bytes()).unwrap(),
+                HeaderValue::from_static("value"),
+            );
+        }
+        reply
+    })
+    .await;
+    let answer = StorageClient::new(false)
+        .unwrap()
+        .fetch(&OpCtx::default(), get(&format!("{}/x", server.url)), 1024)
+        .await
+        .unwrap();
+    assert_eq!(answer.header("x-amz-meta-key-149"), "value");
+}

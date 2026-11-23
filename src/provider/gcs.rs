@@ -20,7 +20,7 @@ use http::{HeaderMap, Method, Response};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer};
 
-use super::client::{StorageClient, build_request, header_text, status_text, with_context};
+use super::client::{StorageClient, build_request, header_text, parse_answer, status_text, with_context};
 use super::s3::{READ_HEADERS, first_value, probed_state, read_ceiling_applies, read_some, set_header, sort_versions};
 use super::url::WebUrl;
 use super::{SharedAuth, wrong_provider};
@@ -511,7 +511,7 @@ struct ObjectMetadata {
 fn put_header(headers: &mut HeaderMap, name: &str, value: &str) {
     if let (Ok(name), Ok(value)) = (
         http::header::HeaderName::from_bytes(name.as_bytes()),
-        HeaderValue::from_str(value),
+        HeaderValue::from_bytes(value.as_bytes()),
     ) {
         headers.insert(name, value);
     }
@@ -583,11 +583,17 @@ impl GcsBackend {
         self.execute(ctx, method, url, headers, None, "gcs request").await
     }
 
-    async fn read_json<T: DeserializeOwned>(response: Response<Body>, limit: usize, what: &str) -> Result<T> {
+    async fn read_json<T: DeserializeOwned + Send + 'static>(
+        response: Response<Body>,
+        limit: usize,
+        what: &str,
+    ) -> Result<T> {
         let (body, _) = read_limited(response.into_body(), limit)
             .await
             .map_err(|error| with_context(what, error))?;
-        decode_first(&body).map_err(|error| Error::internal(format!("{what}: {error}")))
+        parse_answer(body, |body| decode_first::<T>(body).map_err(|error| error.to_string()))
+            .await?
+            .map_err(|error| Error::internal(format!("{what}: {error}")))
     }
 
     async fn list_page(&self, ctx: &OpCtx, options: &ListOptions) -> Result<ListPage> {

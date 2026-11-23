@@ -788,3 +788,23 @@ async fn the_permission_probe_reads_the_listing_and_the_first_object() {
 
     assert!(probe("broken/").discover_capabilities(&ctx).await.is_err());
 }
+
+#[tokio::test]
+async fn a_large_listing_parses_away_from_the_runtime() {
+    let mut document = String::from("<ListBucketResult>");
+    for index in 0..4000 {
+        document.push_str(&format!(
+            "<Contents><Key>folder/object-{index:05}.bin</Key><Size>{index}</Size><ETag>\"etag-{index}\"</ETag></Contents>"
+        ));
+    }
+    document.push_str("</ListBucketResult>");
+    assert!(document.len() > 256 << 10);
+    let server = TestServer::start(move |_| TestResponse::body(200, document.clone())).await;
+    let page = anonymous_s3(&server.url, "bucket")
+        .list(&OpCtx::default(), &ListOptions::default())
+        .await
+        .unwrap();
+    assert_eq!(page.objects.len(), 4000);
+    assert_eq!(page.objects[3999].key, "folder/object-03999.bin");
+    assert_eq!(page.objects[3999].size, 3999);
+}

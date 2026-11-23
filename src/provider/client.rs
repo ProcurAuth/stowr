@@ -59,6 +59,9 @@ pub const ROOT_BUNDLES: [&str; 6] = [
 /// The most idle connections for each host.
 const MAX_IDLE_PER_HOST: usize = 20;
 
+/// The most headers of an answer. An object can have many user metadata headers.
+const MAX_ANSWER_HEADERS: usize = 1000;
+
 /// The most bytes of compressed input that one step of the gzip decoder reads. The output of one step stays near
 /// 1 MiB at most.
 const GZIP_STEP: usize = 1024;
@@ -161,6 +164,7 @@ impl StorageClient {
             .pool_max_idle_per_host(MAX_IDLE_PER_HOST)
             .pool_timer(TokioTimer::new())
             .http1_title_case_headers(true)
+            .http1_max_headers(MAX_ANSWER_HEADERS)
             .build(connector);
         Ok(Self {
             insecure_skip_verify,
@@ -258,6 +262,23 @@ impl Answer {
             .and_then(|value| value.to_str().ok())
             .unwrap_or("")
     }
+}
+
+/// The size from which the parse of an answer runs on a thread for blocking work, not on the runtime.
+const BLOCKING_PARSE_SIZE: usize = 256 << 10;
+
+/// Parse the body of an answer. A large body goes to a thread for blocking work, so that the parse does not hold
+/// the runtime.
+pub async fn parse_answer<T: Send + 'static>(
+    body: Bytes,
+    parse: impl FnOnce(&[u8]) -> T + Send + 'static,
+) -> Result<T> {
+    if body.len() < BLOCKING_PARSE_SIZE {
+        return Ok(parse(&body));
+    }
+    tokio::task::spawn_blocking(move || parse(&body))
+        .await
+        .map_err(|error| Error::internal(format!("the parse of the answer stopped: {error}")))
 }
 
 /// The status line text of a status: the code and its reason, for example `404 Not Found`.

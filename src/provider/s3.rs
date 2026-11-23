@@ -20,7 +20,7 @@ use http::header::{
 use http::{HeaderMap, Method, Response};
 use serde::{Deserialize, Serialize};
 
-use super::client::{Answer, build_request, header_text, status_text, with_context};
+use super::client::{Answer, build_request, header_text, parse_answer, status_text, with_context};
 use super::xml::{self, Node, at};
 use super::{SharedAuth, wrong_provider};
 use crate::common::BoxFuture;
@@ -100,7 +100,7 @@ fn success(status: u16) -> bool {
 pub(crate) fn set_header(headers: &mut HeaderMap, name: &str, value: &str) -> Result<()> {
     let name = HeaderName::from_bytes(name.as_bytes())
         .map_err(|_| Error::Connect(format!("invalid header field name {name:?}")))?;
-    let value = HeaderValue::from_str(value)
+    let value = HeaderValue::from_bytes(value.as_bytes())
         .map_err(|_| Error::Connect(format!("invalid header field value for {:?}", name.as_str())))?;
     headers.insert(name, value);
     Ok(())
@@ -472,46 +472,9 @@ impl S3Backend {
         }
         let response = self.execute_ok(ctx, Method::GET, "", &query, HeaderMap::new()).await?;
         let body = Self::read_body(response, LIST_LIMIT, "decode s3 list response").await?;
-        let mut page = ListPage::default();
-        let mut failure: Option<String> = None;
-        let parsed = xml::walk(&body, |node| match node {
-            Node::Start(path) if at(path, &["Contents"]) => page.objects.push(ObjectInfo::default()),
-            Node::Start(path) if at(path, &["CommonPrefixes"]) => page.prefixes.push(String::new()),
-            Node::Start(_) => {}
-            Node::End(path, text) => {
-                if at(path, &["NextContinuationToken"]) {
-                    page.next_page_token = text;
-                } else if at(path, &["IsTruncated"]) {
-                    if let Err(error) = xml::parse_bool(&text) {
-                        failure.get_or_insert(error);
-                    }
-                } else if at(path, &["CommonPrefixes", "Prefix"]) {
-                    if let Some(prefix) = page.prefixes.last_mut() {
-                        *prefix = text;
-                    }
-                } else if let Some(object) = page.objects.last_mut()
-                    && path.len() == 2
-                    && path[0] == "Contents"
-                {
-                    match path[1].as_str() {
-                        "Key" => object.key = text,
-                        "LastModified" => object.last_modified = parse_time(&text),
-                        "Size" => match xml::parse_int(&text) {
-                            Ok(size) => object.size = size,
-                            Err(error) => {
-                                failure.get_or_insert(error);
-                            }
-                        },
-                        "ETag" => object.etag = trim_quotes(&text).to_owned(),
-                        _ => {}
-                    }
-                }
-            }
-        });
-        if let Some(error) = parsed.err().or(failure) {
-            return Err(Error::internal(format!("decode s3 list response: {error}")));
-        }
-        Ok(page)
+        parse_answer(body, parse_list_page)
+            .await?
+            .map_err(|error| Error::internal(format!("decode s3 list response: {error}")))
     }
 
     /// The headers of an object, or of one version (`Some`, also an empty one).
@@ -593,76 +556,15 @@ impl S3Backend {
         }
         let response = self.execute_ok(ctx, Method::GET, "", &query, HeaderMap::new()).await?;
         let body = Self::read_body(response, LIST_LIMIT, "decode s3 version response").await?;
-        let mut truncated = false;
-        let mut next_key = String::new();
-        let mut next_version = String::new();
-        // (key, version, latest, modified, etag, size) of each version and of each delete marker.
-        let mut versions: Vec<(String, StoredObjectVersion)> = Vec::new();
-        let mut markers: Vec<(String, StoredObjectVersion)> = Vec::new();
-        let mut failure: Option<String> = None;
-        let parsed = xml::walk(&body, |node| match node {
-            Node::Start(path) if at(path, &["Version"]) => versions.push(Default::default()),
-            Node::Start(path) if at(path, &["DeleteMarker"]) => markers.push((
-                String::new(),
-                StoredObjectVersion {
-                    delete_marker: true,
-                    ..Default::default()
-                },
-            )),
-            Node::Start(_) => {}
-            Node::End(path, text) => {
-                if at(path, &["IsTruncated"]) {
-                    match xml::parse_bool(&text) {
-                        Ok(value) => truncated = value,
-                        Err(error) => {
-                            failure.get_or_insert(error);
-                        }
-                    }
-                    return;
-                }
-                if at(path, &["NextKeyMarker"]) {
-                    next_key = text;
-                    return;
-                }
-                if at(path, &["NextVersionIdMarker"]) {
-                    next_version = text;
-                    return;
-                }
-                if path.len() != 2 {
-                    return;
-                }
-                let target = match path[0].as_str() {
-                    "Version" => versions.last_mut(),
-                    "DeleteMarker" => markers.last_mut(),
-                    _ => None,
-                };
-                let Some((item_key, item)) = target else {
-                    return;
-                };
-                match path[1].as_str() {
-                    "Key" => *item_key = text,
-                    "VersionId" => item.version = text,
-                    "IsLatest" => match xml::parse_bool(&text) {
-                        Ok(value) => item.is_current = value,
-                        Err(error) => {
-                            failure.get_or_insert(error);
-                        }
-                    },
-                    "LastModified" => item.last_modified = parse_time(&text),
-                    "ETag" if !item.delete_marker => item.etag = trim_quotes(&text).to_owned(),
-                    "Size" if !item.delete_marker => match xml::parse_int(&text) {
-                        Ok(size) => item.size = size,
-                        Err(error) => {
-                            failure.get_or_insert(error);
-                        }
-                    },
-                    _ => {}
-                }
-            }
-        });
-        if let Some(error) = parsed.err().or(failure) {
-            return Err(Error::internal(format!("decode s3 version response: {error}")));
-        }
+        let VersionListing {
+            truncated,
+            next_key,
+            next_version,
+            versions,
+            markers,
+        } = parse_answer(body, parse_version_listing)
+            .await?
+            .map_err(|error| Error::internal(format!("decode s3 version response: {error}")))?;
         let mut page = ObjectVersionPage {
             versions: versions
                 .into_iter()
@@ -869,44 +771,9 @@ impl S3Backend {
             }
             let response = self.execute_ok(ctx, Method::GET, key, &query, HeaderMap::new()).await?;
             let body = Self::read_body(response, LARGE_LIMIT, "decode s3 multipart parts response").await?;
-            let mut truncated = false;
-            let mut next_marker: i64 = 0;
-            let mut page: Vec<MultipartPart> = Vec::new();
-            let mut failure: Option<String> = None;
-            let mut keep_error = |result: std::result::Result<(), String>| {
-                if let Err(error) = result {
-                    failure.get_or_insert(error);
-                }
-            };
-            let parsed = xml::walk(&body, |node| match node {
-                Node::Start(path) if at(path, &["Part"]) => page.push(MultipartPart::default()),
-                Node::Start(_) => {}
-                Node::End(path, text) => {
-                    if at(path, &["IsTruncated"]) {
-                        keep_error(xml::parse_bool(&text).map(|value| truncated = value));
-                    } else if at(path, &["NextPartNumberMarker"]) {
-                        keep_error(xml::parse_int(&text).map(|value| next_marker = value));
-                    } else if let Some(part) = page.last_mut()
-                        && path.len() == 2
-                        && path[0] == "Part"
-                    {
-                        match path[1].as_str() {
-                            "PartNumber" => keep_error(xml::parse_int(&text).and_then(|value| {
-                                u32::try_from(value)
-                                    .map(|number| part.number = number)
-                                    .map_err(|_| format!("invalid part number {value}"))
-                            })),
-                            "ETag" => part.etag = trim_quotes(&text).to_owned(),
-                            "Size" => keep_error(xml::parse_int(&text).map(|size| part.size = size)),
-                            "ChecksumSHA256" => part.checksum_sha256 = text,
-                            _ => {}
-                        }
-                    }
-                }
-            });
-            if let Some(error) = parsed.err().or(failure) {
-                return Err(Error::internal(format!("decode s3 multipart parts response: {error}")));
-            }
+            let (page, truncated, next_marker) = parse_answer(body, parse_parts_page)
+                .await?
+                .map_err(|error| Error::internal(format!("decode s3 multipart parts response: {error}")))?;
             parts.extend(page);
             if !truncated {
                 break;
@@ -973,35 +840,7 @@ impl S3Backend {
         if body.is_empty() {
             return Ok(());
         }
-        let mut code = String::new();
-        let mut message = String::new();
-        let mut failures: Vec<BatchDeleteFailure> = Vec::new();
-        let root = xml::walk(&body, |node| match node {
-            Node::Start(path) if at(path, &["Error"]) => failures.push(BatchDeleteFailure {
-                key: String::new(),
-                code: String::new(),
-                message: String::new(),
-            }),
-            Node::Start(_) => {}
-            Node::End(path, text) => {
-                if at(path, &["Code"]) {
-                    code = text;
-                } else if at(path, &["Message"]) {
-                    message = text;
-                } else if let Some(failure) = failures.last_mut()
-                    && path.len() == 2
-                    && path[0] == "Error"
-                {
-                    match path[1].as_str() {
-                        "Key" => failure.key = text,
-                        "Code" => failure.code = text,
-                        "Message" => failure.message = text,
-                        _ => {}
-                    }
-                }
-            }
-        });
-        let Ok(root) = root else {
+        let Some((root, code, message, failures)) = parse_answer(body, parse_delete_result).await? else {
             return Ok(());
         };
         // Some S3 implementations answer 200 with an Error document, or with one Error for each refused key.
@@ -1313,6 +1152,218 @@ impl MultipartPartLister for S3Backend {
     ) -> BoxFuture<'a, Result<Vec<MultipartPart>>> {
         Box::pin(self.list_multipart_parts(ctx, key, upload_id))
     }
+}
+
+/// The values of a `ListObjectVersions` answer.
+struct VersionListing {
+    truncated: bool,
+    next_key: String,
+    next_version: String,
+    /// The key and the version of each version, then of each delete marker, in the order of the answer.
+    versions: Vec<(String, StoredObjectVersion)>,
+    markers: Vec<(String, StoredObjectVersion)>,
+}
+
+/// Read a `ListObjectVersions` answer.
+fn parse_version_listing(body: &[u8]) -> std::result::Result<VersionListing, String> {
+    let mut truncated = false;
+    let mut next_key = String::new();
+    let mut next_version = String::new();
+    let mut versions: Vec<(String, StoredObjectVersion)> = Vec::new();
+    let mut markers: Vec<(String, StoredObjectVersion)> = Vec::new();
+    let mut failure: Option<String> = None;
+    let parsed = xml::walk(body, |node| match node {
+        Node::Start(path) if at(path, &["Version"]) => versions.push(Default::default()),
+        Node::Start(path) if at(path, &["DeleteMarker"]) => markers.push((
+            String::new(),
+            StoredObjectVersion {
+                delete_marker: true,
+                ..Default::default()
+            },
+        )),
+        Node::Start(_) => {}
+        Node::End(path, text) => {
+            if at(path, &["IsTruncated"]) {
+                match xml::parse_bool(&text) {
+                    Ok(value) => truncated = value,
+                    Err(error) => {
+                        failure.get_or_insert(error);
+                    }
+                }
+                return;
+            }
+            if at(path, &["NextKeyMarker"]) {
+                next_key = text;
+                return;
+            }
+            if at(path, &["NextVersionIdMarker"]) {
+                next_version = text;
+                return;
+            }
+            if path.len() != 2 {
+                return;
+            }
+            let target = match path[0].as_str() {
+                "Version" => versions.last_mut(),
+                "DeleteMarker" => markers.last_mut(),
+                _ => None,
+            };
+            let Some((item_key, item)) = target else {
+                return;
+            };
+            match path[1].as_str() {
+                "Key" => *item_key = text,
+                "VersionId" => item.version = text,
+                "IsLatest" => match xml::parse_bool(&text) {
+                    Ok(value) => item.is_current = value,
+                    Err(error) => {
+                        failure.get_or_insert(error);
+                    }
+                },
+                "LastModified" => item.last_modified = parse_time(&text),
+                "ETag" if !item.delete_marker => item.etag = trim_quotes(&text).to_owned(),
+                "Size" if !item.delete_marker => match xml::parse_int(&text) {
+                    Ok(size) => item.size = size,
+                    Err(error) => {
+                        failure.get_or_insert(error);
+                    }
+                },
+                _ => {}
+            }
+        }
+    });
+    if let Some(error) = parsed.err().or(failure) {
+        return Err(error);
+    }
+    Ok(VersionListing {
+        truncated,
+        next_key,
+        next_version,
+        versions,
+        markers,
+    })
+}
+
+/// Read a `ListParts` answer: the parts, the truncation and the next marker.
+fn parse_parts_page(body: &[u8]) -> std::result::Result<(Vec<MultipartPart>, bool, i64), String> {
+    let mut truncated = false;
+    let mut next_marker: i64 = 0;
+    let mut page: Vec<MultipartPart> = Vec::new();
+    let mut failure: Option<String> = None;
+    let mut keep_error = |result: std::result::Result<(), String>| {
+        if let Err(error) = result {
+            failure.get_or_insert(error);
+        }
+    };
+    let parsed = xml::walk(body, |node| match node {
+        Node::Start(path) if at(path, &["Part"]) => page.push(MultipartPart::default()),
+        Node::Start(_) => {}
+        Node::End(path, text) => {
+            if at(path, &["IsTruncated"]) {
+                keep_error(xml::parse_bool(&text).map(|value| truncated = value));
+            } else if at(path, &["NextPartNumberMarker"]) {
+                keep_error(xml::parse_int(&text).map(|value| next_marker = value));
+            } else if let Some(part) = page.last_mut()
+                && path.len() == 2
+                && path[0] == "Part"
+            {
+                match path[1].as_str() {
+                    "PartNumber" => keep_error(xml::parse_int(&text).and_then(|value| {
+                        u32::try_from(value)
+                            .map(|number| part.number = number)
+                            .map_err(|_| format!("invalid part number {value}"))
+                    })),
+                    "ETag" => part.etag = trim_quotes(&text).to_owned(),
+                    "Size" => keep_error(xml::parse_int(&text).map(|size| part.size = size)),
+                    "ChecksumSHA256" => part.checksum_sha256 = text,
+                    _ => {}
+                }
+            }
+        }
+    });
+    if let Some(error) = parsed.err().or(failure) {
+        return Err(error);
+    }
+    Ok((page, truncated, next_marker))
+}
+
+/// Read a `DeleteObjects` answer: the root, the code and the message of the root, and the refused keys. A body that
+/// does not read gives `None`.
+fn parse_delete_result(body: &[u8]) -> Option<(String, String, String, Vec<BatchDeleteFailure>)> {
+    let mut code = String::new();
+    let mut message = String::new();
+    let mut failures: Vec<BatchDeleteFailure> = Vec::new();
+    let root = xml::walk(body, |node| match node {
+        Node::Start(path) if at(path, &["Error"]) => failures.push(BatchDeleteFailure {
+            key: String::new(),
+            code: String::new(),
+            message: String::new(),
+        }),
+        Node::Start(_) => {}
+        Node::End(path, text) => {
+            if at(path, &["Code"]) {
+                code = text;
+            } else if at(path, &["Message"]) {
+                message = text;
+            } else if let Some(failure) = failures.last_mut()
+                && path.len() == 2
+                && path[0] == "Error"
+            {
+                match path[1].as_str() {
+                    "Key" => failure.key = text,
+                    "Code" => failure.code = text,
+                    "Message" => failure.message = text,
+                    _ => {}
+                }
+            }
+        }
+    });
+    let root = root.ok()?;
+    Some((root, code, message, failures))
+}
+
+/// Read a `ListObjectsV2` answer.
+fn parse_list_page(body: &[u8]) -> std::result::Result<ListPage, String> {
+    let mut page = ListPage::default();
+    let mut failure: Option<String> = None;
+    let parsed = xml::walk(body, |node| match node {
+        Node::Start(path) if at(path, &["Contents"]) => page.objects.push(ObjectInfo::default()),
+        Node::Start(path) if at(path, &["CommonPrefixes"]) => page.prefixes.push(String::new()),
+        Node::Start(_) => {}
+        Node::End(path, text) => {
+            if at(path, &["NextContinuationToken"]) {
+                page.next_page_token = text;
+            } else if at(path, &["IsTruncated"]) {
+                if let Err(error) = xml::parse_bool(&text) {
+                    failure.get_or_insert(error);
+                }
+            } else if at(path, &["CommonPrefixes", "Prefix"]) {
+                if let Some(prefix) = page.prefixes.last_mut() {
+                    *prefix = text;
+                }
+            } else if let Some(object) = page.objects.last_mut()
+                && path.len() == 2
+                && path[0] == "Contents"
+            {
+                match path[1].as_str() {
+                    "Key" => object.key = text,
+                    "LastModified" => object.last_modified = parse_time(&text),
+                    "Size" => match xml::parse_int(&text) {
+                        Ok(size) => object.size = size,
+                        Err(error) => {
+                            failure.get_or_insert(error);
+                        }
+                    },
+                    "ETag" => object.etag = trim_quotes(&text).to_owned(),
+                    _ => {}
+                }
+            }
+        }
+    });
+    if let Some(error) = parsed.err().or(failure) {
+        return Err(error);
+    }
+    Ok(page)
 }
 
 /// The access of the tests to the page token of the versions.

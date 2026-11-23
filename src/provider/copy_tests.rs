@@ -555,3 +555,27 @@ async fn four_parts_go_at_the_same_time_without_a_gate() {
     assert_eq!(state.most_in_flight, 4);
     assert_eq!(state.objects["b.bin"].data, vec![b'z'; 40]);
 }
+
+#[tokio::test]
+async fn the_other_headers_of_a_copy_in_parts_go_to_the_start_of_the_upload() {
+    let (fake, server, _) = FakeCopyS3::start().await;
+    fake.put("a.bin", b"0123456789", "application/octet-stream", "");
+    let backend = anonymous_s3(&server.url, "bucket");
+    let mut extra = HeaderMap::new();
+    extra.insert("x-amz-storage-class", HeaderValue::from_static("STANDARD_IA"));
+    extra.insert("cache-control", HeaderValue::from_static("no-cache"));
+    let options = MultipartCopyOptions {
+        extra_headers: extra,
+        ..MultipartCopyOptions::default()
+    };
+    copy(&backend, &OpCtx::default(), "a.bin", "b.bin", options, 5)
+        .await
+        .unwrap();
+    let state = fake.state.lock().unwrap();
+    let created = &state.created["upload-1"];
+    assert_eq!(header_of(created, "x-amz-storage-class"), "STANDARD_IA");
+    assert_eq!(header_of(created, "cache-control"), "no-cache");
+    assert_eq!(header_of(created, "content-type"), "application/octet-stream");
+    assert_eq!(state.tagging_queries, 0, "a source with no tag needs no tag request");
+    fake.problems.check();
+}
