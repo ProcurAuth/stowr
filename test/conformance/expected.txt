@@ -1,2 +1,54 @@
-# The cases that fail today and are known. One case id, then an optional "# reason". Blank lines and comment lines are allowed.
-# run.sh exits with 0 only when the set of failed cases is equal to this list. The list is empty when each case passes.
+# The result of each case that does not pass. One case id, then the status (fail or skip), then an optional "# reason".
+# A line with a case id only is a failed case. Blank lines and comment lines are allowed.
+# run.sh exits with 0 only when the failed cases and the skipped cases are equal to this list.
+
+# Stowr has no MCP endpoint: the runner skips the cases of the MCP binding (45 cases).
+U18 skip  # no MCP endpoint
+U23 skip  # no MCP endpoint
+U25 skip  # no MCP endpoint
+U26 skip  # no MCP endpoint
+U27 skip  # no MCP endpoint
+U28 skip  # no MCP endpoint
+U29 skip  # no MCP endpoint
+U30 skip  # no MCP endpoint
+U31 skip  # no MCP endpoint
+U85 skip  # no MCP endpoint
+U86 skip  # no MCP endpoint
+U87 skip  # no MCP endpoint
+U88 skip  # no MCP endpoint
+U89 skip  # no MCP endpoint
+U90 skip  # no MCP endpoint
+U91 skip  # no MCP endpoint
+U92 skip  # no MCP endpoint
+U93 skip  # no MCP endpoint
+U94 skip  # no MCP endpoint
+U95 skip  # no MCP endpoint
+U96 skip  # no MCP endpoint
+U97 skip  # no MCP endpoint
+U98 skip  # no MCP endpoint
+U99 skip  # no MCP endpoint
+U100 skip  # no MCP endpoint
+U101 skip  # no MCP endpoint
+U102 skip  # no MCP endpoint
+U103 skip  # no MCP endpoint
+U104 skip  # no MCP endpoint
+U105 skip  # no MCP endpoint
+U106 skip  # no MCP endpoint
+U107 skip  # no MCP endpoint
+U108 skip  # no MCP endpoint
+U109 skip  # no MCP endpoint
+U110 skip  # no MCP endpoint
+U111 skip  # no MCP endpoint
+U114 skip  # no MCP endpoint
+U115 skip  # no MCP endpoint
+U116 skip  # no MCP endpoint
+U117 skip  # no MCP endpoint
+U121 skip  # no MCP endpoint
+U122 skip  # no MCP endpoint
+U123 skip  # no MCP endpoint
+U124 skip  # no MCP endpoint
+U125 skip  # no MCP endpoint
+
+# No route of Stowr uses an action of the document on the node of the service. The routes without data of a
+# bucket ask the action access: use_no_action tests them (U127).
+U84 skip  # no operation use_service
