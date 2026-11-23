@@ -23,6 +23,8 @@ mod versions;
 mod walk;
 
 #[cfg(test)]
+mod access_tests;
+#[cfg(test)]
 mod analysis_tests;
 #[cfg(test)]
 mod manager_tests;
