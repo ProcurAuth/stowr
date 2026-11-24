@@ -25,6 +25,7 @@ docker build \
   --build-arg "VERSION=${BUILD_VERSION:-dev}" \
   --build-arg "COMMIT=${BUILD_COMMIT:-unknown}" \
   --build-arg "BUILD_DATE=${BUILD_DATE:-}" \
+  --build-arg "BUILD_JOBS=${CARGO_BUILD_JOBS:-}" \
   --target runtime \
   --file "$ROOT/test/browser/Dockerfile" \
   --tag "$IMAGE" \

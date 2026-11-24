@@ -14,6 +14,11 @@ The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes
 - The release also has the file `SHA256SUMS`, with the same content as `checksums.txt`.
 - The Content-Security-Policy of the pages has `form-action 'self'`.
 - In the mode `open`, a `server.listen` on each network interface gives a warning at start.
+- The workflow `nightly.yaml` runs the heavy checks: clippy, the tests, the static binary, the scratch image, the browser
+  tests and the conformance test. It runs every night, by hand and before a release.
+- The script `scripts/heavy.sh` runs the heavy checks of the CI on a developer machine.
+- `CARGO_BUILD_JOBS` on the host limits the compile jobs of `scripts/cargo.sh`, `scripts/static.sh`, the scratch image and
+  the browser test stack.
 
 ### Changed
 
@@ -27,6 +32,14 @@ The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes
 - A mutation from a browser with `Origin: null` gets `403` with `origin_mismatch`. Before, the server ignored that header.
 - A `_file` form loses only its last line end: one `\n`, or one `\r\n`. A `\r` at the end without `\n` stays in the
   value.
+- The workflow `ci.yaml` is the fast path of a push and of a pull request. It runs the policy of the images, the format,
+  the rules of the runtime and the syntax of the shell scripts. It uses the cached Rust toolchain of the runner and builds
+  no Docker image. Clippy, the tests, the static binary, the scratch image and the browser tests now run in `nightly.yaml`.
+- The workflow `conformance.yml` no longer runs on a pull request. `nightly.yaml` and a manual start run it.
+- The job `rust` of `ci.yaml` ("Format, clippy, tests and rules of the runtime") is now the job `fast` ("Format, rules of
+  the runtime and shell syntax"). The jobs "Static binary and scratch image" and "Browser tests of the interface" moved to
+  `nightly.yaml`.
+- The workflow `release.yaml` runs `ci.yaml` and `nightly.yaml` before it builds the binaries.
 
 ## 0.3.0 (2026-11-23)
 

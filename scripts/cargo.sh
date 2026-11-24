@@ -15,6 +15,12 @@ source "$(dirname "${BASH_SOURCE[0]}")/docker-env.sh"
 ensure_image
 ensure_volumes
 
+# CARGO_BUILD_JOBS, when set on the host, limits the compile jobs in the container.
+jobs_env=()
+if [ -n "${CARGO_BUILD_JOBS:-}" ]; then
+    jobs_env=(--env "CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS")
+fi
+
 tty_flag=()
 if [ -t 0 ] && [ -t 1 ]; then
     tty_flag=(--tty)
@@ -30,4 +36,5 @@ exec docker run --rm --interactive "${tty_flag[@]}" \
     --env CARGO_TARGET_DIR=/cargo-target \
     --env HOME=/cargo-home \
     --env CARGO_TERM_COLOR=never \
+    "${jobs_env[@]}" \
     "$image" cargo "$@"

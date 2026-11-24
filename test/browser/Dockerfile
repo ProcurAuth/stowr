@@ -7,6 +7,9 @@ FROM ${RUST_IMAGE} AS builder
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_DATE=
+# Empty lets cargo use each core. A number limits the compile jobs. The scripts give the value of CARGO_BUILD_JOBS of the
+# host. The name is not CARGO_BUILD_JOBS: cargo reads that variable, and an empty value stops cargo.
+ARG BUILD_JOBS=
 # Test stacks only: a lower size from which a copy goes in parts, and a lower part size (in bytes). Empty keeps the
 # values of the release build. The build gives them to the program as STOWR_MULTIPART_COPY_THRESHOLD and
 # STOWR_MULTIPART_COPY_PART_SIZE.
@@ -37,7 +40,7 @@ RUN --mount=type=cache,id=stowr-test-cargo-registry,target=/usr/local/cargo/regi
     STOWR_BUILD_DATE="${BUILD_DATE}" \
     STOWR_MULTIPART_COPY_THRESHOLD="${MULTIPART_COPY_THRESHOLD}" \
     STOWR_MULTIPART_COPY_PART_SIZE="${MULTIPART_COPY_PART_SIZE}" \
-      cargo build --release --locked --target "$target"; \
+      cargo build --release --locked --target "$target" ${BUILD_JOBS:+--jobs "$BUILD_JOBS"}; \
     binary="target/$target/release/stowr"; \
     if readelf -l "$binary" | grep -q 'Requesting program interpreter'; then echo "stowr needs a dynamic loader" >&2; exit 1; fi; \
     if readelf -d "$binary" 2>/dev/null | grep -q NEEDED; then echo "stowr needs a shared library" >&2; exit 1; fi; \

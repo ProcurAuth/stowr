@@ -1,12 +1,17 @@
 name: CI
 
-# Each job runs the scripts of the repository (docs/DEVELOPMENT.md). The scripts run cargo in the pinned Rust image, in
-# Docker: the runner needs Docker only. No job logs in to a registry or pushes an image.
+# This workflow is the fast path of a push and of a pull request. A job takes a few seconds to a few tens of seconds.
+# It has no Docker image build and no full Rust compile. The heavy checks (clippy, the tests, the static binary and the
+# scratch image, the browser tests, the conformance test) are in nightly.yaml. They also run before a release, and by hand
+# (workflow_dispatch on a branch). The same checks run on a developer machine: scripts/heavy.sh (docs/DEVELOPMENT.md).
+# No job logs in to a registry or pushes an image.
 on:
   push:
     branches: ["main"]
   pull_request:
   workflow_dispatch:
+  # The release workflow calls this workflow as a gate.
+  workflow_call:
 
 permissions:
   contents: read
@@ -37,59 +42,50 @@ jobs:
             exit 1
           fi
 
-  rust:
-    name: Format, clippy, tests and rules of the runtime
+  fast:
+    name: Format, rules of the runtime and shell syntax
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      # rust-toolchain.toml is the only place of the version. Only rustfmt runs here: it reads the source and needs no
+      # dependency, so the job makes no build. The runner has rustup. The cache holds the toolchain, so a run does not
+      # download it again.
+      - name: Version of the Rust toolchain
+        id: rust
+        run: |
+          version="$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)"
+          if [ -z "$version" ]; then
+            echo "::error::rust-toolchain.toml has no channel"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Cache the Rust toolchain
+        id: toolchain
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            ~/.rustup/toolchains/${{ steps.rust.outputs.version }}-*
+            ~/.rustup/update-hashes/${{ steps.rust.outputs.version }}-*
+          key: rustup-${{ runner.os }}-${{ steps.rust.outputs.version }}-rustfmt-v1
+      - name: Install the Rust toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        env:
+          RUST_VERSION: ${{ steps.rust.outputs.version }}
+        run: rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt --no-self-update
       - name: Format
-        run: scripts/cargo.sh fmt --all -- --check
-      - name: Clippy
-        run: scripts/cargo.sh clippy --all-targets --locked -- -D warnings
-      - name: Tests
-        run: scripts/cargo.sh test --locked
+        env:
+          RUST_VERSION: ${{ steps.rust.outputs.version }}
+        run: cargo "+$RUST_VERSION" fmt --all -- --check
       - name: Rules of the runtime
         run: scripts/check-invariants.sh
       - name: Shell syntax of the scripts
         run: |
+          status=0
           for file in scripts/*.sh test/*.sh test/*/*.sh test/*/scripts/*.sh; do
             [ -e "$file" ] || continue
-            bash -n "$file"
+            bash -n "$file" || status=1
           done
-
-  static:
-    name: Static binary and scratch image
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      # scripts/static.sh --check builds the static binary for the architecture of the runner, makes sure that it needs
-      # no dynamic loader, and runs `stowr version`.
-      - name: Static binary
-        env:
-          STOWR_BUILD_VERSION: ci
-          STOWR_BUILD_COMMIT: ${{ github.sha }}
-        run: |
-          scripts/static.sh --check | tee "$RUNNER_TEMP/version.txt"
-          grep -F "ci · ${GITHUB_SHA:0:9}" "$RUNNER_TEMP/version.txt"
-      - name: Scratch image
-        env:
-          BUILD_VERSION: ci
-          BUILD_COMMIT: ${{ github.sha }}
-        run: ./test/scratch-runtime.sh
-
-  frontend:
-    name: Browser tests of the interface
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - name: Browser tests
-        run: ./test/frontend/run.sh
+          exit "$status"

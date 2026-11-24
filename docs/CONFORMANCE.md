@@ -11,6 +11,9 @@ The script `test/conformance/run.sh` does the whole test. It needs Docker, `git`
 PROCURAUTH_DIR=/path/to/procurauth test/conformance/run.sh
 ```
 
+The workflow `nightly.yaml` runs this test every night and before a release. The workflow `conformance.yml` runs it by hand.
+It takes about 4 minutes, so it does not run on a pull request. Run the script when you change the access policy.
+
 `PROCURAUTH_DIR` gives the checkout of the ProcurAuth repository. The default is the directory `procurauth` next to the
 checkout of Stowr. The checkout must be at the commit of "The commit of the runner". The script does not change the
 checkout.
@@ -116,4 +119,4 @@ To change the commit:
 2. Write the full SHA of the new commit in `procurauth_commit` of `test/conformance/run.sh`.
 3. Run `PROCURAUTH_DIR=/path/to/procurauth test/conformance/run.sh`.
 4. Update `test/conformance/expected.txt` and the numbers of "Expected result" in this document.
-5. Write the full SHA in the continuous integration and in this section.
+5. Write the full SHA in `ref` of `.github/workflows/conformance.yml` and in this section.

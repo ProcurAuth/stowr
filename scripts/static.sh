@@ -17,6 +17,12 @@ if ! docker image inspect "$static_image" >/dev/null 2>&1; then
     docker build --quiet --tag "$static_image" --file "$root/scripts/Dockerfile.static" "$root/scripts" >/dev/null
 fi
 
+# CARGO_BUILD_JOBS, when set on the host, limits the compile jobs in the container.
+jobs_env=()
+if [ -n "${CARGO_BUILD_JOBS:-}" ]; then
+    jobs_env=(--env "CARGO_BUILD_JOBS=$CARGO_BUILD_JOBS")
+fi
+
 case "$(uname -m)" in
     x86_64 | amd64) target=x86_64-unknown-linux-musl ;;
     aarch64 | arm64) target=aarch64-unknown-linux-musl ;;
@@ -53,6 +59,7 @@ exec docker run --rm \
     --env CARGO_TARGET_DIR=/cargo-target \
     --env HOME=/cargo-home \
     --env CARGO_TERM_COLOR=never \
+    "${jobs_env[@]}" \
     --env STOWR_BUILD_VERSION="${STOWR_BUILD_VERSION:-}" \
     --env STOWR_BUILD_COMMIT="${STOWR_BUILD_COMMIT:-}" \
     --env STOWR_BUILD_DATE="${STOWR_BUILD_DATE:-}" \

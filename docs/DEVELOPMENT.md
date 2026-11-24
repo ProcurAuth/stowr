@@ -12,6 +12,7 @@
 | `scripts/cargo.sh <arguments>` | Run cargo in the development image (`stowr-dev:1`). The script runs as the user of the host. The cargo registry and the target folder are Docker volumes: no file of root appears in the repository. |
 | `scripts/static.sh` | Build the static program for the musl target of the host architecture: `x86_64-unknown-linux-musl` or `aarch64-unknown-linux-musl`. `--check` also checks that the file is static and runs it. `--copy <folder>` copies the file to a folder of the host. |
 | `scripts/check-invariants.sh` | Check the rules of the runtime that the compiler does not check. Refer to "Rules of the runtime". |
+| `scripts/heavy.sh [GROUP...]` | Run the heavy checks of the CI on your machine: `rust`, `static`, `frontend` and `conformance`. Without a group, it runs all of them. `--list` writes the groups. Refer to "Checks of the CI". |
 | `scripts/build-site.py` | Build the pages of `docs/` from the Markdown files. `--check` changes nothing and fails when a page is not current. It needs `python3` only. |
 | `scripts/check-docs.py` | Check the links, the site, the rules of ASD-STE100 and the hygiene of the files. It makes no network request. `--online` also asks each public URL. It needs `python3` only. |
 
@@ -32,6 +33,39 @@ scripts/check-invariants.sh
 scripts/static.sh --check
 python3 -I scripts/check-docs.py
 ```
+
+`scripts/heavy.sh` runs the heavy part of this list, and the browser tests and the conformance test, in one command.
+
+## Checks of the CI
+
+A job of the CI takes a few seconds to a few tens of seconds. A check that takes more than about one minute does not run on
+a push or on a pull request. It runs every night, by hand, before a release, and on your machine.
+
+| Workflow | When it runs | Checks |
+|---|---|---|
+| `ci.yaml` | Each push to `main`, each pull request, by hand | The policy (no job publishes an image), the format, the rules of the runtime, the syntax of the shell scripts. |
+| `docs.yml` | Each push to `main`, each pull request | The links, the site, the rules of ASD-STE100 and the hygiene of the files. |
+| `nightly.yaml` | Every night on `main`, by hand, before a release | Clippy and the tests (`rust`), the static binary and the scratch image (`static`), the browser tests (`frontend`), the conformance test (`conformance`). |
+| `conformance.yml` | By hand, and as a part of `nightly.yaml` | The ProcurAuth runner against Stowr. |
+| `release.yaml` | A tag `vX.Y.Z` | `ci.yaml` and `nightly.yaml`, then the static binaries, the archives and the GitHub release. |
+
+The fast checks use the Rust toolchain of the runner. The job caches the toolchain that `rust-toolchain.toml` names. No job
+of the fast path builds a Docker image or compiles the program.
+
+The measured times of the heavy checks, on a runner with four cores, are:
+
+| Check | Time |
+|---|---|
+| Clippy and tests with `scripts/cargo.sh`, cold cache | About 2.5 to 3 minutes |
+| Static binary and scratch image | About 6 minutes |
+| Conformance test | About 4 minutes |
+| Browser tests | About 16 minutes |
+
+On your machine, set `CARGO_BUILD_JOBS` to limit the compile jobs of these scripts, for example `CARGO_BUILD_JOBS=4 scripts/heavy.sh`.
+
+To start `nightly.yaml` on your branch, open the page Actions. Choose Nightly. Choose Run workflow. To run the same
+checks on your machine, use `scripts/heavy.sh`. Run it before you merge a change of the Rust code, of `Cargo.lock`, of the
+interface or of the access policy.
 
 ## Layout of the code
 
@@ -83,7 +117,7 @@ code that it replaces is larger or less strict. The program has its own code for
 
 ## Rules of the runtime
 
-`scripts/check-invariants.sh` checks these rules. The CI runs it.
+`scripts/check-invariants.sh` checks these rules. The fast path of the CI runs it.
 
 - The program never runs another program.
 - Only `src/config/env.rs` reads the environment: the variables that the configuration names with `_env`.
@@ -132,7 +166,7 @@ python3 -I scripts/check-docs.py
 - the rules of ASD-STE100: sentences of 25 words at most, six sentences in a paragraph, and no banned word;
 - the hygiene of the files: no secret, no address, no e-mail address and no image registry.
 
-The workflow `docs` runs it.
+The workflow `docs` runs it on each push and on each pull request.
 
 ## Frontend
 
@@ -150,6 +184,9 @@ again and reload. The program embeds one interface: no key selects an interface.
 `test/frontend/run.sh` starts three S3 providers (SeaweedFS, MinIO and Garage) and Stowr. It puts the test objects in the buckets and in the volume `files`. It runs `browser-tests.js` in a Playwright container. Refer to
 [test/README.md](../test/README.md). Two runs at the same time on one machine need two project names: set
 `FRONTEND_TEST_PROJECT`. To run some tests only, set `ONLY` to a part of their names.
+
+The workflow `nightly.yaml` runs this test (`scripts/heavy.sh frontend` runs it on your machine). It takes about 16
+minutes, so it is not on a pull request.
 
 ```sh
 ./test/frontend/run.sh
@@ -171,6 +208,9 @@ variable. Without it, the tests use a folder of the temporary folder of the syst
 
 `test/conformance/run.sh` runs the ProcurAuth conformance runner against Stowr in Docker. Set `PROCURAUTH_DIR` when the
 ProcurAuth repository is not next to the checkout of Stowr. Refer to [CONFORMANCE.md](CONFORMANCE.md).
+
+The workflow `nightly.yaml` runs this test. `conformance.yml` runs it by hand. It takes about 4 minutes, so it is not on a
+pull request. `scripts/heavy.sh conformance` runs it on your machine.
 
 ```sh
 ./test/conformance/run.sh
@@ -202,7 +242,7 @@ Keep the Apache-2.0 license notice in the same folder. The program does not get 
 ./test/scratch-runtime.sh
 ```
 
-The test builds the scratch image. It checks the numeric user and the identity of the static binary. It starts the container with `--read-only` and runs the health check of the program.
+The test builds the scratch image. It checks the numeric user and the identity of the static binary. It starts the container with `--read-only` and runs the health check of the program. The workflow `nightly.yaml` runs it with the static binary.
 
 ## Release
 
@@ -213,12 +253,14 @@ these steps:
    `Cargo.lock`.
 2. Add the section `## X.Y.Z (date)` under `## Unreleased` in `CHANGELOG.md`. The text of this section becomes the notes of
    the release. Run `python3 -I scripts/build-site.py`: the pages show the version of `Cargo.toml`.
-3. Merge the change into `main`, then tag the commit: `git tag vX.Y.Z`, `git push origin vX.Y.Z`.
+3. Merge the change into `main`. Start `nightly.yaml` by hand on `main`, or run `scripts/heavy.sh`. Make sure that the
+   run is green.
+4. Tag the commit: `git tag vX.Y.Z`, `git push origin vX.Y.Z`.
 
 The workflow does these steps:
 
 1. It makes sure of three facts. The tag is equal to the version of `Cargo.toml`. `CHANGELOG.md` has the section. No workflow publishes a container image.
-2. It runs the format check, clippy, the tests and `scripts/check-invariants.sh`.
+2. It runs `ci.yaml` (the format check, `scripts/check-invariants.sh`, the policy) and `nightly.yaml` (clippy, the tests, the static binary, the browser tests and the conformance test).
 3. It builds the static binary on an amd64 runner and on an arm64 runner with `scripts/static.sh`. The compile-time
    values are the version (`X.Y.Z`), the commit and the date of the commit. It makes sure that each binary is static,
    has the correct architecture, and shows the version.

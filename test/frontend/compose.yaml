@@ -52,6 +52,7 @@ services:
       args:
         MULTIPART_COPY_THRESHOLD: "8192"
         MULTIPART_COPY_PART_SIZE: "5242880"
+        BUILD_JOBS: "${CARGO_BUILD_JOBS:-}"
     command: ["-c", "/config/config.hcl"]
     read_only: true
     volumes:

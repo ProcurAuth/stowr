@@ -24,7 +24,8 @@ python3 -I scripts/check-docs.py
 ```
 
 The browser tests (`test/frontend/run.sh`) and the conformance test (`test/conformance/run.sh`) need Docker and take longer.
-Run them when you change the interface or the access policy.
+Run them when you change the interface or the access policy. `scripts/heavy.sh` runs clippy, the tests, the static binary,
+the browser tests and the conformance test in one command.
 
 ## Rules of the code
 
@@ -49,8 +50,25 @@ Run them when you change the interface or the access policy.
 
 ## Pull requests
 
-Open a pull request against `main`. Complete the template. The CI must pass. Your contribution is under the licence of the
-project: `MIT OR Apache-2.0`.
+Open a pull request against `main`. Complete the template. The fast checks of the CI must pass. Your contribution is under
+the licence of the project: `MIT OR Apache-2.0`.
+
+## The checks of the CI
+
+A job of the CI takes a few seconds to a few tens of seconds. A check that takes longer does not run on a push or on a pull
+request.
+
+- The workflow `ci.yaml` runs on each push to `main` and on each pull request. It checks the policy of the images, the
+  format, the rules of the runtime and the syntax of the shell scripts.
+- The workflow `docs.yml` checks the documents and the site.
+- The workflow `nightly.yaml` runs clippy, the tests, the static binary, the scratch image, the browser tests and the
+  conformance test. It runs every night on `main`, and a release waits for it. To start it on your branch, open the page
+  Actions. Choose Nightly. Choose Run workflow.
+- The script `scripts/heavy.sh` runs the same heavy checks on your machine.
+
+Before a merge, a change of the Rust code, of `Cargo.lock`, of the interface or of the access policy needs a green run. Use
+`scripts/heavy.sh` or the workflow Nightly. The maintainer asks for this run in the review. [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+describes each check.
 
 ## Code of conduct
 

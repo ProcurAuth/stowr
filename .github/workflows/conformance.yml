@@ -3,34 +3,23 @@ name: Conformance
 # The conformance runner of ProcurAuth (access-conformance, role pep, series U) against Stowr (docs/CONFORMANCE.md).
 # The job runs test/conformance/run.sh. The script builds Stowr and the runner with Docker. It fails only for a failed case
 # that test/conformance/expected.txt does not list, or for a listed case that passes.
+# The run takes four minutes, so it is not on a push or on a pull request. nightly.yaml calls this workflow every night and
+# before a release. To run it on a branch, start it by hand (workflow_dispatch) or run test/conformance/run.sh.
 # The ProcurAuth repository is public: the job checks it out without a secret.
 # The job checks out one fixed commit of ProcurAuth (the `ref` below). Thus a change of the runner never changes the result
 # alone. To change the commit, run test/conformance/run.sh with PROCURAUTH_DIR on the new commit, update expected.txt,
 # then write the full SHA of the new commit in `ref` and in docs/CONFORMANCE.md ("The commit of the runner").
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "src/access/**"
-      - "src/common/**"
-      - "src/config/**"
-      - "src/server/**"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - "build.rs"
-      - "scripts/static.sh"
-      - "scripts/docker-env.sh"
-      - "scripts/Dockerfile.dev"
-      - "scripts/Dockerfile.static"
-      - "test/conformance/**"
-      - ".github/workflows/conformance.yml"
+  # nightly.yaml calls this workflow.
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
   group: conformance-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   conformance:

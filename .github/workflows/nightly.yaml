@@ -1,0 +1,85 @@
+name: Nightly
+
+# The heavy checks. Each of them takes more than one minute, so none of them runs on a push or on a pull request.
+# They run every night on main, by hand (workflow_dispatch, with the branch of your choice) and as the gate of a release
+# (release.yaml calls this workflow). The fast checks are in ci.yaml.
+#   rust         clippy and the tests                                 (scripts/cargo.sh)
+#   static       the static binary and the scratch image              (scripts/static.sh, test/scratch-runtime.sh)
+#   frontend     the browser tests of the interface                   (test/frontend/run.sh)
+#   conformance  the ProcurAuth runner against Stowr                  (conformance.yml, test/conformance/run.sh)
+# scripts/heavy.sh runs the same checks on a developer machine. Run it before a change of the Rust code, of Cargo.lock,
+# of the interface or of the access policy. No job logs in to a registry or publishes an image: the images stay on the
+# runner.
+on:
+  schedule:
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+  # The release workflow calls this workflow as a gate.
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.ref }}
+  cancel-in-progress: false
+
+# bash with -e and -o pipefail: a failure in a pipe stops the step.
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  rust:
+    name: Clippy and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # scripts/cargo.sh runs cargo in the pinned Rust image, in Docker. The image stays on the runner.
+      - name: Clippy
+        run: scripts/cargo.sh clippy --all-targets --locked -- -D warnings
+      - name: Tests
+        run: scripts/cargo.sh test --locked
+
+  static:
+    name: Static binary and scratch image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      # scripts/static.sh --check builds the static binary for the architecture of the runner, makes sure that it needs
+      # no dynamic loader, and runs `stowr version`.
+      - name: Static binary
+        env:
+          STOWR_BUILD_VERSION: ci
+          STOWR_BUILD_COMMIT: ${{ github.sha }}
+        run: |
+          scripts/static.sh --check | tee "$RUNNER_TEMP/version.txt"
+          grep -F "ci · ${GITHUB_SHA:0:9}" "$RUNNER_TEMP/version.txt"
+      - name: Scratch image
+        env:
+          BUILD_VERSION: ci
+          BUILD_COMMIT: ${{ github.sha }}
+        run: ./test/scratch-runtime.sh
+
+  frontend:
+    name: Browser tests of the interface
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Browser tests
+        run: ./test/frontend/run.sh
+
+  conformance:
+    name: Conformance
+    permissions:
+      contents: read
+    uses: ./.github/workflows/conformance.yml

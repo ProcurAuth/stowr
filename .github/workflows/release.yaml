@@ -8,6 +8,7 @@ name: Release
 #   checksums.txt                        the SHA-256 of each archive (the format of sha256sum)
 #   SHA256SUMS                           the same content as checksums.txt (the name of the other ProcurAuth releases)
 # The notes of the release are the section of the version in CHANGELOG.md.
+# The workflows CI (ci.yaml) and Nightly (nightly.yaml) run first: a release never ships a commit that fails the checks.
 # No job builds an image for a registry, logs in to a registry or publishes an image.
 on:
   push:
@@ -95,27 +96,26 @@ jobs:
           path: ${{ runner.temp }}/notes.md
           if-no-files-found: error
 
+  # The fast checks of a push to main (ci.yaml), then the heavy checks (nightly.yaml): clippy, the tests, the static
+  # binary and the scratch image, the browser tests and the conformance test. Both workflows declare the trigger
+  # workflow_call for this use. The release passes no secret to them. A release is rare, so it can wait for the heavy checks.
   checks:
-    name: Format, clippy, tests and rules of the runtime
+    name: CI
     needs: prepare
-    runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          persist-credentials: false
-      - name: Format
-        run: scripts/cargo.sh fmt --all -- --check
-      - name: Clippy
-        run: scripts/cargo.sh clippy --all-targets --locked -- -D warnings
-      - name: Tests
-        run: scripts/cargo.sh test --locked
-      - name: Rules of the runtime
-        run: scripts/check-invariants.sh
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci.yaml
+
+  heavy:
+    name: Nightly checks
+    needs: prepare
+    permissions:
+      contents: read
+    uses: ./.github/workflows/nightly.yaml
 
   binaries:
     name: Static binary (${{ matrix.arch }})
-    needs: [prepare, checks]
+    needs: [prepare, checks, heavy]
     strategy:
       fail-fast: true
       matrix:

@@ -2,7 +2,7 @@
 
 This folder holds the integration tests of Stowr. Each test runs in Docker. No test pushes an image to a registry. The unit
 tests are in `src/`: run them with `scripts/cargo.sh test --locked`. [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) tells
-how to run each check.
+how to run each check. The workflow `nightly.yaml` runs the integration tests every night, and `scripts/heavy.sh` runs them on your machine.
 
 ## Layout
 

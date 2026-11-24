@@ -4,6 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/ProcurAuth/stowr/actions/workflows/ci.yaml"><img src="https://github.com/ProcurAuth/stowr/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/ProcurAuth/stowr/actions/workflows/nightly.yaml"><img src="https://github.com/ProcurAuth/stowr/actions/workflows/nightly.yaml/badge.svg" alt="Nightly"></a>
   <a href="https://github.com/ProcurAuth/stowr/releases/latest"><img src="https://img.shields.io/github/v/release/ProcurAuth/stowr?color=4338ca&label=release" alt="Latest release"></a>
   <a href="#licence"><img src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-lightgrey" alt="Licence: MIT OR Apache-2.0"></a>
   <a href="https://procurauth.github.io/procurauth/implementations.html"><img src="https://img.shields.io/badge/ProcurAuth-1.1-4338ca" alt="ProcurAuth 1.1"></a>
@@ -222,6 +223,9 @@ scripts/cargo.sh test --locked
 scripts/check-invariants.sh
 python3 -I scripts/check-docs.py
 ```
+
+The CI runs only the fast checks on a push and on a pull request. `scripts/heavy.sh` runs the heavy checks: clippy, the
+tests, the static binary, the browser tests and the conformance test. The workflow Nightly runs them every night.
 
 ## Security
 
