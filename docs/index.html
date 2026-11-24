@@ -46,13 +46,13 @@
 <section class="hero" aria-labelledby="hero-title">
   <div class="wrap hero-grid">
     <div>
-      <p class="eyebrow"><span class="badge">Version 0.3.0</span> Browser for S3, Google Cloud Storage and folders</p>
+      <p class="eyebrow"><span class="badge">Version 0.3.1</span> Browser for S3, Google Cloud Storage and folders</p>
       <h1 id="hero-title">Stowr</h1>
       <p class="promise">Every bucket and folder, in one page. One static binary and one HCL file.</p>
       <p class="sub">Stowr reads only the bytes that it shows, and it keeps no state on disk. It is for operators who run their own storage.</p>
       <div class="btn-row">
         <a class="btn primary" href="getting-started.html">Get started</a>
-        <a class="btn" href="https://github.com/ProcurAuth/stowr/releases/latest">Download v0.3.0</a>
+        <a class="btn" href="https://github.com/ProcurAuth/stowr/releases/latest">Download v0.3.1</a>
       </div>
       <p class="more"><a href="architecture.html">See how it works</a></p>
     </div>
@@ -98,8 +98,8 @@ sleep 10
 curl -s -X PUT http://127.0.0.1:8333/demo
 printf '# Hello\n\nThis file is in the bucket demo.\n' | curl -s --retry 5 --retry-delay 2 --retry-all-errors \
   -X PUT -H 'Content-Type: text/markdown' --data-binary @- http://127.0.0.1:8333/demo/notes/hello.md
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
-tar -xzf stowr_0.3.0_linux_amd64.tar.gz
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/stowr_0.3.1_linux_amd64.tar.gz
+tar -xzf stowr_0.3.1_linux_amd64.tar.gz
 ./stowr -c config.hcl</code></pre></div>
     <div class="btn-row"><a class="btn primary" href="getting-started.html">Open the guide</a><a class="btn" href="configuration.html">Read the configuration</a></div>
   </div>
@@ -171,7 +171,7 @@ tar -xzf stowr_0.3.0_linux_amd64.tar.gz
       </div>
     </div>
     <div class="foot-legal">
-      <p>Stowr, version 0.3.0. Part of <a href="https://procurauth.github.io/">ProcurAuth</a>.</p>
+      <p>Stowr, version 0.3.1. Part of <a href="https://procurauth.github.io/">ProcurAuth</a>.</p>
       <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
       <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
     </div>

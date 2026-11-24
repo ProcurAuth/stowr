@@ -147,13 +147,13 @@ printf '# Hello\n\nThis file is in the bucket demo.\n' | curl -s --retry 5 --ret
   -X PUT -H 'Content-Type: text/markdown' --data-binary @- http://127.0.0.1:8333/demo/notes/hello.md
 ```
 
-Download Stowr, check the archive, and write the configuration. For arm64, use the archive `stowr_0.3.0_linux_arm64.tar.gz`.
+Download Stowr, check the archive, and write the configuration. For arm64, use the archive `stowr_0.3.1_linux_arm64.tar.gz`.
 
 ```sh
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/checksums.txt
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/stowr_0.3.1_linux_amd64.tar.gz
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/checksums.txt
 sha256sum --check --ignore-missing checksums.txt
-tar -xzf stowr_0.3.0_linux_amd64.tar.gz
+tar -xzf stowr_0.3.1_linux_amd64.tar.gz
 cat > config.hcl <<'EOF'
 access { mode = "open" }
 server { listen = "127.0.0.1:8080" }

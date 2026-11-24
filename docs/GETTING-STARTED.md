@@ -37,13 +37,13 @@ printf 'id,name\n1,Ada\n2,Grace\n' | curl -s --retry 5 --retry-delay 2 --retry-a
 ## 2. Get Stowr
 
 Download the archive for your architecture and the file `checksums.txt`. Check the archive, then unpack it. For arm64, use
-the archive `stowr_0.3.0_linux_arm64.tar.gz`.
+the archive `stowr_0.3.1_linux_arm64.tar.gz`.
 
 ```sh
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/checksums.txt
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/stowr_0.3.1_linux_amd64.tar.gz
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/checksums.txt
 sha256sum --check --ignore-missing checksums.txt
-tar -xzf stowr_0.3.0_linux_amd64.tar.gz
+tar -xzf stowr_0.3.1_linux_amd64.tar.gz
 ./stowr version
 ```
 
@@ -116,7 +116,7 @@ Press Ctrl+C in the terminal of Stowr. Then remove the demo service. It had no v
 
 ```sh
 docker stop stowr-demo-s3
-rm -f stowr stowr_0.3.0_linux_amd64.tar.gz checksums.txt config.hcl
+rm -f stowr stowr_0.3.1_linux_amd64.tar.gz checksums.txt config.hcl
 ```
 
 ## Next steps

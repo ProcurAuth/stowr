@@ -6,6 +6,10 @@ The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes
 
 ## Unreleased
 
+## 0.3.1 (2026-11-24)
+
+Stowr 0.3.1 is a patch release. It adds no key and removes no key of the configuration file.
+
 ### Added
 
 - The command `check-config` checks the configuration and writes the `config.warning` lines on the standard error. An

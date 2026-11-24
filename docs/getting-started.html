@@ -43,7 +43,7 @@
   </div>
 </header>
 <main id="main">
-<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.0</span> A test in five minutes</p><h1>Getting started</h1><p class="lede">Run a local S3-compatible service, put two files in it, and open them in Stowr.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#1-start-a-local-s3-compatible-service">1. Start a local S3-compatible service</a></li><li><a href="#2-get-stowr">2. Get Stowr</a></li><li><a href="#3-write-the-configuration">3. Write the configuration</a></li><li><a href="#4-check-the-file-and-start">4. Check the file and start</a></li><li><a href="#5-look-around">5. Look around</a></li><li><a href="#6-remove-the-demo">6. Remove the demo</a></li><li><a href="#next-steps">Next steps</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/GETTING-STARTED.md"><code>docs/GETTING-STARTED.md</code></a> in the repository.</p><p>This guide takes about five minutes. You start a small S3-compatible service on your machine, put two files in it, and open them in Stowr. Every command runs as written, on Linux.</p>
+<div class="page-head"><div class="wrap"><p class="eyebrow"><span class="badge">Version 0.3.1</span> A test in five minutes</p><h1>Getting started</h1><p class="lede">Run a local S3-compatible service, put two files in it, and open them in Stowr.</p></div></div><div class="wrap doc-layout"><nav class="toc" aria-label="On this page"><details class="toc-details" open><summary>On this page</summary><ol><li><a href="#1-start-a-local-s3-compatible-service">1. Start a local S3-compatible service</a></li><li><a href="#2-get-stowr">2. Get Stowr</a></li><li><a href="#3-write-the-configuration">3. Write the configuration</a></li><li><a href="#4-check-the-file-and-start">4. Check the file and start</a></li><li><a href="#5-look-around">5. Look around</a></li><li><a href="#6-remove-the-demo">6. Remove the demo</a></li><li><a href="#next-steps">Next steps</a></li></ol></details></nav><article class="doc"><p class="src">This page comes from <a href="https://github.com/ProcurAuth/stowr/blob/main/docs/GETTING-STARTED.md"><code>docs/GETTING-STARTED.md</code></a> in the repository.</p><p>This guide takes about five minutes. You start a small S3-compatible service on your machine, put two files in it, and open them in Stowr. Every command runs as written, on Linux.</p>
 <p>You need these things:</p>
 <ul><li>A Linux machine with amd64 or arm64.</li><li>Docker, only to run the demo storage. Stowr itself does not need Docker.</li><li><code>curl</code>, <code>tar</code> and <code>sha256sum</code>.</li></ul>
 <p>The demo service listens on <code>127.0.0.1</code>. Nothing outside your machine can reach it. The commands pull one public image. They publish no image.</p>
@@ -60,11 +60,11 @@ printf '# Hello\n\nThis file is in the bucket demo.\n' | curl -s --retry 5 --ret
 printf 'id,name\n1,Ada\n2,Grace\n' | curl -s --retry 5 --retry-delay 2 --retry-all-errors \
   -X PUT -H 'Content-Type: text/csv' --data-binary @- http://127.0.0.1:8333/demo/data/people.csv</code></pre></div>
 <h2 id="2-get-stowr"><a class="self" href="#2-get-stowr">2. Get Stowr</a></h2>
-<p>Download the archive for your architecture and the file <code>checksums.txt</code>. Check the archive, then unpack it. For arm64, use the archive <code>stowr_0.3.0_linux_arm64.tar.gz</code>.</p>
-<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/stowr_0.3.0_linux_amd64.tar.gz
-curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.0/checksums.txt
+<p>Download the archive for your architecture and the file <code>checksums.txt</code>. Check the archive, then unpack it. For arm64, use the archive <code>stowr_0.3.1_linux_arm64.tar.gz</code>.</p>
+<div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/stowr_0.3.1_linux_amd64.tar.gz
+curl -fsSLO https://github.com/ProcurAuth/stowr/releases/download/v0.3.1/checksums.txt
 sha256sum --check --ignore-missing checksums.txt
-tar -xzf stowr_0.3.0_linux_amd64.tar.gz
+tar -xzf stowr_0.3.1_linux_amd64.tar.gz
 ./stowr version</code></pre></div>
 <p>The archive has one file: the static binary <code>stowr</code>. To build it from the source, use the script <code>scripts/static.sh</code> in the repository. <a href="development.html">DEVELOPMENT.md</a> tells how.</p>
 <h2 id="3-write-the-configuration"><a class="self" href="#3-write-the-configuration">3. Write the configuration</a></h2>
@@ -103,7 +103,7 @@ bucket "demo" {
 <h2 id="6-remove-the-demo"><a class="self" href="#6-remove-the-demo">6. Remove the demo</a></h2>
 <p>Press Ctrl+C in the terminal of Stowr. Then remove the demo service. It had no volume, so Docker deletes its data.</p>
 <div class="code-wrap"><span class="label">sh</span><pre data-copy tabindex="0" aria-label="Code example: sh"><code>docker stop stowr-demo-s3
-rm -f stowr stowr_0.3.0_linux_amd64.tar.gz checksums.txt config.hcl</code></pre></div>
+rm -f stowr stowr_0.3.1_linux_amd64.tar.gz checksums.txt config.hcl</code></pre></div>
 <h2 id="next-steps"><a class="self" href="#next-steps">Next steps</a></h2>
 <ul><li>Add the keys of a real provider. Use <code>access_key_id</code> and a secret from <code>_env</code> or <code>_file</code>. A secret in clear text in the file stops the start. <a href="configuration.html">CONFIGURATION.md</a> has an example for S3, Garage, SeaweedFS and GCS.</li><li>Show a folder of the server as a bucket with a <code>volume</code> block.</li><li>Check each person with the mode <code>authzen</code>: <a href="access.html">ACCESS.md</a>.</li><li>Run Stowr as a service: <a href="operations.html">OPERATIONS.md</a>.</li><li>Read the list of all keys: <a href="reference.html">configuration-reference.md</a>.</li></ul></article></div>
 </main>
@@ -148,7 +148,7 @@ rm -f stowr stowr_0.3.0_linux_amd64.tar.gz checksums.txt config.hcl</code></pre>
       </div>
     </div>
     <div class="foot-legal">
-      <p>Stowr, version 0.3.0. Part of <a href="https://procurauth.github.io/">ProcurAuth</a>.</p>
+      <p>Stowr, version 0.3.1. Part of <a href="https://procurauth.github.io/">ProcurAuth</a>.</p>
       <p>Licence: <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-MIT">MIT</a> or <a href="https://github.com/ProcurAuth/stowr/blob/main/LICENSE-APACHE">Apache-2.0</a>.</p>
       <p><a href="https://github.com/ProcurAuth/stowr/blob/main/SECURITY.md">Security policy</a></p>
     </div>
