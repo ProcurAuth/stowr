@@ -6,6 +6,10 @@ The release workflow reads the section `## X.Y.Z (date)` of the tag as the notes
 
 ## Unreleased
 
+### Added
+
+- The last job of the release workflow starts the conformance bench of ProcurAuth for the new release. The job never blocks a release. The README badge shows the result of the bench.
+
 ## 0.3.1 (2026-11-24)
 
 Stowr 0.3.1 is a patch release. It adds no key and removes no key of the configuration file.

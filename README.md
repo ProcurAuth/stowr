@@ -7,7 +7,7 @@
   <a href="https://github.com/ProcurAuth/stowr/actions/workflows/nightly.yaml"><img src="https://github.com/ProcurAuth/stowr/actions/workflows/nightly.yaml/badge.svg" alt="Nightly"></a>
   <a href="https://github.com/ProcurAuth/stowr/releases/latest"><img src="https://img.shields.io/github/v/release/ProcurAuth/stowr?color=4338ca&label=release" alt="Latest release"></a>
   <a href="#licence"><img src="https://img.shields.io/badge/licence-MIT%20OR%20Apache--2.0-lightgrey" alt="Licence: MIT OR Apache-2.0"></a>
-  <a href="https://procurauth.github.io/procurauth/implementations.html"><img src="https://img.shields.io/badge/ProcurAuth-1.1-4338ca" alt="ProcurAuth 1.1"></a>
+  <a href="https://procurauth.github.io/procurauth/implementations.html"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2FProcurAuth%2Fprocurauth%2Fconformance-results%2Flatest%2Fstowr%2Fbadge.json" alt="ProcurAuth conformance of the latest release"></a>
   <img src="https://img.shields.io/badge/binary-static%2C%20linux%20amd64%20%7C%20arm64-34d399" alt="Static binary for Linux amd64 and arm64">
   <img src="https://img.shields.io/badge/config-HCL%2C%20closed%20schema-818cf8" alt="Configuration: one HCL file with a closed schema">
 </p>
